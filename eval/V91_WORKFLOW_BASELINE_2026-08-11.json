@@ -1,0 +1,34 @@
+{
+  "version": "0.9.1",
+  "cases": 200,
+  "workflow_passed": 184,
+  "checks": {
+    "intake_summary": 200,
+    "case_card": 200,
+    "deadline_safe": 200,
+    "no_identifier_question": 200,
+    "retrieval": 184
+  },
+  "acceptance_passed": true,
+  "retrieval_baseline_required": 184,
+  "duration_seconds": 296.7,
+  "failures": [
+    "AVTS-CORE-06",
+    "CROSS-01B",
+    "CROSS-03B",
+    "CROSS-04B",
+    "CROSS-05B",
+    "CROSS-07B",
+    "CROSS-08B",
+    "CROSS-10B",
+    "CROSS-11B",
+    "CROSS-12B",
+    "CROSS-13B",
+    "CROSS-14B",
+    "CROSS-15B",
+    "LANG-16",
+    "LANG-17",
+    "LANG-18"
+  ],
+  "method": "audited_200_query_workflow_without_free_form_generation"
+}

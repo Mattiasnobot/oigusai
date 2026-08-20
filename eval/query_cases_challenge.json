@@ -1,0 +1,327 @@
+[
+  {
+    "id": "HIST-11",
+    "query": "Kas 2019. aastal võis lapse andmeid veebiteenuses tema nõusolekul töödelda?",
+    "split": "challenge",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "IKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "IKS_8"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2019-06-01"
+  },
+  {
+    "id": "HIST-12",
+    "query": "Kuidas jagati korteriühistu kulusid 2020. aastal?",
+    "split": "challenge",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "KRTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KRTS_40"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2020-10-01"
+  },
+  {
+    "id": "HIST-13",
+    "query": "Milline oli 2018. aastal apellatsioonitähtaeg tsiviilasjas?",
+    "split": "challenge",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "TSMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TSMS_632"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2018-05-01"
+  },
+  {
+    "id": "HIST-14",
+    "query": "Millal oli 2017. aastal lubatud inimese korrakaitseline kinnipidamine?",
+    "split": "challenge",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "KORS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KORS_46"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2017-01-15"
+  },
+  {
+    "id": "HIST-15",
+    "query": "Millised olid ametniku koondamise reeglid 2015. aastal?",
+    "split": "challenge",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "ATS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ATS_90"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2015-09-01"
+  },
+  {
+    "id": "NOSRC-01",
+    "query": "Kuidas küpsetada kardemonisaiu nii, et need jääksid pehmed?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-02",
+    "query": "Miks mu toataime lehed kollaseks lähevad?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-03",
+    "query": "Kirjuta mulle neljarealine luuletus sügisest.",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-04",
+    "query": "Kui palju valku võiksin pärast trenni süüa?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-05",
+    "query": "Kuidas parandada jalgratta logisevat käiguvahetajat?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-06",
+    "query": "Mis ilm võiks nädalavahetusel matkamiseks sobida?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-07",
+    "query": "Aita lahendada võrrand 3x + 7 = 22.",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-08",
+    "query": "Milline objektiiv sobib paremini öiseks pildistamiseks?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-09",
+    "query": "Kuidas õpetada koerale käsklust lama?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-10",
+    "query": "Soovita rahulikku muusikat keskendumiseks.",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-11",
+    "query": "Kuidas teha arvutis failidest varukoopia?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-12",
+    "query": "Mida tähendab inglise keeles sõna serendipity?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-13",
+    "query": "Kuidas planeerida kolmepäevast rattamatka?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-14",
+    "query": "Millist mulda vajavad tomatitaimed rõdul?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-15",
+    "query": "Miks kohv mõnikord liiga hapu maitseb?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  }
+]

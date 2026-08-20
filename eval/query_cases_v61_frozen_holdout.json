@@ -1,0 +1,302 @@
+[
+  {
+    "id": "V61-FH-001",
+    "query": "Teen ettevõttele regulaarselt tööd nende juhtimise ja kontrolli all ning saan tasu. Kas see võib olla tööleping?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["TLS"],
+    "expected_sections_any": ["TLS_1"],
+    "tags": ["fresh", "employment", "natural"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-002",
+    "query": "Kas töölepingusse saab kirjutada tingimuse, mis teeb töötaja õigused seaduses ettenähtust halvemaks?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["TLS"],
+    "expected_sections_any": ["TLS_2"],
+    "tags": ["fresh", "employment", "contract"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-003",
+    "query": "Tööandja hakkas mind halvemini kohtlema pärast seda, kui juhtisin tööl õiguste rikkumisele tähelepanu.",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["TLS"],
+    "expected_sections_any": ["TLS_2B1"],
+    "tags": ["fresh", "employment", "retaliation"],
+    "difficulty": "hard"
+  },
+  {
+    "id": "V61-FH-004",
+    "query": "Kas ametniku teenistussuhtele kohaldatakse tavaliselt töölepingu seadust?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["ATS"],
+    "expected_sections_any": ["ATS_3"],
+    "tags": ["fresh", "public_service"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-005",
+    "query": "Kas avaliku teenistuse seaduses ette nähtud haldusmenetlusele kohaldub ka haldusmenetluse seadus?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["ATS"],
+    "expected_sections_any": ["ATS_4"],
+    "tags": ["fresh", "public_service", "procedure"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-006",
+    "query": "Kas ametiasutuse avalikke ülesandeid täites loodud dokument on avalik teave?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["AVTS"],
+    "expected_sections_any": ["AVTS_3"],
+    "tags": ["fresh", "public_information"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-007",
+    "query": "Kas avaandmete kasutamine algsest erineval ärilisel eesmärgil on avaliku teabe taaskasutamine?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["AVTS"],
+    "expected_sections_any": ["AVTS_3B1"],
+    "tags": ["fresh", "public_information", "open_data"],
+    "difficulty": "hard"
+  },
+  {
+    "id": "V61-FH-008",
+    "query": "Milline kohus lahendab haldusasja esimeses astmes ja milline kohus apellatsiooni?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["HKMS"],
+    "expected_sections_any": ["HKMS_3"],
+    "tags": ["fresh", "administrative_court", "appeal"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-009",
+    "query": "Kas omavalitsusega tekkinud avalik-õiguslik vaidlus kuulub halduskohtu pädevusse?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["HKMS"],
+    "expected_sections_any": ["HKMS_4"],
+    "tags": ["fresh", "administrative_court", "jurisdiction"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-010",
+    "query": "Kas väärteomenetlus on haldusmenetluse seaduse tähenduses haldusmenetlus?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["HMS"],
+    "expected_sections_any": ["HMS_2"],
+    "tags": ["fresh", "administrative", "misdemeanour"],
+    "difficulty": "hard"
+  },
+  {
+    "id": "V61-FH-011",
+    "query": "Mida peab ametiasutus kaalutlusotsuse tegemisel arvesse võtma?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["HMS"],
+    "expected_sections_any": ["HMS_4"],
+    "tags": ["fresh", "administrative", "discretion"],
+    "difficulty": "hard"
+  },
+  {
+    "id": "V61-FH-012",
+    "query": "Kas sama süüteo eest võib inimese kaks korda süüdi mõista ja karistada?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["KARS"],
+    "expected_sections_any": ["KARS_2"],
+    "tags": ["fresh", "criminal", "double_punishment"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-013",
+    "query": "Mis vahe on kuriteol ja väärteol?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["KARS"],
+    "expected_sections_any": ["KARS_3"],
+    "tags": ["fresh", "criminal", "definition"],
+    "difficulty": "easy"
+  },
+  {
+    "id": "V61-FH-014",
+    "query": "Mida tähendavad ohu ennetamine, ohu väljaselgitamine ja tõrjumine korrakaitses?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["KORS"],
+    "expected_sections_any": ["KORS_2"],
+    "tags": ["fresh", "police", "definition"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-015",
+    "query": "Kes korraldab Eestis liiklusjärelevalvet?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["LS"],
+    "expected_sections_any": ["LS_3"],
+    "tags": ["fresh", "traffic", "authority"],
+    "difficulty": "easy"
+  },
+  {
+    "id": "V61-FH-016",
+    "query": "Kas maksu tasumise eest peab maksumaksja saama riigilt otsese vastuteene?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["MKS"],
+    "expected_sections_any": ["MKS_2"],
+    "tags": ["fresh", "tax", "definition"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-017",
+    "query": "Kas vald võib nõuda maksu, mille alus ja määr pole seaduses ega volikogu määruses kirjas?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["MKS"],
+    "expected_sections_any": ["MKS_4"],
+    "tags": ["fresh", "tax", "legality"],
+    "difficulty": "hard"
+  },
+  {
+    "id": "V61-FH-018",
+    "query": "Kas õde ja vend võivad omavahel abielluda?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["PKS"],
+    "expected_sections_any": ["PKS_2"],
+    "tags": ["fresh", "family", "marriage"],
+    "difficulty": "easy"
+  },
+  {
+    "id": "V61-FH-019",
+    "query": "Kas juba abielus inimene võib samal ajal sõlmida uue abielu?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["PKS"],
+    "expected_sections_any": ["PKS_4"],
+    "tags": ["fresh", "family", "marriage"],
+    "difficulty": "easy"
+  },
+  {
+    "id": "V61-FH-020",
+    "query": "Kas oma ettevõtte tarbeks kaupa ostnud füüsiline isik on tarbija?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["TKS"],
+    "expected_sections_any": ["TKS_2"],
+    "tags": ["fresh", "consumer", "definition"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-021",
+    "query": "Milline peab olema tarbijale müüdava kauba sildil olev märgistus?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["TKS"],
+    "expected_sections_any": ["TKS_5"],
+    "tags": ["fresh", "consumer", "label"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-022",
+    "query": "Milline seadustik kirjeldab võlgniku, sissenõudja ja kohtutäituri õigusi täitemenetluses?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["TMS"],
+    "expected_sections_any": ["TMS_1"],
+    "tags": ["fresh", "enforcement", "scope"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-023",
+    "query": "Kes korraldab täitedokumentide täitmist?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["TMS"],
+    "expected_sections_any": ["TMS_3"],
+    "tags": ["fresh", "enforcement", "bailiff"],
+    "difficulty": "easy"
+  },
+  {
+    "id": "V61-FH-024",
+    "query": "Kas eraõigussuhtest tekkinud kohtuasi on tsiviilasi?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["TSMS"],
+    "expected_sections_any": ["TSMS_1"],
+    "tags": ["fresh", "civil_procedure", "definition"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-025",
+    "query": "Kas inimene võib tsiviilkohtusse pöörduda oma eeldatava ja seadusega kaitstud õiguse kaitseks?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["TSMS"],
+    "expected_sections_any": ["TSMS_3"],
+    "tags": ["fresh", "civil_procedure", "court_access"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-026",
+    "query": "Mis on võlasuhe ning kellel on õigus nõuda kohustuse täitmist?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["VOS"],
+    "expected_sections_any": ["VOS_2"],
+    "tags": ["fresh", "obligations", "definition"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-027",
+    "query": "Kas võlasuhe võib tekkida ka alusetust rikastumisest, mitte ainult lepingust?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": ["VOS"],
+    "expected_sections_any": ["VOS_3"],
+    "tags": ["fresh", "obligations", "unjust_enrichment"],
+    "difficulty": "medium"
+  },
+  {
+    "id": "V61-FH-028",
+    "query": "Kuidas teha pannkooke?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_sections_any": [],
+    "tags": ["fresh", "fail_closed", "out_of_scope"],
+    "difficulty": "easy"
+  },
+  {
+    "id": "V61-FH-029",
+    "query": "Mis ilm homme Tallinnas on?",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_sections_any": [],
+    "tags": ["fresh", "fail_closed", "out_of_scope"],
+    "difficulty": "easy"
+  },
+  {
+    "id": "V61-FH-030",
+    "query": "Kirjuta mulle sünnipäevaks lühike luuletus.",
+    "split": "v61_frozen_holdout",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_sections_any": [],
+    "tags": ["fresh", "fail_closed", "out_of_scope"],
+    "difficulty": "easy"
+  }
+]

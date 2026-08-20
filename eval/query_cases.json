@@ -1,0 +1,4269 @@
+[
+  {
+    "id": "TLS-CORE-01",
+    "query": "Kas tööleping peab olema kirjalik?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TLS_4"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "contract_form"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "TLS-CORE-02",
+    "query": "Kui pikk võib töötaja katseaeg olla?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TLS_10B1"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "probation"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "TLS-CORE-03",
+    "query": "Kui sageli peab tööandja töötasu maksma?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TLS_33"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "wages"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "TLS-CORE-04",
+    "query": "Kas täistööaeg tähendab tavaliselt 40 tundi seitsme päeva jooksul?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TLS_43"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "working_time"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "TLS-CORE-05",
+    "query": "Mitu tundi järjest peab kahe tööpäeva vahel puhkamiseks jääma?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TLS_51"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "rest_time"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "TLS-CORE-06",
+    "query": "Tööandja ütles, et töömahu vähenemise tõttu mind koondatakse. Millised reeglid kehtivad?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TLS_89"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "redundancy"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "VOS-CORE-01",
+    "query": "Kui suurt tagatisraha võib eluruumi üürileandja küsida?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VOS_308"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "deposit"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "VOS-CORE-02",
+    "query": "Kui palju varem peab üürileandja üüri tõstmisest teatama?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VOS_299"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "rent_increase"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "VOS-CORE-03",
+    "query": "Millal võib üürileandja maksmata üüri tõttu lepingu erakorraliselt lõpetada?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VOS_316"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "lease_termination"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "VOS-CORE-04",
+    "query": "Millal loetakse ostetud asi lepingutingimustele mittevastavaks?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VOS_217"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "defective_goods"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "VOS-CORE-05",
+    "query": "Kas internetist ostetud kauba võib 14 päeva jooksul põhjust ütlemata tagastada?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VOS_56"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "distance_contract"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "VOS-CORE-06",
+    "query": "Millises ulatuses peab lepingut rikkunud pool tekitatud kahju hüvitama?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VOS_127"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "damages"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "KARS-CORE-01",
+    "query": "Kas enda kaitsmiseks ründajale kahju tekitamine võib olla hädakaitse?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KARS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KARS_28"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "self_defence"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "KARS-CORE-02",
+    "query": "Millal on sõnumiga tapmise ähvardamine kuritegu?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KARS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KARS_120"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "threat"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "KARS-CORE-03",
+    "query": "Kas teisele inimesele valu tekitav löömine on kehaline väärkohtlemine?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KARS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KARS_121"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "assault"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "KARS-CORE-04",
+    "query": "Mida käsitatakse vargusena?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KARS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KARS_199"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "theft"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "KARS-CORE-05",
+    "query": "Millal on vale ettekujutuse loomisega raha saamine kelmus?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KARS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KARS_209"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "fraud"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "KARS-CORE-06",
+    "query": "Kui vana peab inimene olema, et olla karistusõiguslikult süüvõimeline?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KARS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KARS_33"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "criminal_capacity"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "PKS-CORE-01",
+    "query": "Millal võib kohus abielu lahutada pöördumatult lõppenud abielusuhete tõttu?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PKS_67"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "divorce"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "PKS-CORE-02",
+    "query": "Kuidas peab lahus elav vanem tavaliselt lapsele elatist andma?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PKS_100"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "maintenance"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "PKS-CORE-03",
+    "query": "Mida hõlmab vanema hooldusõigus?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PKS_116"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "custody"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "PKS-CORE-04",
+    "query": "Kas lapsel on õigus suhelda mõlema vanemaga?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PKS_143"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "contact_right"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "PKS-CORE-05",
+    "query": "Millistel üldtingimustel on lapse lapsendamine lubatud?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PKS_147"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "adoption"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "PKS-CORE-06",
+    "query": "Kuidas jagatakse abikaasade ühisvara varaühisuse lõppemisel?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PKS_37"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "marital_property"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "PS-CORE-01",
+    "query": "Millised nõuded kehtivad põhiõiguste piiramisele?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PS_11"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "fundamental_rights"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "PS-CORE-02",
+    "query": "Kas kõiki tuleb seaduse ees võrdselt kohelda?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PS_12"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "equality"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "PS-CORE-03",
+    "query": "Kas õiguste rikkumise korral on õigus kohtusse pöörduda?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PS_15"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "court_access"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "PS-CORE-04",
+    "query": "Millal võib riigiasutus inimese eraellu sekkuda?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PS_26"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "privacy"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "PS-CORE-05",
+    "query": "Kas riik võib omaniku nõusolekuta tema vara võõrandada?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PS_32"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "property"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "PS-CORE-06",
+    "query": "Kas Eestis on tsensuur lubatud ja kuidas võib sõnavabadust piirata?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PS_45"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "expression"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "HMS-CORE-01",
+    "query": "Kuidas võib haldusorgan otsuse inimesele kätte toimetada?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HMS_25"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "service"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "HMS-CORE-02",
+    "query": "Kas ametiasutus peab enne minu õigusi kahjustavat otsust mind ära kuulama?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HMS_40"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "hearing"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "HMS-CORE-03",
+    "query": "Mida peab kirjaliku haldusakti põhjendus sisaldama?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HMS_56"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "reasoning"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "HMS-CORE-04",
+    "query": "Kellel on õigus haldusakti või toimingu peale vaie esitada?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HMS_71"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "administrative_challenge"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "HMS-CORE-05",
+    "query": "Kui pikk on tavaliselt vaide esitamise tähtaeg?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HMS_75"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "challenge_deadline"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "HMS-CORE-06",
+    "query": "Mida peab haldusorgan arvestama haldusakti kehtetuks tunnistamisel?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HMS_64"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "revocation"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "HKMS-CORE-01",
+    "query": "Milliseid nõudeid saab halduskohtule esitatavas kaebuses esitada?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HKMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HKMS_37"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "complaint_types"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "HKMS-CORE-02",
+    "query": "Kas halduskohtusse võib minna ainult oma õiguse kaitseks?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HKMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HKMS_44"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "standing"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "HKMS-CORE-03",
+    "query": "Kui kaua on aega haldusakti tühistamiseks kohtusse kaevata?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HKMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HKMS_46"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "complaint_deadline"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "HKMS-CORE-04",
+    "query": "Millal saab halduskohtult taotleda esialgset õiguskaitset?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HKMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HKMS_249"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "interim_relief"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "HKMS-CORE-05",
+    "query": "Kui pikk on haldusasjas apellatsioonkaebuse esitamise tähtaeg?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HKMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HKMS_181"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "appeal_deadline"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "HKMS-CORE-06",
+    "query": "Kui pikk on haldusasjas kassatsioonkaebuse tähtaeg?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HKMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HKMS_212"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "cassation_deadline"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "TSMS-CORE-01",
+    "query": "Mida peab tsiviilasja hagiavaldus sisaldama?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TSMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TSMS_363"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "statement_of_claim"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "TSMS-CORE-02",
+    "query": "Kes peab tsiviilkohtus oma väiteid tõendama?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TSMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TSMS_230"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "burden_of_proof"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "TSMS-CORE-03",
+    "query": "Kas kohus võib teha tagaseljaotsuse, kui kostja hagile ei vasta?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TSMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TSMS_407"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "default_judgment"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "TSMS-CORE-04",
+    "query": "Kui kaua on aega maakohtu otsuse peale apellatsiooni esitada?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TSMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TSMS_632"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "appeal_deadline"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "TSMS-CORE-05",
+    "query": "Kuidas jagatakse kohtukulud, kui hagi rahuldatakse ainult osaliselt?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TSMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TSMS_163"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "costs"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "TSMS-CORE-06",
+    "query": "Kuidas kontrollitakse, millisele kohtule tsiviilasi allub?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TSMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TSMS_75"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "jurisdiction"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "VTMS-CORE-01",
+    "query": "Millised õigused on väärteomenetluses menetlusalusel isikul?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VTMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VTMS_19"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "procedural_rights"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "VTMS-CORE-02",
+    "query": "Millistel alustel ja kui kauaks võib väärteos kahtlustatava kinni pidada?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VTMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VTMS_44"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "detention"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "VTMS-CORE-03",
+    "query": "Millal võib kohtuväline menetleja kasutada kiirmenetlust?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VTMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VTMS_55"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "expedited_procedure"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "VTMS-CORE-04",
+    "query": "Mida peab väärteoprotokoll sisaldama?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VTMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VTMS_69"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "protocol"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "VTMS-CORE-05",
+    "query": "Millal ja mis tähtaja jooksul saab kohtuvälise menetleja otsuse maakohtusse kaevata?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VTMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VTMS_114"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "court_challenge"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "VTMS-CORE-06",
+    "query": "Kuidas saab lühimenetluse otsust vaidlustada?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VTMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VTMS_54B11"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "short_procedure"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "LS-CORE-01",
+    "query": "Kuhu tohib asulas auto parkida?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "LS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "LS_20"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "parking"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "LS-CORE-02",
+    "query": "Millal peab autos turvavöö kinnitatud olema?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "LS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "LS_30"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "seatbelt"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "LS-CORE-03",
+    "query": "Mida peab juht sõidukiiruse valimisel arvestama?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "LS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "LS_50"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "speed"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "LS-CORE-04",
+    "query": "Millal loetakse mootorsõidukijuht alkoholijoobes olevaks?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "LS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "LS_69"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "alcohol"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LS-CORE-05",
+    "query": "Mida peab juht pärast liiklusõnnetust tegema?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "LS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "LS_169"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "traffic_accident"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "LS-CORE-06",
+    "query": "Kas inimene võib juhtida autot ilma vastava kategooria juhtimisõiguseta?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "LS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "LS_90"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "driving_right"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "KORS-CORE-01",
+    "query": "Kuidas peab korrakaitseorgan valima kõige vähem kahjustava meetme?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KORS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KORS_7"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "proportionality"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "KORS-CORE-02",
+    "query": "Millal võib politsei inimese peatada ja teda küsitleda?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KORS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KORS_30"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "questioning"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "KORS-CORE-03",
+    "query": "Millal võib politsei inimese isikusamasuse tuvastada?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KORS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KORS_32"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "identity_check"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "KORS-CORE-04",
+    "query": "Millistel alustel võib politsei inimese kinni pidada?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KORS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KORS_46"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "detention"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "KORS-CORE-05",
+    "query": "Millal võib politsei omaniku nõusolekuta eluruumi siseneda?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KORS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KORS_50"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "entry"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "KORS-CORE-06",
+    "query": "Mida tähendab korrakaitseseaduses vahetu sund?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KORS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KORS_74"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "direct_coercion"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "ABIPOLS-CORE-01",
+    "query": "Milline on abipolitseiniku pädevus avaliku korra kaitsmisel?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ABIPOLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ABIPOLS_3"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "competence"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "ABIPOLS-CORE-02",
+    "query": "Millistele nõuetele peab abipolitseinikuks soovija vastama?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ABIPOLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ABIPOLS_4"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "eligibility"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "ABIPOLS-CORE-03",
+    "query": "Milliseid korrakaitseseaduse meetmeid võib abipolitseinik rakendada?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ABIPOLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ABIPOLS_16"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "measures"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "ABIPOLS-CORE-04",
+    "query": "Millal võib abipolitseinik kasutada füüsilist jõudu või erivahendit?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ABIPOLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ABIPOLS_28"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "direct_coercion"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "ABIPOLS-CORE-05",
+    "query": "Kas abipolitseinik võib kasutada tulirelva või elektrišokirelva?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ABIPOLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ABIPOLS_35"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "firearm"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "ABIPOLS-CORE-06",
+    "query": "Kas abipolitseinik võib politsei ülesandel iseseisvalt liiklusjärelevalvet teha?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ABIPOLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ABIPOLS_3"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "traffic_supervision"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "IKS-CORE-01",
+    "query": "Millistel tingimustel võib isikuandmeid teadusuuringuks nõusolekuta töödelda?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "IKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "IKS_6"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "research"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "IKS-CORE-02",
+    "query": "Kui vana laps võib ise nõustuda oma andmete töötlemisega veebiteenuses?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "IKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "IKS_8"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "child_consent"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "IKS-CORE-03",
+    "query": "Millal kohaldatakse õiguskaitseasutuse isikuandmete töötlemise erireegleid?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "IKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "IKS_12"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "law_enforcement_data"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "IKS-CORE-04",
+    "query": "Millal võib õiguskaitseasutus töödelda eriliiki isikuandmeid?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "IKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "IKS_20"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "special_categories"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "IKS-CORE-05",
+    "query": "Millal peab inimest tema isikuandmetega seotud rikkumisest teavitama?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "IKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "IKS_45"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "data_breach"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "IKS-CORE-06",
+    "query": "Milline asutus teeb isikuandmete töötlemise üle riiklikku järelevalvet?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "IKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "IKS_56"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "supervision"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "AVTS-CORE-01",
+    "query": "Millised asutused ja isikud on avaliku teabe seaduse järgi teabevaldajad?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AVTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AVTS_5"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "information_holder"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "AVTS-CORE-02",
+    "query": "Kui kiiresti peab ametiasutus teabenõude täitma?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AVTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AVTS_18"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "request_deadline"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "AVTS-CORE-03",
+    "query": "Millal võib teabevaldaja teabenõude täitmisest keelduda?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AVTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AVTS_23"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "refusal"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "AVTS-CORE-04",
+    "query": "Millistel alustel tunnistatakse teave asutusesiseseks kasutamiseks?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AVTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AVTS_35"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "access_restriction"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "AVTS-CORE-05",
+    "query": "Kas piiranguga dokumendist peab avalikustama selle osa, millele piirang ei kehti?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AVTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AVTS_38"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "partial_access"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "AVTS-CORE-06",
+    "query": "Millist asutuse valduses olevat teavet peab veebis avalikustama?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AVTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AVTS_28"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "proactive_disclosure"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "TKS-CORE-01",
+    "query": "Millist teavet peab kaupleja tarbijale enne ostu andma?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TKS_4"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "consumer_information"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "TKS-CORE-02",
+    "query": "Millal loetakse kaup tarbijakaitseseaduse järgi puudusega kaubaks?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TKS_12"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "defective_goods"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "TKS-CORE-03",
+    "query": "Millise ametiasutuse poole saab tarbija õiguste rikkumisega pöörduda?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TKS_21"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "consumer_authority"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "TKS-CORE-04",
+    "query": "Milliseid vaidlusi lahendab tarbijavaidluste komisjon?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TKS_40"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "consumer_dispute"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "TKS-CORE-05",
+    "query": "Mida peab sisaldama tarbijavaidluste komisjonile esitatav avaldus?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TKS_46"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "consumer_application"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "TKS-CORE-06",
+    "query": "Mida tähendab kauplemisvõte ja milliseid õigusi annab ebaaus võte tarbijale?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TKS_13"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "unfair_practice"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "KRTS-CORE-01",
+    "query": "Mitu häält annab üks korteriomand korteriühistu üldkoosolekul?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KRTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KRTS_22"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "voting"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "KRTS-CORE-02",
+    "query": "Milliseid tegevusi loetakse korteriomandi tavapäraseks valitsemiseks?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KRTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KRTS_35"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "ordinary_management"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "KRTS-CORE-03",
+    "query": "Kuidas jagatakse korteriühistu majandamiskulud korteriomanike vahel?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KRTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KRTS_40"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "management_costs"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "KRTS-CORE-04",
+    "query": "Millal võivad korteriomanikud nõuda probleemse omaniku korteri võõrandamist?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KRTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KRTS_32"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "forced_sale"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "KRTS-CORE-05",
+    "query": "Millised õigused on korteriomanikul eriomandi ja kaasomandi kasutamisel?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KRTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KRTS_30"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "owner_rights"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "KRTS-CORE-06",
+    "query": "Kas korteriomanikud peavad omavahelistes suhetes arvestama üksteise õigustatud huve?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KRTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KRTS_12"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "good_faith"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "AOS-CORE-01",
+    "query": "Mida tähendab omavoliline valdus?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AOS_40"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "possession"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "AOS-CORE-02",
+    "query": "Mida saab valdaja nõuda, kui tema valdust rikutakse?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AOS_44"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "possession_protection"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "AOS-CORE-03",
+    "query": "Kas omanik saab nõuda tema omandiõiguse rikkumise lõpetamist?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AOS_89"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "ownership_protection"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "AOS-CORE-04",
+    "query": "Kas teeta kinnistu omanik võib nõuda juurdepääsu üle naabri maa?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AOS_156"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "necessary_access"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "AOS-CORE-05",
+    "query": "Kelle kanda jäävad kahe kinnistu ühise piirirajatise korrashoiukulud?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AOS_151"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "boundary_structure"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "AOS-CORE-06",
+    "query": "Mida tähendab reaalservituut?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AOS_172"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "servitude"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "TMS-CORE-01",
+    "query": "Millal loetakse täitemenetlus võlgniku suhtes alanuks?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TMS_24"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "enforcement_notice"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "TMS-CORE-02",
+    "query": "Millal võib kohtutäitur lõpetada täitemenetluse nõude aegumise tõttu?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TMS_48B1"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "limitation"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "TMS-CORE-03",
+    "query": "Kui suur osa inimese kuusissetulekust peab üldjuhul arestimata jääma?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TMS_132"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "protected_income"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "TMS-CORE-04",
+    "query": "Kui kiiresti peab kohtutäitur vabastama pangakontol aresti alt kaitstud sissetuleku?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TMS_133"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "account_release"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "TMS-CORE-05",
+    "query": "Kuidas saab kohtutäituri kaebuse kohta tehtud otsuse maakohtusse edasi kaevata?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TMS_218"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "bailiff_challenge"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "TMS-CORE-06",
+    "query": "Kuidas müüb kohtutäitur arestitud vallasasju avalikul enampakkumisel?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TMS_78"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "auction"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "MKS-CORE-01",
+    "query": "Millist maksukohustuslase teavet peab maksuhaldur saladuses hoidma?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "MKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "MKS_26"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "tax_secrecy"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "MKS-CORE-02",
+    "query": "Mida peab maksuhalduri vastutusotsus sisaldama?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "MKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "MKS_96"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "liability_decision"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "MKS-CORE-03",
+    "query": "Millistel juhtudel maksusumma määramise aegumine peatub?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "MKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "MKS_99"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "limitation"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "MKS-CORE-04",
+    "query": "Kui suur on maksuvõlalt arvestatav päevane intressimäär?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "MKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "MKS_117"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "interest"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "MKS-CORE-05",
+    "query": "Kas maksuhalduri otsuse või tegevusetuse peale saab vaide esitada?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "MKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "MKS_137"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "tax_challenge"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "MKS-CORE-06",
+    "query": "Mis on maksukontrolli eesmärk?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "MKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "MKS_55B1"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "tax_audit"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "ATS-CORE-01",
+    "query": "Kui pikk võib ametniku katseaeg olla?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ATS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ATS_24"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "probation"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "ATS-CORE-02",
+    "query": "Millised on ametniku üldised teenistuskohustused?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ATS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ATS_51"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "official_duties"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "ATS-CORE-03",
+    "query": "Millistest osadest koosneb ametniku palk?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ATS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ATS_61"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "salary"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "ATS-CORE-04",
+    "query": "Mida loetakse ametniku distsiplinaarsüüteoks?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ATS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ATS_69"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "title",
+      "discipline"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "id": "ATS-CORE-05",
+    "query": "Kui palju peab ametnik omal soovil teenistusest lahkumisest ette teatama?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ATS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ATS_87"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "natural",
+      "resignation"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "id": "ATS-CORE-06",
+    "query": "Millal võib ametniku teenistusest koondamise tõttu vabastada?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ATS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ATS_90"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "core",
+      "scenario",
+      "redundancy"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-01A",
+    "query": "Internetist ostetud telefon on vigane ja pood keeldub seda tagasi võtmast. Millised reeglid kohalduvad?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TKS",
+      "VOS"
+    ],
+    "expected_domains_all": [
+      "TKS",
+      "VOS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "VOS_56",
+        "VOS_217"
+      ],
+      [
+        "TKS_12",
+        "TKS_46"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "consumer",
+      "distance_contract",
+      "defective_goods"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-01B",
+    "query": "Veebipoest saabunud puudusega kaup ei tööta ning müüja ei nõustu kaebust lahendama. Kuhu pöörduda?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TKS",
+      "VOS"
+    ],
+    "expected_domains_all": [
+      "TKS",
+      "VOS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "VOS_56",
+        "VOS_217"
+      ],
+      [
+        "TKS_12",
+        "TKS_46"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "consumer",
+      "distance_contract",
+      "defective_goods"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-02A",
+    "query": "Abipolitseinik kontrollis mu isikut ja pidas mind kinni. Milliseid volitusi ta võis kasutada?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ABIPOLS",
+      "KORS"
+    ],
+    "expected_domains_all": [
+      "ABIPOLS",
+      "KORS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "ABIPOLS_16"
+      ],
+      [
+        "KORS_32",
+        "KORS_46"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "police",
+      "identity_check",
+      "detention"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-02B",
+    "query": "Kas abi politsei tohib dokumenti küsida ning inimese politseiniku korraldusel kinni võtta?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ABIPOLS",
+      "KORS"
+    ],
+    "expected_domains_all": [
+      "ABIPOLS",
+      "KORS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "ABIPOLS_16"
+      ],
+      [
+        "KORS_32",
+        "KORS_46"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "police",
+      "identity_check",
+      "detention"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-03A",
+    "query": "Abipolitseinik kasutas minu vastu jõudu. Millised abipolitseiniku ja vahetu sunni reeglid kehtivad?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ABIPOLS",
+      "KORS"
+    ],
+    "expected_domains_all": [
+      "ABIPOLS",
+      "KORS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "ABIPOLS_28",
+        "ABIPOLS_35"
+      ],
+      [
+        "KORS_74"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "police",
+      "direct_coercion"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-03B",
+    "query": "Millal võib abipolitseinik politseiniku korraldusel füüsilist jõudu kasutada?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ABIPOLS",
+      "KORS"
+    ],
+    "expected_domains_all": [
+      "ABIPOLS",
+      "KORS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "ABIPOLS_28",
+        "ABIPOLS_35"
+      ],
+      [
+        "KORS_74"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "police",
+      "direct_coercion"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-04A",
+    "query": "Esitasin ametiasutuse otsuse peale vaide, kuid tahan nüüd halduskohtusse minna. Millised tähtajad kehtivad?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HKMS",
+      "HMS"
+    ],
+    "expected_domains_all": [
+      "HKMS",
+      "HMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "HMS_71",
+        "HMS_75"
+      ],
+      [
+        "HKMS_46"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "administrative",
+      "challenge",
+      "deadline"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-04B",
+    "query": "Kuidas vaidlustada haldusakti esmalt vaidemenetluses ja seejärel kohtus?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HKMS",
+      "HMS"
+    ],
+    "expected_domains_all": [
+      "HKMS",
+      "HMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "HMS_71",
+        "HMS_75"
+      ],
+      [
+        "HKMS_46"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "administrative",
+      "challenge",
+      "deadline"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-05A",
+    "query": "Maksuameti otsus rikub minu õigusi ja tahan selle kohtus vaidlustada. Milline vaide- ja kaebekord kehtib?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HKMS",
+      "MKS"
+    ],
+    "expected_domains_all": [
+      "HKMS",
+      "MKS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "MKS_137"
+      ],
+      [
+        "HKMS_46"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "tax",
+      "administrative",
+      "challenge"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-05B",
+    "query": "Kas maksuotsuse peale tuleb esitada vaie ning kui kaua on hiljem aega halduskohtusse pöörduda?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HKMS",
+      "MKS"
+    ],
+    "expected_domains_all": [
+      "HKMS",
+      "MKS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "MKS_137"
+      ],
+      [
+        "HKMS_46"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "tax",
+      "administrative",
+      "challenge"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-06A",
+    "query": "Sain valesti parkimise eest väärteootsuse ja tahan selle maakohtus vaidlustada.",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "LS",
+      "VTMS"
+    ],
+    "expected_domains_all": [
+      "LS",
+      "VTMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "LS_20"
+      ],
+      [
+        "VTMS_114"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "traffic",
+      "parking",
+      "misdemeanour"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-06B",
+    "query": "Auto parkimise eest määratud trahv tundub vale. Milline parkimisreegel ja kaebetähtaeg kohalduvad?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "LS",
+      "VTMS"
+    ],
+    "expected_domains_all": [
+      "LS",
+      "VTMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "LS_20"
+      ],
+      [
+        "VTMS_114"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "traffic",
+      "parking",
+      "misdemeanour"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-07A",
+    "query": "Teine juht põhjustas liiklusõnnetuse ja mu auto sai kahjustada. Mida peab juht tegema ja kuidas kahju hüvitatakse?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "LS",
+      "VOS"
+    ],
+    "expected_domains_all": [
+      "LS",
+      "VOS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "LS_169"
+      ],
+      [
+        "VOS_127"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "traffic_accident",
+      "damages"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-07B",
+    "query": "Pärast avariid lahkus süüdlane ning mulle jäi remondiarve. Millised liiklus- ja kahjuhüvitamise reeglid kohalduvad?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "LS",
+      "VOS"
+    ],
+    "expected_domains_all": [
+      "LS",
+      "VOS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "LS_169"
+      ],
+      [
+        "VOS_127"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "traffic_accident",
+      "damages"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-08A",
+    "query": "Korteriühistu sai kohtuotsuse probleemse omaniku korteri võõrandamiseks ja kohtutäitur alustas müüki.",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KRTS",
+      "TMS"
+    ],
+    "expected_domains_all": [
+      "KRTS",
+      "TMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "KRTS_32"
+      ],
+      [
+        "TMS_24",
+        "TMS_78"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "apartment",
+      "forced_sale",
+      "enforcement"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-08B",
+    "query": "Millised reeglid kohalduvad, kui korteriühistu nõuab korteri müümist ning lahendit täidab kohtutäitur?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KRTS",
+      "TMS"
+    ],
+    "expected_domains_all": [
+      "KRTS",
+      "TMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "KRTS_32"
+      ],
+      [
+        "TMS_24",
+        "TMS_78"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "apartment",
+      "forced_sale",
+      "enforcement"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-09A",
+    "query": "Minu kinnistul puudub teeühendus ja tahan kohtult juurdepääsu üle naabri maa.",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AOS",
+      "TSMS"
+    ],
+    "expected_domains_all": [
+      "AOS",
+      "TSMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "AOS_156"
+      ],
+      [
+        "TSMS_363"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "property",
+      "necessary_access",
+      "civil_procedure"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-09B",
+    "query": "Naaber ei luba teeta kinnistule läbipääsu. Milline materiaalõigus ja mida peab hagiavaldus sisaldama?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AOS",
+      "TSMS"
+    ],
+    "expected_domains_all": [
+      "AOS",
+      "TSMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "AOS_156"
+      ],
+      [
+        "TSMS_363"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "property",
+      "necessary_access",
+      "civil_procedure"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-10A",
+    "query": "Ametnikule määrati distsiplinaarkaristus ilma teda enne ära kuulamata ja otsust põhjendamata.",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ATS",
+      "HMS"
+    ],
+    "expected_domains_all": [
+      "ATS",
+      "HMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "ATS_69"
+      ],
+      [
+        "HMS_40",
+        "HMS_56"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "public_service",
+      "discipline",
+      "hearing"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-10B",
+    "query": "Kas teenistuskohustuse rikkumise eest karistamisel peab ametiasutus ametniku vastuväited ära kuulama?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ATS",
+      "HMS"
+    ],
+    "expected_domains_all": [
+      "ATS",
+      "HMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "ATS_69"
+      ],
+      [
+        "HMS_40",
+        "HMS_56"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "public_service",
+      "discipline",
+      "hearing"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-11A",
+    "query": "Politsei pidas mind ohu tõrjumiseks kinni. Kuidas seostuvad kinnipidamise alus ja põhiseaduslik vabadus?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KORS",
+      "PS"
+    ],
+    "expected_domains_all": [
+      "KORS",
+      "PS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "KORS_46"
+      ],
+      [
+        "PS_20"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "police",
+      "detention",
+      "fundamental_rights"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-11B",
+    "query": "Millal võib korrakaitse eesmärgil inimese vabadust piirata?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KORS",
+      "PS"
+    ],
+    "expected_domains_all": [
+      "KORS",
+      "PS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "KORS_46"
+      ],
+      [
+        "PS_20"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "police",
+      "detention",
+      "fundamental_rights"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-12A",
+    "query": "Omavalitsus tahab minu kinnistu sundvõõrandada, kuid otsuses puudub selge põhjendus.",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HMS",
+      "PS"
+    ],
+    "expected_domains_all": [
+      "HMS",
+      "PS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "PS_32"
+      ],
+      [
+        "HMS_56"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "property",
+      "expropriation",
+      "reasoning"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-12B",
+    "query": "Millised põhiõiguse ja haldusakti põhjendamise nõuded kehtivad vara sundvõõrandamisel?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HMS",
+      "PS"
+    ],
+    "expected_domains_all": [
+      "HMS",
+      "PS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "PS_32"
+      ],
+      [
+        "HMS_56"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "property",
+      "expropriation",
+      "reasoning"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-13A",
+    "query": "Teine vanem ei luba mul lapsega suhelda ja tahan kohtult suhtlemiskorda.",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PKS",
+      "TSMS"
+    ],
+    "expected_domains_all": [
+      "PKS",
+      "TSMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "PKS_143"
+      ],
+      [
+        "TSMS_550"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "family",
+      "contact_right",
+      "civil_procedure"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-13B",
+    "query": "Kuidas saab lahus elav vanem taotleda kohtult lapsega suhtlemise korra määramist?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PKS",
+      "TSMS"
+    ],
+    "expected_domains_all": [
+      "PKS",
+      "TSMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "PKS_143"
+      ],
+      [
+        "TSMS_550"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "family",
+      "contact_right",
+      "civil_procedure"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-14A",
+    "query": "Lapse elatis on välja mõistetud, kuid teine vanem ei maksa ja kohtutäitur arestib tema palka.",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PKS",
+      "TMS"
+    ],
+    "expected_domains_all": [
+      "PKS",
+      "TMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "PKS_100"
+      ],
+      [
+        "TMS_132",
+        "TMS_133"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "maintenance",
+      "enforcement",
+      "protected_income"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-14B",
+    "query": "Kuidas seostuvad lapse elatise maksmine ja võlgniku sissetuleku arestimise piirid?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PKS",
+      "TMS"
+    ],
+    "expected_domains_all": [
+      "PKS",
+      "TMS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "PKS_100"
+      ],
+      [
+        "TMS_132",
+        "TMS_133"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "maintenance",
+      "enforcement",
+      "protected_income"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-15A",
+    "query": "Kaupleja kasutas eksitavat müügivõtet ja tekitas mulle rahalist kahju.",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TKS",
+      "VOS"
+    ],
+    "expected_domains_all": [
+      "TKS",
+      "VOS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "TKS_13"
+      ],
+      [
+        "VOS_127"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "consumer",
+      "unfair_practice",
+      "damages"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "CROSS-15B",
+    "query": "Kas ebaausa reklaami tõttu kahju saanud tarbija saab nõuda kahju hüvitamist?",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TKS",
+      "VOS"
+    ],
+    "expected_domains_all": [
+      "TKS",
+      "VOS"
+    ],
+    "expected_sections_any": [],
+    "expected_section_groups": [
+      [
+        "TKS_13"
+      ],
+      [
+        "VOS_127"
+      ]
+    ],
+    "tags": [
+      "cross_domain",
+      "paraphrase",
+      "consumer",
+      "unfair_practice",
+      "damages"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-01",
+    "query": "Toandia ei maksa mulle palla õigel ajal",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TLS_33"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "typo",
+      "colloquial",
+      "wages"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-02",
+    "query": "Kas uuri tagatis raha voib olla kolme kuu jagu?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VOS_308"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "typo",
+      "compound",
+      "deposit"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-03",
+    "query": "Naabrimees pani oma aia minu maa peale",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AOS_89",
+      "AOS_151"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "colloquial",
+      "property"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-04",
+    "query": "Abipoliteinik võttis mu kinni, kas tal oli selleks õigus?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "ABIPOLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ABIPOLS_16"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "typo",
+      "detention"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-05",
+    "query": "Kohtutaitur võttis pangast kogu palga ara",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TMS_132",
+      "TMS_133"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "typo",
+      "colloquial",
+      "protected_income"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-06",
+    "query": "Kas mendid võivad niisama mu nime ja dokumenti küsida?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KORS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KORS_32"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "colloquial",
+      "identity_check"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-07",
+    "query": "Netipoest ostetu tahaks tagasi saata, 14 paeva pole tais",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "VOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VOS_56"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "typo",
+      "distance_contract"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-08",
+    "query": "Mu andmed läksid lekkesse ja keegi ei teavitanud",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "IKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "IKS_45"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "colloquial",
+      "data_breach"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-09",
+    "query": "Korteri uhistu remont on mega kallis ja hääletus kahtlane",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KRTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KRTS_22",
+      "KRTS_35",
+      "KRTS_40"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "compound",
+      "colloquial",
+      "apartment"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-10",
+    "query": "Mind lasti lahti sest tood pole",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TLS_89"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "colloquial",
+      "inflection",
+      "redundancy"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-11",
+    "query": "Maksuameti otsus tundub vale, tahan vastu vaielda",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "MKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "MKS_137"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "colloquial",
+      "tax_challenge"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-12",
+    "query": "Amet ei kuulanud mind enne otsuse tegemist üldse",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "HMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HMS_40"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "colloquial",
+      "hearing"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-13",
+    "query": "Tahan riigilt dokumenti näha, kaua nad vastata võivad?",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AVTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AVTS_18"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "colloquial",
+      "public_information"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-14",
+    "query": "Lapse isa ei maksa sentigi",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PKS_100"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "colloquial",
+      "maintenance"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-15",
+    "query": "Eks ei lase mul last näha",
+    "split": "development",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "PKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PKS_143"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "colloquial",
+      "contact_right"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-16",
+    "query": "Sain parkimis trahvi ja tahan selle kohtusse anda",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "LS",
+      "VTMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "LS_20",
+      "VTMS_114"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "compound",
+      "colloquial",
+      "parking"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-17",
+    "query": "Pood muus mulle vigast asja ja ei tee midagi",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "TKS",
+      "VOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TKS_12",
+      "VOS_217"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "typo",
+      "colloquial",
+      "defective_goods"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-18",
+    "query": "Keegi lõi mind ja ütles et see polnud midagi",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KARS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KARS_121"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "colloquial",
+      "assault"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-19",
+    "query": "Mind ähvardatakse sõnumites ära tappa",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "KARS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KARS_120"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "colloquial",
+      "threat"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "LANG-20",
+    "query": "Mu krundilt pole teele pääsu, ainult üle naabri maa",
+    "split": "holdout",
+    "expected_behavior": "retrieve",
+    "expected_domains": [
+      "AOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AOS_156"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "hard_language",
+      "colloquial",
+      "necessary_access"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "HIST-01",
+    "query": "Kas 2018. aastal pidi tööleping olema kirjalik?",
+    "split": "development",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "TLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TLS_4"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2018-06-01"
+  },
+  {
+    "id": "HIST-02",
+    "query": "Kui suur võis eluruumi tagatisraha olla 2019. aastal?",
+    "split": "development",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "VOS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "VOS_308"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2019-03-15"
+  },
+  {
+    "id": "HIST-03",
+    "query": "Milline oli 2020. aastal vaide esitamise tähtaeg?",
+    "split": "development",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "HMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HMS_75"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2020-01-10"
+  },
+  {
+    "id": "HIST-04",
+    "query": "Kui kaua sai 2017. aastal haldusakti kohtus vaidlustada?",
+    "split": "development",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "HKMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "HKMS_46"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2017-09-01"
+  },
+  {
+    "id": "HIST-05",
+    "query": "Millised olid lapse elatise maksmise reeglid 2021. aastal?",
+    "split": "development",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "PKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "PKS_100"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2021-05-20"
+  },
+  {
+    "id": "HIST-06",
+    "query": "Kui palju võis kohtutäitur 2019. aastal palgast arestida?",
+    "split": "development",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "TMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TMS_132"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2019-11-01"
+  },
+  {
+    "id": "HIST-07",
+    "query": "Milline oli maksuvõla intressimäär 2020. aastal?",
+    "split": "development",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "MKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "MKS_117"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2020-08-10"
+  },
+  {
+    "id": "HIST-08",
+    "query": "Kas 2018. aastal pidi autos turvavöö kinnitama?",
+    "split": "development",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "LS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "LS_30"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2018-02-01"
+  },
+  {
+    "id": "HIST-09",
+    "query": "Millised olid abipolitseiniku volitused 2016. aastal?",
+    "split": "development",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "ABIPOLS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ABIPOLS_16"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2016-07-01"
+  },
+  {
+    "id": "HIST-10",
+    "query": "Kui kiiresti tuli 2022. aastal teabenõudele vastata?",
+    "split": "development",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "AVTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "AVTS_18"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2022-04-05"
+  },
+  {
+    "id": "HIST-11",
+    "query": "Kas 2019. aastal võis lapse andmeid veebiteenuses tema nõusolekul töödelda?",
+    "split": "challenge",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "IKS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "IKS_8"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2019-06-01"
+  },
+  {
+    "id": "HIST-12",
+    "query": "Kuidas jagati korteriühistu kulusid 2020. aastal?",
+    "split": "challenge",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "KRTS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KRTS_40"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2020-10-01"
+  },
+  {
+    "id": "HIST-13",
+    "query": "Milline oli 2018. aastal apellatsioonitähtaeg tsiviilasjas?",
+    "split": "challenge",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "TSMS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "TSMS_632"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2018-05-01"
+  },
+  {
+    "id": "HIST-14",
+    "query": "Millal oli 2017. aastal lubatud inimese korrakaitseline kinnipidamine?",
+    "split": "challenge",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "KORS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "KORS_46"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2017-01-15"
+  },
+  {
+    "id": "HIST-15",
+    "query": "Millised olid ametniku koondamise reeglid 2015. aastal?",
+    "split": "challenge",
+    "expected_behavior": "historical_unavailable",
+    "expected_domains": [
+      "ATS"
+    ],
+    "expected_domains_all": [],
+    "expected_sections_any": [
+      "ATS_90"
+    ],
+    "expected_section_groups": [],
+    "tags": [
+      "historical",
+      "fail_closed"
+    ],
+    "difficulty": "hard",
+    "event_date": "2015-09-01"
+  },
+  {
+    "id": "NOSRC-01",
+    "query": "Kuidas küpsetada kardemonisaiu nii, et need jääksid pehmed?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-02",
+    "query": "Miks mu toataime lehed kollaseks lähevad?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-03",
+    "query": "Kirjuta mulle neljarealine luuletus sügisest.",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-04",
+    "query": "Kui palju valku võiksin pärast trenni süüa?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-05",
+    "query": "Kuidas parandada jalgratta logisevat käiguvahetajat?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-06",
+    "query": "Mis ilm võiks nädalavahetusel matkamiseks sobida?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-07",
+    "query": "Aita lahendada võrrand 3x + 7 = 22.",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-08",
+    "query": "Milline objektiiv sobib paremini öiseks pildistamiseks?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-09",
+    "query": "Kuidas õpetada koerale käsklust lama?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-10",
+    "query": "Soovita rahulikku muusikat keskendumiseks.",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-11",
+    "query": "Kuidas teha arvutis failidest varukoopia?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-12",
+    "query": "Mida tähendab inglise keeles sõna serendipity?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-13",
+    "query": "Kuidas planeerida kolmepäevast rattamatka?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-14",
+    "query": "Millist mulda vajavad tomatitaimed rõdul?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "id": "NOSRC-15",
+    "query": "Miks kohv mõnikord liiga hapu maitseb?",
+    "split": "challenge",
+    "expected_behavior": "no_result",
+    "expected_domains": [],
+    "expected_domains_all": [],
+    "expected_sections_any": [],
+    "expected_section_groups": [],
+    "tags": [
+      "out_of_scope",
+      "fail_closed"
+    ],
+    "difficulty": "hard"
+  }
+]

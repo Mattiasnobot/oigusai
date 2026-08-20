@@ -22,6 +22,10 @@ import uvicorn
 from config import load_settings
 from services.case_intake import CaseIntakeService, MAX_INPUT_CHARS
 from services.case_workspace import CaseCardBuilder, UrgencyAnalyzer
+from services.analysis_orchestrator import (
+    AnalysisOrchestrationError,
+    AnalysisOrchestrator,
+)
 from services.analysis_pipeline import AnalysisPipelineRun, VerifiedAnswerBuilder
 from services.document_insights import SafeDraftService
 from services.documents import DocumentProcessingError, LocalDocumentService
@@ -783,151 +787,32 @@ async def analyze_case(
     verifier: SourceVerifier = Depends(get_verifier),
     _access: None = Depends(protect_api_request),
 ):
-    analysis_started = time.perf_counter()
-    pipeline = AnalysisPipelineRun()
-    if not request.case_description or not request.case_description.strip():
-        raise HTTPException(status_code=400, detail="Olukorra kirjeldus ei tohi olla tühi.")
-
-    current_turn = (request.current_message or "").strip()
-    answer_requirements = [
-        str(value).strip()
-        for value in request.answer_requirements
-        if str(value).strip()
-    ][:5]
-    # A short clarification answer such as "Ma ei tea" is not the legal
-    # question itself.  The intake layer has already preserved that question as
-    # answer requirements, so use both inputs for routing and final coverage.
-    intent_focus = "\n".join([current_turn, *answer_requirements]).strip()
-    current_intents = ConversationTurnPlanner.detect_intents(intent_focus)
-    fine_context = ConversationTurnPlanner.is_fine_context(request.case_description)
-    pipeline.complete(
-        "case_understanding",
-        current_intent_count=len(current_intents),
-        answer_requirement_count=len(answer_requirements),
+    orchestrator = AnalysisOrchestrator(
+        legal_service=legal_service,
+        matter_store=getattr(app.state, "matter_store", None),
+        relevance_verifier=relevance_verifier,
+        run_guarded_work=_run_guarded_work,
+        logger=logger,
     )
-
-    document_spans = []
-    case_card: Dict[str, Any] = {}
-    if request.matter_id:
-        store = getattr(app.state, "matter_store", None)
-        if store is None:
-            raise HTTPException(status_code=503, detail="Juhtumiregister ei ole valmis.")
-        try:
-            case_card = store.case_card(request.matter_id)
-            document_spans = store.relevant_spans(
-                request.matter_id,
-                request.document_ids,
-                intent_focus or request.search_query or request.case_description,
-                limit=5,
-            )
-        except MatterNotFoundError as exc:
-            raise HTTPException(status_code=404, detail="Juhtumit ei leitud.") from exc
-    pipeline.complete(
-        "document_evidence",
-        span_count=len(document_spans),
-        matter_attached=bool(request.matter_id),
-    )
-
     try:
-        search_text = (request.search_query or request.case_description).strip()
-        if document_spans:
-            document_search = " ".join(
-                span["text"][:350] for span in document_spans[:4]
-            )
-            search_text = f"{search_text} {document_search}"[:2000].strip()
-        laws, query_interpretation = await _run_guarded_work(
-            "retrieval",
-            legal_service.search_laws_with_context,
-            search_text,
-            request.event_date or "",
-        )
-    except HistoricalDataUnavailableError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        prepared = await orchestrator.prepare(request)
+    except AnalysisOrchestrationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
-    if not laws:
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                "Ma ei leidnud veel piisavalt täpset õigusallikat. Lisa palun, "
-                "kes tegi mida, millal see juhtus ja millist abi vajad."
-            ),
-        )
-
-    query_context = query_interpretation.to_dict()
-    hinted_id_list = [
-        str(value).upper() for value in query_context.get("section_hints", [])
-    ]
-    hinted_ids = set(hinted_id_list)
-    analysis_laws = laws
-    if hinted_ids:
-        # Section hints activate only on exact, audited lexicon phrases. When
-        # such a hint exists, pass only those exact audited sections to the
-        # model. A domain-level filter is too broad: adjacent sections in the
-        # same act can be genuine sources yet completely unrelated to the case.
-        available_by_id = {
-            str(law.get("id", "")).upper(): law for law in laws
-        }
-        hinted_laws = []
-        for section_id in hinted_id_list[:16]:
-            law = available_by_id.get(section_id)
-            if law is None and isinstance(legal_service, LegalSearchService):
-                try:
-                    law = legal_service.get_law_by_id(section_id)
-                except ValueError:
-                    law = None
-            if law is not None:
-                hinted_laws.append(law)
-        if hinted_laws:
-            analysis_laws = hinted_laws
-
-    # Auditable routing policy only proposes section IDs. Every ID is still
-    # resolved below from the trusted corpus before it can reach the model.
-    route_plan = RetrievalPolicy.plan(
-        case_description=request.case_description,
-        search_text=search_text,
-        current_intents=current_intents,
-        fine_context=fine_context,
-    )
-    routed_ids = list(route_plan.routed_ids)
-    if routed_ids:
-        routed_by_id = {
-            str(law.get("id", "")).upper(): law for law in analysis_laws
-        }
-        routed_laws = []
-        for section_id in routed_ids:
-            law = routed_by_id.get(section_id)
-            if law is None and isinstance(legal_service, LegalSearchService):
-                try:
-                    law = legal_service.get_law_by_id(section_id)
-                except ValueError:
-                    law = None
-            if law is not None:
-                routed_laws.append(law)
-        if routed_laws:
-            analysis_laws = routed_laws
-
-    relevance_text = intent_focus or search_text
-    if fine_context and not ConversationTurnPlanner.is_fine_context(relevance_text):
-        relevance_text = f"rahatrahv {relevance_text}".strip()
-    source_relevance = relevance_verifier.verify_laws(relevance_text, analysis_laws)
-    if not source_relevance.relevant:
-        logger.warning(
-            "Retrieved laws failed semantic relevance check for concepts: %s",
-            ", ".join(source_relevance.missing_concepts),
-        )
-        raise HTTPException(
-            status_code=422,
-            detail=source_relevance.clarification
-            or relevance_verifier.clarification_for(source_relevance),
-        )
-    pipeline.complete(
-        "legal_retrieval",
-        result_count=len(analysis_laws),
-        semantic_relevance=True,
-        hybrid_used=bool(getattr(legal_service, "hybrid_ready", False)),
-    )
+    analysis_started = prepared.analysis_started
+    pipeline = prepared.pipeline
+    current_turn = prepared.current_turn
+    answer_requirements = prepared.answer_requirements
+    intent_focus = prepared.intent_focus
+    current_intents = prepared.current_intents
+    fine_context = prepared.fine_context
+    document_spans = prepared.document_spans
+    case_card = prepared.case_card
+    search_text = prepared.search_text
+    query_context = prepared.query_context
+    analysis_laws = prepared.analysis_laws
+    relevance_text = prepared.relevance_text
+    route_plan = prepared.route_plan
 
     fallback_used = False
     coverage_fallback_used = False

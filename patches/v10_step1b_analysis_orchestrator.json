@@ -1,0 +1,40 @@
+{
+  "name": "V10 Step 1B — establish AnalysisOrchestrator preparation boundary",
+  "base_commit": "f77d88d0c430767793b1fcf87dd4059816e6b8f9",
+  "base_files": [
+    {
+      "path": "main.py",
+      "git_blob_sha": "75ed60759a696e7623ab3d59efb233dad11f51e6"
+    }
+  ],
+  "new_files": [
+    {
+      "path": "services/analysis_orchestrator.py",
+      "sha256": "fb99580d976d108be036722c3219c31338a5f67e7ab327df60bd61175c99e2c8"
+    },
+    {
+      "path": "tests/test_analysis_orchestrator.py",
+      "sha256": "1c30dc9f920e3d8cd1acb52e56b8bd2088f797607131da9ca58a497a1380381d"
+    }
+  ],
+  "tests": [
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_analysis_orchestrator"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_retrieval_policy"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_main"
+    ]
+  ]
+}

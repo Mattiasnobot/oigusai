@@ -1,0 +1,2273 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#16324f">
+    <meta name="description" content="Vestle ÕigusAI-ga tavakeeles ja saa kontrollitud Eesti õigusallikatel põhinev esmane selgitus.">
+    <meta name="application-version" content="0.9.1">
+    <title>ÕigusAI – räägi oma olukorrast</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --navy: #16324f;
+            --navy-strong: #102a43;
+            --navy-soft: #315571;
+            --ink: #172534;
+            --muted: #657483;
+            --paper: #fffdf9;
+            --canvas: #f2efe8;
+            --line: #ded9cf;
+            --blue: #176b87;
+            --blue-soft: #e8f4f7;
+            --green: #2f6b55;
+            --green-soft: #e8f3ed;
+            --amber: #8b5e18;
+            --amber-soft: #fff4dc;
+            --red: #9d3830;
+            --red-soft: #fff0ee;
+            --shadow: 0 24px 65px rgba(22, 50, 79, 0.13);
+            --radius: 24px;
+        }
+
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 8% 3%, rgba(23, 107, 135, 0.12), transparent 27rem),
+                radial-gradient(circle at 93% 16%, rgba(47, 107, 85, 0.09), transparent 24rem),
+                var(--canvas);
+            font-family: "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+            line-height: 1.55;
+        }
+
+        button, textarea, input { font: inherit; }
+        button { -webkit-tap-highlight-color: transparent; }
+        [hidden] { display: none !important; }
+
+        body.access-locked { overflow: hidden; }
+        body.access-locked .shell {
+            filter: blur(6px);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .access-gate {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+            background: rgba(16, 42, 67, 0.52);
+            backdrop-filter: blur(7px);
+        }
+
+        .access-card {
+            width: min(440px, 100%);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 22px;
+            padding: 27px;
+            background: var(--paper);
+            box-shadow: 0 28px 75px rgba(10, 31, 49, 0.3);
+        }
+
+        .access-card h2 {
+            margin: 7px 0 8px;
+            color: var(--navy);
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 1.75rem;
+        }
+
+        .access-card p { margin: 0; color: var(--muted); }
+        .access-form { display: grid; gap: 10px; margin-top: 20px; }
+        .access-form label { color: var(--navy); font-weight: 800; }
+        .access-form input {
+            width: 100%;
+            border: 1px solid #bdcbd2;
+            border-radius: 12px;
+            padding: 12px 13px;
+            color: var(--ink);
+            background: white;
+        }
+        .access-submit {
+            border: 0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            background: var(--navy);
+            cursor: pointer;
+            font-weight: 850;
+        }
+        .access-submit:disabled { opacity: 0.6; cursor: wait; }
+        .access-error { min-height: 1.4em; color: var(--red) !important; font-size: 0.86rem; }
+        .access-note { margin-top: 13px !important; font-size: 0.78rem; }
+
+        button:focus-visible,
+        textarea:focus-visible,
+        input:focus-visible,
+        summary:focus-visible {
+            outline: 3px solid rgba(23, 107, 135, 0.28);
+            outline-offset: 3px;
+        }
+
+        .shell {
+            width: min(980px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 22px 0 40px;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 26px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--navy);
+            font-weight: 850;
+            letter-spacing: -0.02em;
+        }
+
+        .brand-mark,
+        .assistant-avatar {
+            display: grid;
+            place-items: center;
+            color: white;
+            background: var(--navy);
+            font-family: Georgia, "Times New Roman", serif;
+        }
+
+        .brand-mark {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .local-note {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--green);
+            font-size: 0.86rem;
+            font-weight: 750;
+        }
+
+        .local-note::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4a9a74;
+            box-shadow: 0 0 0 4px rgba(74, 154, 116, 0.13);
+        }
+
+        .local-note.degraded { color: var(--amber); }
+        .local-note.degraded::before {
+            background: #ba7a18;
+            box-shadow: 0 0 0 4px rgba(186, 122, 24, 0.13);
+        }
+
+        .new-chat {
+            border: 1px solid #cfd8dd;
+            border-radius: 11px;
+            padding: 8px 12px;
+            color: var(--navy);
+            background: rgba(255, 253, 249, 0.82);
+            cursor: pointer;
+            font-size: 0.86rem;
+            font-weight: 800;
+        }
+
+        .new-chat:hover { background: white; }
+
+        .hero {
+            max-width: 760px;
+            margin: 0 auto 24px;
+            text-align: center;
+        }
+
+        .eyebrow {
+            margin: 0 0 7px;
+            color: var(--blue);
+            font-size: 0.76rem;
+            font-weight: 850;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 0;
+            color: var(--navy);
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: clamp(2.15rem, 5vw, 3.55rem);
+            font-weight: 600;
+            letter-spacing: -0.04em;
+            line-height: 1.05;
+        }
+
+        .hero-copy {
+            max-width: 650px;
+            margin: 12px auto 0;
+            color: var(--muted);
+            font-size: clamp(0.96rem, 1.8vw, 1.08rem);
+        }
+
+        .chat-frame {
+            min-height: 650px;
+            overflow: hidden;
+            border: 1px solid rgba(218, 213, 203, 0.96);
+            border-radius: var(--radius);
+            background: rgba(255, 253, 249, 0.97);
+            box-shadow: var(--shadow);
+        }
+
+        .chat-log {
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+            min-height: 455px;
+            padding: clamp(22px, 4vw, 38px);
+        }
+
+        .message-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 11px;
+            width: 100%;
+            animation: arrive 180ms ease-out;
+        }
+
+        @keyframes arrive {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-row.user { justify-content: flex-end; }
+        .message-row.assistant.wide .message-content { width: min(100%, 810px); }
+
+        .assistant-avatar {
+            width: 30px;
+            height: 30px;
+            flex: 0 0 30px;
+            margin-top: 20px;
+            border-radius: 10px;
+            font-size: 0.86rem;
+        }
+
+        .message-content { max-width: min(78%, 700px); }
+
+        .speaker {
+            margin: 0 0 5px 3px;
+            color: var(--muted);
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        .message-bubble {
+            border: 1px solid #dce3e5;
+            border-radius: 7px 20px 20px 20px;
+            padding: 15px 17px;
+            background: #f7fbfc;
+        }
+
+        .user .message-bubble {
+            border-color: var(--navy);
+            border-radius: 20px 7px 20px 20px;
+            color: white;
+            background: var(--navy);
+            box-shadow: 0 8px 20px rgba(22, 50, 79, 0.13);
+        }
+
+        .message-text {
+            margin: 0;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .welcome-bubble {
+            padding: 20px 21px;
+            border-color: #d6e2e6;
+            background: linear-gradient(135deg, #f5fbfc, #fbfdfc);
+        }
+
+        .welcome-bubble h2,
+        .result-bubble h2 {
+            margin: 0;
+            color: var(--navy);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.18;
+        }
+
+        .welcome-bubble h2 { font-size: clamp(1.4rem, 3vw, 1.8rem); }
+        .welcome-bubble p { margin: 9px 0 0; }
+
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .quick-button,
+        .inline-button {
+            border: 1px solid #cfdde2;
+            border-radius: 999px;
+            padding: 8px 12px;
+            color: var(--navy);
+            background: white;
+            cursor: pointer;
+            font-size: 0.83rem;
+            font-weight: 800;
+        }
+
+        .quick-button:hover,
+        .inline-button:hover { background: var(--blue-soft); }
+
+        .inline-button.primary-action {
+            border-color: var(--navy);
+            color: white;
+            background: var(--navy);
+        }
+
+        .inline-button.primary-action:hover { background: #214563; }
+        .inline-button:disabled, .quick-button:disabled { opacity: 0.55; cursor: wait; }
+
+        .resolved-prompt {
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 750;
+        }
+
+        .long-message {
+            margin-top: 9px;
+            color: inherit;
+        }
+
+        .long-message summary {
+            cursor: pointer;
+            font-size: 0.84rem;
+            font-weight: 800;
+        }
+
+        .long-message p {
+            max-height: 300px;
+            margin: 11px 0 0;
+            overflow: auto;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .status-bubble {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: min(100%, 360px);
+        }
+
+        .loader {
+            width: 22px;
+            height: 22px;
+            flex: 0 0 auto;
+            border: 3px solid #d8e7ea;
+            border-top-color: var(--blue);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .status-title { margin: 0; color: var(--navy); font-weight: 850; }
+        .status-detail { margin: 2px 0 0; color: var(--muted); font-size: 0.86rem; }
+
+        .summary-note {
+            border-left: 3px solid var(--blue);
+            padding-left: 13px;
+        }
+
+        .summary-note strong { color: var(--navy); }
+
+        .facts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-top: 12px;
+        }
+
+        .fact {
+            border-radius: 999px;
+            padding: 5px 9px;
+            color: var(--navy-soft);
+            background: #eaf2f4;
+            font-size: 0.78rem;
+            font-weight: 750;
+        }
+
+        .result-bubble {
+            border-color: #d8dfdc;
+            padding: clamp(19px, 3.5vw, 28px);
+            background: #fffefa;
+        }
+
+        .result-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 18px;
+        }
+
+        .section-kicker {
+            margin: 0 0 5px;
+            color: var(--blue);
+            font-size: 0.73rem;
+            font-weight: 850;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .result-bubble h2 {
+            font-size: clamp(1.42rem, 3vw, 1.9rem);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex: 0 0 auto;
+            border-radius: 999px;
+            padding: 6px 9px;
+            color: var(--green);
+            background: var(--green-soft);
+            font-size: 0.76rem;
+            font-weight: 850;
+        }
+
+        .badge::before { content: "✓"; }
+        .badge.fallback { color: var(--amber); background: var(--amber-soft); }
+        .badge.fallback::before { content: "i"; }
+
+        .answer-block {
+            border-left: 3px solid var(--blue);
+            border-radius: 0 15px 15px 0;
+            padding: 14px 16px;
+            background: var(--blue-soft);
+        }
+
+        .answer-block h3,
+        .steps-block h3 {
+            margin: 0 0 8px;
+            color: var(--navy);
+            font-size: 0.97rem;
+        }
+
+        .answer-line { margin: 0; }
+        .answer-line + .answer-line { margin-top: 9px; }
+
+        .comparison-block {
+            margin-top: 13px;
+            border-left: 3px solid #77a7b7;
+            border-radius: 0 15px 15px 0;
+            padding: 13px 16px;
+            background: #f4f9fa;
+        }
+
+        .comparison-block h3 { margin: 0 0 8px; font-size: 0.97rem; }
+        .comparison-block p { margin: 0; }
+        .comparison-block p + p { margin-top: 7px; }
+        .comparison-note { color: var(--muted); font-size: 0.78rem; }
+
+        .document-findings {
+            margin-bottom: 13px;
+            border: 1px solid #d8e4df;
+            border-radius: 15px;
+            padding: 13px 16px;
+            background: #f7faf8;
+        }
+
+        .document-findings h3 { margin: 0 0 8px; font-size: 0.97rem; }
+        .document-findings p { margin: 0; }
+        .document-findings p + p { margin-top: 7px; }
+
+        .steps-block {
+            margin-top: 13px;
+            border: 1px solid #d6e2dd;
+            border-radius: 15px;
+            padding: 14px 16px;
+            background: #f5faf7;
+        }
+
+        .steps-list {
+            margin: 0;
+            padding-left: 21px;
+        }
+
+        .steps-list li + li { margin-top: 7px; }
+
+        .details-stack {
+            display: grid;
+            gap: 9px;
+            margin-top: 13px;
+        }
+
+        .details-stack details {
+            border: 1px solid var(--line);
+            border-radius: 13px;
+            padding: 11px 13px;
+            background: white;
+        }
+
+        .details-stack summary {
+            color: var(--navy);
+            cursor: pointer;
+            font-weight: 850;
+        }
+
+        .details-content {
+            margin-top: 11px;
+            color: var(--muted);
+        }
+
+        .source-list {
+            display: grid;
+            gap: 8px;
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .source-title { color: var(--navy); font-weight: 800; }
+
+        .claim-list { display: grid; gap: 10px; }
+        .claim-card {
+            border-left: 3px solid #b9d4dc;
+            padding: 8px 10px;
+            background: #f8fbfb;
+        }
+        .claim-card p { margin: 0; color: var(--navy); }
+        .claim-meta { margin-top: 4px; font-size: 0.76rem; font-weight: 750; }
+        .claim-evidence {
+            margin: 7px 0 0;
+            border-left: 2px solid var(--line);
+            padding-left: 9px;
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .notice {
+            margin: 13px 0 0;
+            border-radius: 12px;
+            padding: 10px 12px;
+            color: var(--muted);
+            background: #f3f1ec;
+            font-size: 0.82rem;
+        }
+
+        .result-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+            padding-top: 14px;
+            border-top: 1px solid var(--line);
+        }
+
+        .feedback-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 11px;
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .feedback-row strong { margin-right: 2px; color: var(--navy); }
+        .feedback-saved { color: var(--green); font-weight: 800; }
+        .case-card { margin-top: 12px; border: 1px solid #bdd5dc; border-radius: 14px; background: #f8fcfc; overflow: hidden; }
+        .case-card summary { cursor: pointer; padding: 12px 14px; font-weight: 850; color: var(--navy); }
+        .case-card-body { padding: 0 14px 14px; display: grid; gap: 10px; }
+        .case-card-field { display: grid; gap: 4px; }
+        .case-card-field span { color: #587180; font-size: .83rem; font-weight: 750; }
+        .case-card-field p { margin: 0; }
+        .case-card-editor { display: grid; gap: 10px; }
+        .case-card-editor textarea, .case-card-editor input { width: 100%; border: 1px solid #abc1ca; border-radius: 10px; padding: 10px; font: inherit; background: white; }
+        .urgency-block { margin: 12px 0; padding: 12px 14px; border-radius: 12px; background: #fff7e6; border-left: 4px solid #c48114; }
+        .urgency-block.immediate, .urgency-block.urgent { background: #fff0ed; border-left-color: #b94a3c; }
+        .urgency-block h3 { margin: 0 0 5px; font-size: 1rem; }
+        .answer-confidence { margin-top: 10px; color: #526d7c; font-size: .88rem; }
+        .draft-card { margin-top: 12px; border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: #fff; }
+        .draft-card pre { white-space: pre-wrap; font: inherit; line-height: 1.55; max-height: 360px; overflow: auto; }
+        .pipeline-list { display: grid; gap: 7px; padding: 0; margin: 0; list-style: none; }
+        .pipeline-list li { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid #e4e0d8; padding-bottom: 6px; }
+        .insight-list { margin: 9px 0 0; padding-left: 20px; }
+
+        .error-bubble {
+            border-color: #efd2cd;
+            background: var(--red-soft);
+        }
+
+        .error-bubble strong {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--red);
+        }
+
+        .composer {
+            position: sticky;
+            bottom: 0;
+            z-index: 2;
+            border-top: 1px solid var(--line);
+            padding: 16px clamp(16px, 3vw, 26px) 14px;
+            background: rgba(255, 253, 249, 0.97);
+            backdrop-filter: blur(12px);
+        }
+
+        .composer-box {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            border: 1px solid #c7d0d5;
+            border-radius: 18px;
+            padding: 8px 8px 8px 15px;
+            background: white;
+            box-shadow: 0 7px 20px rgba(22, 50, 79, 0.07);
+            transition: border-color 150ms ease, box-shadow 150ms ease;
+        }
+
+        .composer-box:focus-within {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 4px rgba(23, 107, 135, 0.1);
+        }
+
+        #message-input {
+            width: 100%;
+            min-height: 42px;
+            max-height: 180px;
+            border: 0;
+            outline: 0;
+            padding: 9px 0 6px;
+            resize: none;
+            color: var(--ink);
+            background: transparent;
+            line-height: 1.45;
+        }
+
+        #message-input::placeholder { color: #87929c; }
+        #message-input:disabled { opacity: 0.65; }
+
+        .send-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            min-height: 43px;
+            border: 0;
+            border-radius: 13px;
+            padding: 9px 15px;
+            color: white;
+            background: var(--navy);
+            cursor: pointer;
+            font-weight: 850;
+            box-shadow: 0 8px 18px rgba(22, 50, 79, 0.18);
+        }
+
+        .send-button:hover { background: #214563; }
+        .send-button:disabled { opacity: 0.52; cursor: wait; box-shadow: none; }
+
+        .composer-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 25px;
+            margin-top: 7px;
+            color: var(--muted);
+            font-size: 0.75rem;
+        }
+
+        .composer-options {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .attach-button {
+            border: 0;
+            padding: 5px 2px;
+            color: var(--navy-soft);
+            background: transparent;
+            cursor: pointer;
+            font-weight: 800;
+        }
+
+        .attach-button:hover { color: var(--blue); }
+        .attach-button:disabled { opacity: 0.5; cursor: wait; }
+
+        .date-option { position: relative; }
+
+        .date-option summary {
+            color: var(--navy-soft);
+            cursor: pointer;
+            font-weight: 750;
+            list-style: none;
+        }
+
+        .date-option summary::-webkit-details-marker { display: none; }
+        .date-option summary::before { content: "+ "; }
+
+        .date-field {
+            position: absolute;
+            bottom: 29px;
+            left: 0;
+            width: 235px;
+            border: 1px solid var(--line);
+            border-radius: 13px;
+            padding: 12px;
+            background: white;
+            box-shadow: 0 14px 34px rgba(22, 50, 79, 0.16);
+        }
+
+        .date-field label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--navy);
+            font-weight: 800;
+        }
+
+        .date-field input {
+            width: 100%;
+            border: 1px solid #cbd3d7;
+            border-radius: 9px;
+            padding: 8px 9px;
+            color: var(--ink);
+            background: white;
+        }
+
+        footer {
+            max-width: 740px;
+            margin: 18px auto 0;
+            color: var(--muted);
+            text-align: center;
+            font-size: 0.78rem;
+        }
+
+        @media (max-width: 640px) {
+            .shell { width: min(100% - 18px, 980px); padding-top: 11px; }
+            .topbar { margin-bottom: 20px; }
+            .topbar-actions { gap: 8px; }
+            .local-note span { display: none; }
+            .new-chat { padding: 7px 9px; }
+            .hero { margin-bottom: 18px; }
+            .hero-copy { padding: 0 8px; }
+            .chat-frame { min-height: 70vh; border-radius: 19px; }
+            .chat-log { min-height: 430px; padding: 20px 14px 26px; }
+            .assistant-avatar { display: none; }
+            .message-content { max-width: 91%; }
+            .message-row.assistant .message-content { max-width: 96%; }
+            .message-row.assistant.wide .message-content { width: 96%; }
+            .message-bubble { padding: 13px 14px; }
+            .result-head { flex-direction: column; }
+            .composer { padding: 12px 11px 10px; }
+            .send-button { width: 43px; padding: 8px; }
+            .send-label { display: none; }
+            .composer-hint { display: none; }
+            .date-field { left: -5px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            .message-row { animation: none; }
+            .loader { animation-duration: 1.8s; }
+        }
+
+        @media print {
+            body { background: white; }
+            .access-gate, .topbar, .hero, .composer, footer,
+            .message-row:not(.print-target), .result-actions, .feedback-row {
+                display: none !important;
+            }
+            .shell { width: 100%; padding: 0; }
+            .chat-frame, .chat-log {
+                min-height: 0;
+                overflow: visible;
+                border: 0;
+                padding: 0;
+                background: white;
+                box-shadow: none;
+            }
+            .message-row.print-target { display: block !important; }
+            .message-row.print-target .assistant-avatar,
+            .message-row.print-target .speaker { display: none; }
+            .message-row.print-target .message-content { width: 100%; max-width: none; }
+            .message-row.print-target .message-bubble {
+                border: 0;
+                padding: 0;
+                background: white;
+                box-shadow: none;
+            }
+            .details-stack details { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="access-gate" id="access-gate" role="dialog" aria-modal="true" aria-labelledby="access-title" hidden>
+        <section class="access-card">
+            <p class="eyebrow">Kaitstud piloot</p>
+            <h2 id="access-title">Sisesta juurdepääsukood</h2>
+            <p>ÕigusAI on võrgus avatud ainult kutsutud kasutajatele.</p>
+            <form class="access-form" id="access-form" novalidate>
+                <label for="access-code">Juurdepääsukood</label>
+                <input id="access-code" type="password" maxlength="128" autocomplete="current-password" required>
+                <button class="access-submit" id="access-submit" type="submit">Ava ÕigusAI</button>
+                <p class="access-error" id="access-error" role="alert"></p>
+            </form>
+            <p class="access-note">Kood kaitseb juhusliku ligipääsu eest. Avalikus internetis vajab teenus lisaks HTTPS-i.</p>
+        </section>
+    </div>
+    <div class="shell">
+        <header class="topbar">
+            <div class="brand"><span class="brand-mark">Õ</span><span>ÕigusAI</span></div>
+            <div class="topbar-actions">
+                <div class="local-note" id="local-note"><span>Kontrollin valmisolekut…</span></div>
+                <button class="new-chat" id="new-chat-button" type="button">Uus vestlus</button>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero" aria-labelledby="page-title">
+                <p class="eyebrow">Selgem tee edasi</p>
+                <h1 id="page-title">Räägi, mis juhtus.</h1>
+                <p class="hero-copy">Kirjuta nii, nagu räägiksid inimesega. Võid alustada ühest sõnast, küsimusest või kogu loost.</p>
+            </section>
+
+            <section class="chat-frame" aria-label="Vestlus ÕigusAI-ga">
+                <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-relevant="additions"></div>
+
+                <form class="composer" id="chat-form" novalidate>
+                    <label for="message-input" hidden>Kirjuta ÕigusAI-le</label>
+                    <div class="composer-box">
+                        <textarea
+                            id="message-input"
+                            maxlength="50000"
+                            rows="1"
+                            autocomplete="off"
+                            placeholder="Kirjuta oma küsimus või kirjelda olukorda…"
+                        ></textarea>
+                        <button class="send-button" id="send-button" type="submit">
+                            <span class="send-label">Saada</span><span aria-hidden="true">↑</span>
+                        </button>
+                    </div>
+                    <div class="composer-meta">
+                        <div class="composer-options">
+                            <button class="attach-button" id="attach-button" type="button">+ Lisa dokument</button>
+                            <input id="document-input" type="file" accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" hidden>
+                            <details class="date-option" id="date-option">
+                                <summary>Lisa kuupäev</summary>
+                                <div class="date-field">
+                                    <label for="event-date">Sündmuse kuupäev</label>
+                                    <input type="date" id="event-date">
+                                </div>
+                            </details>
+                            <span class="composer-hint">Enter saadab · Shift+Enter teeb uue rea</span>
+                        </div>
+                        <span id="char-count">0 märki</span>
+                    </div>
+                </form>
+            </section>
+        </main>
+
+        <footer>Sinu tekst ja lisatud dokumendid püsivad ainult selles avatud lokaalses vestluses. ÕigusAI annab kontrollitud allikatel põhineva esmase selgituse, mitte lõpliku õigusnõu.</footer>
+    </div>
+
+    <script>
+        const MAX_CASE_CHARS = 50000;
+        const chatLog = document.getElementById('chat-log');
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const newChatButton = document.getElementById('new-chat-button');
+        const attachButton = document.getElementById('attach-button');
+        const documentInput = document.getElementById('document-input');
+        const dateInput = document.getElementById('event-date');
+        const dateOption = document.getElementById('date-option');
+        const charCount = document.getElementById('char-count');
+        const localNote = document.getElementById('local-note');
+        const accessGate = document.getElementById('access-gate');
+        const accessForm = document.getElementById('access-form');
+        const accessCodeInput = document.getElementById('access-code');
+        const accessSubmit = document.getElementById('access-submit');
+        const accessError = document.getElementById('access-error');
+        const ACCESS_REQUIRED = {{ access_required | tojson }};
+        const ACCESS_STORAGE_KEY = 'oigusai-v8-access-code';
+        let accessCode = '';
+
+        const helpLabels = {
+            rights_explanation: 'Õiguste selgitus',
+            next_steps: 'Järgmised sammud',
+            deadline: 'Tähtaja leidmine',
+            amount_or_claim: 'Summa või nõude hindamine',
+            document_help: 'Dokumendi koostamine',
+            challenge_decision: 'Otsuse vaidlustamine',
+            missed_deadline: 'Möödunud tähtaeg',
+            payment_plan: 'Osade kaupa tasumine',
+            find_authority: 'Õige asutuse leidmine',
+            general_information: 'Üldine selgitus'
+        };
+
+        let generation = 0;
+        let state = createState();
+
+        function createState() {
+            return {
+                turns: [],
+                currentIntake: null,
+                currentQuestion: '',
+                askedQuestions: new Set(),
+                busy: false,
+                hasAnswer: false,
+                matterId: '',
+                documents: [],
+                caseCard: null
+            };
+        }
+
+        function clearChildren(element) {
+            while (element.firstChild) element.removeChild(element.firstChild);
+        }
+
+        function showAccessGate(message = '') {
+            if (!ACCESS_REQUIRED) return;
+            document.body.classList.add('access-locked');
+            accessGate.hidden = false;
+            accessError.textContent = message;
+            window.setTimeout(() => accessCodeInput.focus(), 0);
+        }
+
+        function hideAccessGate() {
+            accessGate.hidden = true;
+            document.body.classList.remove('access-locked');
+            accessError.textContent = '';
+            messageInput.focus();
+        }
+
+        async function verifyAccess(code) {
+            const response = await fetch('/access/check', {
+                method: 'POST',
+                cache: 'no-store',
+                headers: { 'X-OigusAI-Access-Code': code }
+            });
+            return response.ok;
+        }
+
+        async function apiFetch(url, options = {}) {
+            const headers = new Headers(options.headers || {});
+            if (accessCode) headers.set('X-OigusAI-Access-Code', accessCode);
+            const response = await fetch(url, { ...options, headers });
+            if (response.status === 401 && ACCESS_REQUIRED) {
+                sessionStorage.removeItem(ACCESS_STORAGE_KEY);
+                accessCode = '';
+                showAccessGate('Juurdepääs aegus või kood ei ole õige.');
+            }
+            return response;
+        }
+
+        async function initializeAccess() {
+            if (!ACCESS_REQUIRED) return true;
+            document.body.classList.add('access-locked');
+            const saved = sessionStorage.getItem(ACCESS_STORAGE_KEY) || '';
+            if (saved) {
+                try {
+                    if (await verifyAccess(saved)) {
+                        accessCode = saved;
+                        hideAccessGate();
+                        return true;
+                    }
+                } catch (_) {}
+                sessionStorage.removeItem(ACCESS_STORAGE_KEY);
+            }
+            showAccessGate();
+            return false;
+        }
+
+        accessForm.addEventListener('submit', async event => {
+            event.preventDefault();
+            const candidate = accessCodeInput.value.trim();
+            if (!candidate) {
+                accessError.textContent = 'Sisesta juurdepääsukood.';
+                accessCodeInput.focus();
+                return;
+            }
+            accessSubmit.disabled = true;
+            accessError.textContent = 'Kontrollin…';
+            try {
+                if (!await verifyAccess(candidate)) {
+                    accessError.textContent = 'Juurdepääsukood ei ole õige.';
+                    accessCodeInput.select();
+                    return;
+                }
+                accessCode = candidate;
+                sessionStorage.setItem(ACCESS_STORAGE_KEY, candidate);
+                accessCodeInput.value = '';
+                hideAccessGate();
+            } catch (_) {
+                accessError.textContent = 'Teenusega ei saanud ühendust. Proovi uuesti.';
+            } finally {
+                accessSubmit.disabled = false;
+            }
+        });
+
+        async function checkServiceHealth() {
+            try {
+                const response = await fetch('/health', { cache: 'no-store' });
+                const data = await readJson(response);
+                const label = localNote.querySelector('span');
+                if (response.ok && data.ready_for_demo) {
+                    localNote.classList.remove('degraded');
+                    label.textContent = 'Töötab lokaalselt';
+                    localNote.title = data.ocr_model_ready
+                        ? 'Õigusallikad, analüüsimudel ja OCR on valmis.'
+                        : 'Õigusallikad ja analüüsimudel on valmis. OCR-mudel pole saadaval.';
+                } else {
+                    localNote.classList.add('degraded');
+                    label.textContent = 'Teenust tuleb kontrollida';
+                    localNote.title = 'Ava /health või käivita START_OIGUSAI.cmd.';
+                }
+            } catch (_) {
+                localNote.classList.add('degraded');
+                localNote.querySelector('span').textContent = 'Ühendus puudub';
+            }
+        }
+
+        function normalizeQuestion(value) {
+            return String(value || '').trim().toLocaleLowerCase('et-EE');
+        }
+
+        function questionTerms(value) {
+            const stopwords = new Set([
+                'aga', 'ega', 'et', 'ja', 'kas', 'kes', 'kui', 'mida', 'milline',
+                'millised', 'mis', 'ning', 'on', 'oli', 'oled', 'sa', 'see', 'sinu',
+                'või'
+            ]);
+            return new Set(
+                normalizeQuestion(value)
+                    .match(/[a-zõäöüšž]{3,}/g)
+                    ?.filter(word => !stopwords.has(word)) || []
+            );
+        }
+
+        function questionsAreSimilar(first, second) {
+            if (normalizeQuestion(first) === normalizeQuestion(second)) return true;
+            const firstTerms = questionTerms(first);
+            const secondTerms = questionTerms(second);
+            if (!firstTerms.size || !secondTerms.size) return false;
+            const shared = [...firstTerms].filter(term => secondTerms.has(term)).length;
+            return shared >= 2 && shared / Math.min(firstTerms.size, secondTerms.size) >= 0.64;
+        }
+
+        function requestsPersonalIdentifier(question) {
+            const lowered = normalizeQuestion(question);
+            if ([
+                'isikukood', 'telefoninumber', 'telefoninumbri', 'e-posti aadress',
+                'emaili aadress', 'kodune aadress', 'elukoha aadress', 'kontonumber',
+                'pangakonto', 'dokumendi number'
+            ].some(value => lowered.includes(value))) return true;
+            return /\b(?:sinu|kasutaja|eraisiku|isiku|kliendi)\b.{0,45}\b(?:täpne\s+)?(?:ees-\s*ja\s+perekonna)?nimi\b/.test(lowered);
+        }
+
+        function wasQuestionAsked(question) {
+            return [...state.askedQuestions].some(asked => questionsAreSimilar(question, asked));
+        }
+
+        function scrollToLatest() {
+            window.requestAnimationFrame(() => {
+                chatLog.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        }
+
+        function setBusy(isBusy) {
+            state.busy = isBusy;
+            sendButton.disabled = isBusy;
+            attachButton.disabled = isBusy;
+            messageInput.disabled = isBusy;
+            chatLog.setAttribute('aria-busy', String(isBusy));
+            chatLog.querySelectorAll('button').forEach(button => {
+                button.disabled = isBusy;
+            });
+            if (!isBusy) {
+                chatLog.querySelectorAll('button').forEach(button => {
+                    button.disabled = false;
+                });
+            }
+        }
+
+        function autoGrow() {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = Math.min(Math.max(messageInput.scrollHeight, 42), 180) + 'px';
+            charCount.textContent = `${messageInput.value.length.toLocaleString('et-EE')} märki`;
+        }
+
+        function makeButton(label, className, handler) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = className;
+            button.textContent = label;
+            button.addEventListener('click', handler);
+            return button;
+        }
+
+        function createAssistantBubble(className = '') {
+            const row = document.createElement('article');
+            row.className = `message-row assistant${className.includes('wide') ? ' wide' : ''}`;
+
+            const avatar = document.createElement('span');
+            avatar.className = 'assistant-avatar';
+            avatar.setAttribute('aria-hidden', 'true');
+            avatar.textContent = 'Õ';
+
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            const speaker = document.createElement('p');
+            speaker.className = 'speaker';
+            speaker.textContent = 'ÕigusAI';
+            const bubble = document.createElement('div');
+            bubble.className = `message-bubble ${className}`.trim();
+
+            content.appendChild(speaker);
+            content.appendChild(bubble);
+            row.appendChild(avatar);
+            row.appendChild(content);
+            chatLog.appendChild(row);
+            scrollToLatest();
+            return { row, bubble };
+        }
+
+        function addAssistantText(text, className = '') {
+            const message = createAssistantBubble(className);
+            const paragraph = document.createElement('p');
+            paragraph.className = 'message-text';
+            paragraph.textContent = text;
+            message.bubble.appendChild(paragraph);
+            return message;
+        }
+
+        function addUserMessage(text) {
+            const row = document.createElement('article');
+            row.className = 'message-row user';
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            const speaker = document.createElement('p');
+            speaker.className = 'speaker';
+            speaker.textContent = 'Sina';
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+
+            if (text.length <= 1200) {
+                const paragraph = document.createElement('p');
+                paragraph.className = 'message-text';
+                paragraph.textContent = text;
+                bubble.appendChild(paragraph);
+            } else {
+                const preview = document.createElement('p');
+                preview.className = 'message-text';
+                preview.textContent = text.slice(0, 650).trimEnd() + '…';
+                const details = document.createElement('details');
+                details.className = 'long-message';
+                const summary = document.createElement('summary');
+                summary.textContent = `Näita kogu teksti (${text.length.toLocaleString('et-EE')} märki)`;
+                const full = document.createElement('p');
+                full.textContent = text;
+                details.appendChild(summary);
+                details.appendChild(full);
+                bubble.appendChild(preview);
+                bubble.appendChild(details);
+            }
+
+            content.appendChild(speaker);
+            content.appendChild(bubble);
+            row.appendChild(content);
+            chatLog.appendChild(row);
+            scrollToLatest();
+            return row;
+        }
+
+        function fileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result || '').split(',', 2)[1] || '');
+                reader.onerror = () => reject(reader.error || new Error('Faili lugemine ebaõnnestus.'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderDocumentAdded(documentData) {
+            const message = createAssistantBubble('summary-note wide');
+            const title = document.createElement('p');
+            const strong = document.createElement('strong');
+            strong.textContent = 'Dokument on valmis: ';
+            title.appendChild(strong);
+            title.appendChild(document.createTextNode(documentData.file_name || 'dokument'));
+            message.bubble.appendChild(title);
+            const facts = document.createElement('div');
+            facts.className = 'facts';
+            [
+                `${documentData.page_count || 1} lk`,
+                `${Number(documentData.text_length || 0).toLocaleString('et-EE')} märki`,
+                documentData.extraction_method?.includes('ocr') ? 'Lokaalne OCR' : 'Tekst loetud',
+                `${documentData.span_count || 0} tõendikatkendit`
+            ].forEach(value => {
+                const fact = document.createElement('span');
+                fact.className = 'fact';
+                fact.textContent = value;
+                facts.appendChild(fact);
+            });
+            message.bubble.appendChild(facts);
+            if (documentData.warnings?.length) {
+                const warning = document.createElement('p');
+                warning.className = 'notice';
+                warning.textContent = documentData.warnings.join(' ');
+                message.bubble.appendChild(warning);
+            }
+            const insights = documentData.insights || {};
+            const insightCount = (insights.dates?.length || 0)
+                + (insights.amounts?.length || 0)
+                + (insights.important_excerpts?.length || 0);
+            if (insightCount) {
+                const details = makeDetails('Dokumendist väljaloetud põhiandmed');
+                const summary = document.createElement('p');
+                summary.textContent = `Leidsin ${insights.dates?.length || 0} kuupäeva, ${insights.amounts?.length || 0} summat ja ${insights.important_excerpts?.length || 0} olulist katkendit.`;
+                details.content.appendChild(summary);
+                const list = document.createElement('ul');
+                list.className = 'insight-list';
+                (insights.important_excerpts || []).slice(0, 5).forEach(item => {
+                    const li = document.createElement('li');
+                    li.textContent = `${item.text} (${item.source?.file_name || documentData.file_name}, lk ${item.source?.page || 1})`;
+                    list.appendChild(li);
+                });
+                if (list.childElementCount) details.content.appendChild(list);
+                const checklist = document.createElement('ul');
+                checklist.className = 'insight-list';
+                (insights.review_checklist || []).forEach(value => {
+                    const li = document.createElement('li'); li.textContent = value; checklist.appendChild(li);
+                });
+                if (checklist.childElementCount) details.content.appendChild(checklist);
+                message.bubble.appendChild(details.details);
+            }
+        }
+
+        async function uploadDocument(file) {
+            if (!file || state.busy) return;
+            if (file.size > 12 * 1024 * 1024) {
+                renderError('Dokument võib olla kuni 12 MB.', 'Fail on liiga suur');
+                return;
+            }
+            const activeGeneration = generation;
+            setBusy(true);
+            addUserMessage(`Lisasin dokumendi: ${file.name}`);
+            const progress = createProgress(
+                'Loen dokumenti…',
+                'Faili töödeldakse ainult selles lokaalses rakenduses.',
+                [{
+                    delay: 5000,
+                    title: 'Kontrollin lehekülgi ja teksti…',
+                    detail: 'Skannitud lehed loen vajadusel lokaalse OCR-mudeliga.'
+                }]
+            );
+            try {
+                const contentBase64 = await fileAsBase64(file);
+                const response = await apiFetch('/documents', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file_name: file.name,
+                        content_base64: contentBase64,
+                        matter_id: state.matterId || null
+                    })
+                });
+                const data = await readJson(response);
+                progress.remove();
+                if (activeGeneration !== generation) {
+                    if (response.ok && data.matter?.matter_id) {
+                        apiFetch(`/matters/${encodeURIComponent(data.matter.matter_id)}`, {
+                            method: 'DELETE'
+                        }).catch(() => {});
+                    }
+                    return;
+                }
+                if (!response.ok) {
+                    renderError(errorMessage(data, 'Dokumendi lugemine ei õnnestunud.'), 'Dokumenti ei saanud lisada');
+                    return;
+                }
+                state.matterId = data.matter.matter_id;
+                state.documents = data.matter.documents || [];
+                renderDocumentAdded(data.document);
+                messageInput.placeholder = 'Küsi nüüd selle dokumendi kohta…';
+                messageInput.focus();
+            } catch (_) {
+                progress.remove();
+                if (activeGeneration === generation) {
+                    renderError('Ühendus dokumenditeenusega katkes.', 'Dokumenti ei saanud lisada');
+                }
+            } finally {
+                documentInput.value = '';
+                if (activeGeneration === generation) setBusy(false);
+            }
+        }
+
+        function renderWelcome() {
+            const message = createAssistantBubble('welcome-bubble wide');
+            const heading = document.createElement('h2');
+            heading.textContent = 'Tere! Kuidas saan sind aidata?';
+            const copy = document.createElement('p');
+            copy.textContent = 'Kirjelda olukorda oma sõnadega. Kui vastamiseks on mõni oluline asjaolu puudu, küsin ühe lihtsa küsimuse korraga.';
+            const choices = document.createElement('div');
+            choices.className = 'quick-actions starter-actions';
+
+            [
+                ['Küsin ühe küsimuse', 'Kas tööleping peab olema kirjalik?'],
+                ['Kirjeldan olukorda', 'Üürileandja küsib minult nelja kuu üüri suurust tagatisraha. Lepingut pole veel allkirjastatud ja soovin teada, mida teha.'],
+                ['Alustan ühest sõnast', 'Koondamine']
+            ].forEach(([label, example]) => {
+                choices.appendChild(makeButton(label, 'quick-button', () => submitMessage(example)));
+            });
+
+            message.bubble.appendChild(heading);
+            message.bubble.appendChild(copy);
+            message.bubble.appendChild(choices);
+        }
+
+        function buildCaseDescription(turns = state.turns) {
+            if (!turns.length) return '';
+            const parts = [turns[0].text];
+            if (turns.length > 1) parts.push('', 'Kasutaja täpsustused:');
+            turns.slice(1).forEach(turn => {
+                parts.push(`ÕigusAI küsimus: ${turn.question || 'Kas soovid midagi lisada või parandada?'}`);
+                parts.push(`Kasutaja vastus: ${turn.text}`);
+            });
+            return parts.join('\n').trim();
+        }
+
+        function expireStarterActions() {
+            chatLog.querySelectorAll('.starter-actions').forEach(actions => actions.remove());
+        }
+
+        function expirePromptActions(label = 'Vastatud') {
+            chatLog.querySelectorAll('.prompt-actions').forEach(actions => {
+                clearChildren(actions);
+                actions.classList.remove('quick-actions', 'prompt-actions');
+                actions.classList.add('resolved-prompt');
+                actions.textContent = label;
+            });
+        }
+
+        function nextClarification(data) {
+            const questions = data.clarification_questions || [];
+            return questions.find(
+                question => !requestsPersonalIdentifier(question) && !wasQuestionAsked(question)
+            ) || '';
+        }
+
+        function addFacts(container, data) {
+            const values = [];
+            (data.help_types || []).forEach(type => values.push(helpLabels[type] || type));
+            (data.parties || []).slice(0, 4).forEach(item => values.push(item.role || item.label));
+            if (data.events?.length) values.push(`${data.events.length} sündmust`);
+            if (data.documents?.length) {
+                values.push(
+                    data.documents.length === 1
+                        ? '1 mainitud dokument'
+                        : `${data.documents.length} mainitud dokumenti`
+                );
+            }
+            if (data.amounts?.length) values.push(`${data.amounts.length} summat`);
+
+            const facts = document.createElement('div');
+            facts.className = 'facts';
+            [...new Set(values.filter(Boolean))].forEach(value => {
+                const fact = document.createElement('span');
+                fact.className = 'fact';
+                fact.textContent = value;
+                facts.appendChild(fact);
+            });
+            if (facts.childElementCount) container.appendChild(facts);
+        }
+
+        function renderUnderstanding(data) {
+            const message = createAssistantBubble('summary-note');
+            const copy = document.createElement('p');
+            copy.className = 'message-text';
+            const lead = document.createElement('strong');
+            lead.textContent = 'Sain aru nii: ';
+            copy.appendChild(lead);
+            copy.appendChild(document.createTextNode(
+                data.turn_summary || data.summary || state.turns[0]?.text || ''
+            ));
+            message.bubble.appendChild(copy);
+            addFacts(message.bubble, data);
+            const card = renderCaseCard(data.case_card);
+            if (card) message.bubble.appendChild(card);
+        }
+
+        function renderCaseCard(cardData) {
+            if (!cardData || !Object.keys(cardData).length) return null;
+            state.caseCard = cardData;
+            const details = document.createElement('details');
+            details.className = 'case-card';
+            const summary = document.createElement('summary');
+            summary.textContent = 'Juhtumikaart · vaata või paranda';
+            const body = document.createElement('div');
+            body.className = 'case-card-body';
+            details.append(summary, body);
+
+            const paint = card => {
+                clearChildren(body);
+                [
+                    ['Olukord', card.summary],
+                    ['Sinu eesmärk', card.user_goal],
+                    ['Osapooled', (card.parties || []).map(item => item.label || item.role).filter(Boolean).join(', ')],
+                    ['Sündmused', (card.events || []).map(item => item.evidence || item.action).filter(Boolean).join(' · ')],
+                    ['Summad', (card.amounts || []).map(item => item.value || item.evidence).filter(Boolean).join(', ')],
+                    ['Veel teadmata', (card.missing_facts || []).join(' · ')]
+                ].filter(item => item[1]).forEach(([label, value]) => {
+                    const field = document.createElement('div');
+                    field.className = 'case-card-field';
+                    const name = document.createElement('span'); name.textContent = label;
+                    const text = document.createElement('p'); text.textContent = value;
+                    field.append(name, text); body.appendChild(field);
+                });
+                const edit = makeButton('Paranda juhtumikaarti', 'inline-button', () => editCard(card));
+                body.appendChild(edit);
+            };
+
+            const editCard = card => {
+                clearChildren(body);
+                const editor = document.createElement('div');
+                editor.className = 'case-card-editor';
+                const title = document.createElement('input');
+                title.value = card.title || '';
+                title.setAttribute('aria-label', 'Juhtumi pealkiri');
+                const situation = document.createElement('textarea');
+                situation.rows = 4; situation.value = card.summary || '';
+                situation.setAttribute('aria-label', 'Olukorra kokkuvõte');
+                const goal = document.createElement('textarea');
+                goal.rows = 2; goal.value = card.user_goal || '';
+                goal.setAttribute('aria-label', 'Soovitud abi');
+                const missing = document.createElement('textarea');
+                missing.rows = 2; missing.value = (card.missing_facts || []).join('\n');
+                missing.setAttribute('aria-label', 'Puuduvad asjaolud');
+                [['Pealkiri', title], ['Olukorra kokkuvõte', situation], ['Sinu eesmärk', goal], ['Veel teadmata (üks rea kohta)', missing]].forEach(([label, input]) => {
+                    const wrap = document.createElement('label');
+                    wrap.className = 'case-card-field';
+                    const name = document.createElement('span'); name.textContent = label;
+                    wrap.append(name, input); editor.appendChild(wrap);
+                });
+                const actions = document.createElement('div'); actions.className = 'quick-actions';
+                const save = makeButton('Salvesta parandused', 'inline-button primary-action', async () => {
+                    if (!state.matterId) return;
+                    save.disabled = true;
+                    try {
+                        const response = await apiFetch(`/matters/${encodeURIComponent(state.matterId)}/case-card`, {
+                            method: 'PATCH', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                expected_revision: card.revision || 0,
+                                changes: {
+                                    title: title.value,
+                                    summary: situation.value,
+                                    user_goal: goal.value,
+                                    missing_facts: missing.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean)
+                                }
+                            })
+                        });
+                        const data = await readJson(response);
+                        if (!response.ok) throw new Error(errorMessage(data, 'Juhtumikaarti ei saanud salvestada.'));
+                        state.caseCard = data.case_card || card;
+                        paint(state.caseCard);
+                    } catch (error) {
+                        renderError(error.message || 'Juhtumikaarti ei saanud salvestada.', 'Parandust ei salvestatud');
+                        save.disabled = false;
+                    }
+                });
+                actions.append(save, makeButton('Loobu', 'inline-button', () => paint(card)));
+                editor.appendChild(actions); body.appendChild(editor);
+            };
+            paint(cardData);
+            return details;
+        }
+
+        function renderClarification(question, data) {
+            state.currentQuestion = question;
+            state.askedQuestions.add(question);
+            const prefix = state.turns.length === 1 && data.input_type === 'fragment'
+                ? `${data.summary} Et oskaksin sind õigesti aidata: `
+                : '';
+            const message = addAssistantText(prefix + question);
+            const actions = document.createElement('div');
+            actions.className = 'quick-actions prompt-actions';
+            actions.appendChild(makeButton('Ma ei tea', 'inline-button', () => submitMessage('Ma ei tea')));
+            actions.appendChild(makeButton(
+                'Vasta olemasoleva info põhjal',
+                'inline-button primary-action',
+                analyzeExistingInformation
+            ));
+            message.bubble.appendChild(actions);
+            messageInput.placeholder = 'Kirjuta vastus või „ma ei tea“…';
+            messageInput.focus();
+        }
+
+        function createProgress(title, detail, stages = []) {
+            const message = createAssistantBubble('');
+            message.bubble.classList.add('status-bubble');
+            const loader = document.createElement('span');
+            loader.className = 'loader';
+            loader.setAttribute('aria-hidden', 'true');
+            const text = document.createElement('div');
+            const titleNode = document.createElement('p');
+            titleNode.className = 'status-title';
+            titleNode.textContent = title;
+            const detailNode = document.createElement('p');
+            detailNode.className = 'status-detail';
+            detailNode.textContent = detail;
+            text.appendChild(titleNode);
+            text.appendChild(detailNode);
+            message.bubble.appendChild(loader);
+            message.bubble.appendChild(text);
+
+            const timers = stages.map(stage => window.setTimeout(() => {
+                if (!message.row.isConnected) return;
+                titleNode.textContent = stage.title;
+                detailNode.textContent = stage.detail;
+            }, stage.delay));
+
+            return {
+                remove() {
+                    timers.forEach(timer => window.clearTimeout(timer));
+                    message.row.remove();
+                }
+            };
+        }
+
+        async function readJson(response) {
+            try { return await response.json(); }
+            catch (_) { return {}; }
+        }
+
+        function errorMessage(data, fallback) {
+            if (typeof data.detail === 'string') return data.detail;
+            if (Array.isArray(data.detail) && data.detail.length) return data.detail[0].msg || fallback;
+            return fallback;
+        }
+
+        function renderError(message, title = 'Täpsustame korraks', retry = null) {
+            const item = createAssistantBubble('error-bubble');
+            const strong = document.createElement('strong');
+            strong.textContent = title;
+            const text = document.createElement('p');
+            text.className = 'message-text';
+            text.textContent = message;
+            item.bubble.appendChild(strong);
+            item.bubble.appendChild(text);
+            if (retry) {
+                const actions = document.createElement('div');
+                actions.className = 'quick-actions';
+                actions.appendChild(makeButton('Proovi uuesti', 'inline-button', retry));
+                item.bubble.appendChild(actions);
+            }
+            scrollToLatest();
+        }
+
+        function parseAnalysis(text) {
+            const sections = { situation: [], application: [], recommendations: [] };
+            let current = 'application';
+            String(text || '').split(/\r?\n/).forEach(rawLine => {
+                const line = rawLine.trim();
+                if (!line) return;
+                const normalized = line.toLocaleUpperCase('et-EE');
+                if (normalized === 'OLUKORD:') { current = 'situation'; return; }
+                if (normalized === 'ÕIGUSLIK KOHALDAMINE:') { current = 'application'; return; }
+                if (normalized === 'SOOVITUSED:') { current = 'recommendations'; return; }
+                if (normalized.startsWith('KASUTATUD ALLIKAD:')) return;
+                const readableLine = line
+                    .replace(/^[-•]\s*/, '')
+                    .replace(/\s*\[[A-ZÕÄÖÜ]+_\d+(?:B\d+|[A-Z])?\]/gi, '')
+                    .replace(/\s{2,}/g, ' ')
+                    .trim();
+                if (readableLine) sections[current].push(readableLine);
+            });
+            return sections;
+        }
+
+        function formatLawTitle(value) {
+            const superscript = {
+                '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+                '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'
+            };
+            return String(value || '').replace(
+                /§\s*(\d+)B(\d+)/gi,
+                (_, base, suffix) => `§ ${base}${Array.from(suffix).map(digit => superscript[digit] || digit).join('')}`
+            );
+        }
+
+        function formatLawSource(value) {
+            const source = String(value || '').trim();
+            return /^Riigi Teataja:\s*\S+$/i.test(source) ? 'Riigi Teataja' : source;
+        }
+
+        function makeDetails(title) {
+            const details = document.createElement('details');
+            const summary = document.createElement('summary');
+            summary.textContent = title;
+            const content = document.createElement('div');
+            content.className = 'details-content';
+            details.appendChild(summary);
+            details.appendChild(content);
+            return { details, content };
+        }
+
+        function shareableAnswer(data) {
+            const lines = [
+                'ÕigusAI kontrollitud esmane selgitus',
+                '',
+                String(data.analysis || '').trim()
+            ];
+            const used = new Set(data.sources_used || []);
+            const sources = (data.found_laws || []).filter(
+                law => !used.size || used.has(law.id)
+            );
+            if (sources.length) {
+                lines.push('', 'Kontrollitud õigusallikad:');
+                sources.forEach(law => lines.push(`- ${formatLawTitle(law.title)} — ${formatLawSource(law.source)}`));
+            }
+            lines.push('', data.warning || 'Tegemist on esmase analüüsiga, mitte lõpliku õigusnõuga.');
+            return lines.filter((line, index, values) => line || values[index - 1]).join('\n').trim();
+        }
+
+        async function copyAnswer(data, button) {
+            const text = shareableAnswer(data);
+            try {
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const helper = document.createElement('textarea');
+                    helper.value = text;
+                    helper.style.position = 'fixed';
+                    helper.style.opacity = '0';
+                    document.body.appendChild(helper);
+                    helper.select();
+                    document.execCommand('copy');
+                    helper.remove();
+                }
+                const previous = button.textContent;
+                button.textContent = 'Kopeeritud';
+                window.setTimeout(() => { button.textContent = previous; }, 1800);
+            } catch (_) {
+                button.textContent = 'Kopeerimine ei õnnestunud';
+            }
+        }
+
+        function printAnswer(row) {
+            const details = [...row.querySelectorAll('details')];
+            const previouslyClosed = details.filter(item => !item.open);
+            details.forEach(item => { item.open = true; });
+            row.classList.add('print-target');
+            window.print();
+            row.classList.remove('print-target');
+            previouslyClosed.forEach(item => { item.open = false; });
+        }
+
+        function addFeedback(container, data) {
+            const feedback = document.createElement('div');
+            feedback.className = 'feedback-row';
+            const prompt = document.createElement('strong');
+            prompt.textContent = 'Kas sellest oli abi?';
+            feedback.appendChild(prompt);
+
+            const submit = async rating => {
+                feedback.querySelectorAll('button').forEach(button => { button.disabled = true; });
+                try {
+                    const response = await apiFetch('/feedback', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            rating,
+                            verification_status: data.verification_status || ''
+                        })
+                    });
+                    if (!response.ok) throw new Error('feedback failed');
+                    clearChildren(feedback);
+                    const saved = document.createElement('span');
+                    saved.className = 'feedback-saved';
+                    saved.textContent = 'Aitäh, tagasiside salvestati anonüümselt.';
+                    feedback.appendChild(saved);
+                } catch (_) {
+                    feedback.querySelectorAll('button').forEach(button => { button.disabled = false; });
+                }
+            };
+
+            feedback.appendChild(makeButton('Jah', 'inline-button', () => submit('helpful')));
+            feedback.appendChild(makeButton('Mitte päris', 'inline-button', () => submit('not_helpful')));
+            container.appendChild(feedback);
+        }
+
+        function showDraftOptions(container) {
+            container.querySelector('.draft-card')?.remove();
+            const card = document.createElement('section');
+            card.className = 'draft-card';
+            const title = document.createElement('h3'); title.textContent = 'Millist kavandit vajad?';
+            const actions = document.createElement('div'); actions.className = 'quick-actions';
+            [
+                ['Vastus', 'vastus'],
+                ['Selgitustaotlus', 'selgitustaotlus'],
+                ['Vaie', 'vaie'],
+                ['Nõudekiri', 'noudekiri']
+            ].forEach(([label, type]) => actions.appendChild(
+                makeButton(label, 'inline-button', () => createDraft(type, card))
+            ));
+            card.append(title, actions); container.appendChild(card); scrollToLatest();
+        }
+
+        async function createDraft(type, card) {
+            if (!state.matterId) return;
+            card.querySelectorAll('button').forEach(button => { button.disabled = true; });
+            try {
+                const response = await apiFetch(`/matters/${encodeURIComponent(state.matterId)}/drafts`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({draft_type: type})
+                });
+                const data = await readJson(response);
+                if (!response.ok) throw new Error(errorMessage(data, 'Kavandit ei saanud koostada.'));
+                clearChildren(card);
+                const title = document.createElement('h3'); title.textContent = data.title || 'Dokumendikavand';
+                const body = document.createElement('pre'); body.textContent = data.body || '';
+                const note = document.createElement('p'); note.className = 'notice'; note.textContent = data.warning || '';
+                const copy = makeButton('Kopeeri kavand', 'inline-button primary-action', async () => {
+                    try { await navigator.clipboard.writeText(data.body || ''); copy.textContent = 'Kopeeritud'; }
+                    catch (_) { copy.textContent = 'Kopeerimine ebaõnnestus'; }
+                });
+                card.append(title, body, note, copy); scrollToLatest();
+            } catch (error) {
+                renderError(error.message || 'Kavandit ei saanud koostada.', 'Kavand ebaõnnestus');
+                card.querySelectorAll('button').forEach(button => { button.disabled = false; });
+            }
+        }
+
+        function renderResult(data) {
+            const sections = parseAnalysis(data.analysis);
+            const layered = data.layered_answer || {};
+            const isFallback = data.verification_status === 'SOURCE_ONLY_FALLBACK';
+            const isOcrReview = data.verification_status === 'OCR_REVIEW_REQUIRED';
+            const message = createAssistantBubble('result-bubble wide');
+
+            const head = document.createElement('div');
+            head.className = 'result-head';
+            const titles = document.createElement('div');
+            const kicker = document.createElement('p');
+            kicker.className = 'section-kicker';
+            kicker.textContent = 'Kontrollitud esmane selgitus';
+            const heading = document.createElement('h2');
+            heading.textContent = 'Lühivastus';
+            titles.appendChild(kicker);
+            titles.appendChild(heading);
+            const badge = document.createElement('span');
+            badge.className = `badge${isFallback || isOcrReview ? ' fallback' : ''}`;
+            const badgeLabels = {
+                SOURCE_ONLY_FALLBACK: 'Allikad kontrollitud',
+                OCR_REVIEW_REQUIRED: 'OCR vajab ülevaatust',
+                INPUTS_VERIFIED: 'Sisendid kontrollitud',
+                EVIDENCE_VERIFIED: 'Tõendid kontrollitud',
+                CITATIONS_VERIFIED: 'Viited kontrollitud'
+            };
+            badge.textContent = badgeLabels[data.verification_status] || 'Viited kontrollitud';
+            head.appendChild(titles);
+            head.appendChild(badge);
+            message.bubble.appendChild(head);
+
+            const documentExcerpts = (data.claims || []).filter(
+                claim => claim.kind === 'document_excerpt'
+            );
+            if (documentExcerpts.length) {
+                const findings = document.createElement('section');
+                findings.className = 'document-findings';
+                const title = document.createElement('h3');
+                title.textContent = 'Dokumendist leidsin';
+                findings.appendChild(title);
+                documentExcerpts.slice(0, 3).forEach(claim => {
+                    const text = document.createElement('p');
+                    text.textContent = claim.text || '';
+                    findings.appendChild(text);
+                });
+                if (documentExcerpts.some(
+                    claim => claim.verification_status === 'OCR_REVIEW_REQUIRED'
+                )) {
+                    const note = document.createElement('p');
+                    note.className = 'comparison-note';
+                    note.textContent = 'See tekst loeti pildilt. Kontrolli olulised andmed originaalilt üle.';
+                    findings.appendChild(note);
+                }
+                message.bubble.appendChild(findings);
+            }
+
+            const urgency = layered.urgency || {};
+            if (urgency.level && urgency.level !== 'normal') {
+                const urgent = document.createElement('section');
+                urgent.className = `urgency-block ${urgency.level}`;
+                const title = document.createElement('h3');
+                title.textContent = urgency.level === 'immediate'
+                    ? 'Kontrolli turvalisust ja tegutse kohe'
+                    : urgency.level === 'urgent' ? 'Võimalik kiire tähtaeg' : 'Pane kuupäevad tähele';
+                urgent.appendChild(title);
+                (urgency.reasons || []).slice(0, 3).forEach(value => {
+                    const p = document.createElement('p'); p.textContent = value; urgent.appendChild(p);
+                });
+                const note = document.createElement('p');
+                note.className = 'comparison-note'; note.textContent = urgency.notice || '';
+                if (note.textContent) urgent.appendChild(note);
+                message.bubble.appendChild(urgent);
+            }
+
+            const answer = document.createElement('section');
+            answer.className = 'answer-block';
+            const answerLines = layered.short_answer
+                ? [layered.short_answer]
+                : sections.application.length
+                ? sections.application
+                : (sections.situation.length ? sections.situation : [data.analysis || 'Vastust ei õnnestunud kuvada.']);
+            answerLines.forEach(line => {
+                const paragraph = document.createElement('p');
+                paragraph.className = 'answer-line';
+                paragraph.textContent = line;
+                answer.appendChild(paragraph);
+            });
+            message.bubble.appendChild(answer);
+
+            const comparisons = (data.claims || []).filter(claim => claim.kind === 'inference');
+            if (comparisons.length) {
+                const comparison = document.createElement('section');
+                comparison.className = 'comparison-block';
+                const title = document.createElement('h3');
+                title.textContent = 'Dokumendi ja õiguse esmane võrdlus';
+                comparison.appendChild(title);
+                comparisons.forEach(claim => {
+                    const text = document.createElement('p');
+                    text.textContent = claim.text || '';
+                    comparison.appendChild(text);
+                });
+                const note = document.createElement('p');
+                note.className = 'comparison-note';
+                note.textContent = 'Võrdluse mõlemad sisendid on kontrollitud; õiguslik hinnang on esmane.';
+                comparison.appendChild(note);
+                message.bubble.appendChild(comparison);
+            }
+
+            const recommendedSteps = (layered.next_steps || []).length
+                ? layered.next_steps : sections.recommendations;
+            if (recommendedSteps.length) {
+                const steps = document.createElement('section');
+                steps.className = 'steps-block';
+                const title = document.createElement('h3');
+                title.textContent = 'Mida saad nüüd teha';
+                const list = document.createElement('ol');
+                list.className = 'steps-list';
+                recommendedSteps.forEach(line => {
+                    const item = document.createElement('li');
+                    item.textContent = line.replace(/^\d+[.)]\s*/, '');
+                    list.appendChild(item);
+                });
+                steps.appendChild(title);
+                steps.appendChild(list);
+                message.bubble.appendChild(steps);
+            }
+
+            if ((layered.unknowns || []).length) {
+                const unknown = document.createElement('section');
+                unknown.className = 'document-findings';
+                const title = document.createElement('h3'); title.textContent = 'Mida tasub veel täpsustada';
+                const list = document.createElement('ul'); list.className = 'insight-list';
+                layered.unknowns.forEach(value => {
+                    const li = document.createElement('li'); li.textContent = value; list.appendChild(li);
+                });
+                unknown.append(title, list); message.bubble.appendChild(unknown);
+            }
+
+            if (layered.confidence_reason) {
+                const confidence = document.createElement('p');
+                confidence.className = 'answer-confidence';
+                confidence.textContent = `Vastuse kindlus: ${layered.confidence_reason}`;
+                message.bubble.appendChild(confidence);
+            }
+
+            const detailsStack = document.createElement('div');
+            detailsStack.className = 'details-stack';
+            if (Array.isArray(data.claims) && data.claims.length) {
+                const claimDetails = makeDetails(`Tõendid ja võrdluse alused (${data.claims.length})`);
+                const claimList = document.createElement('div');
+                claimList.className = 'claim-list';
+                data.claims.forEach(claim => {
+                    const card = document.createElement('article');
+                    card.className = 'claim-card';
+                    const text = document.createElement('p');
+                    text.textContent = claim.text || '';
+                    card.appendChild(text);
+                    (claim.sources || []).forEach(source => {
+                        const meta = document.createElement('div');
+                        meta.className = 'claim-meta';
+                        let status = 'Viide kontrollitud';
+                        if (claim.verification_status === 'DOCUMENT_TEXT_VERIFIED') {
+                            status = `Dokumenditekst kontrollitud${source.page ? ` · lk ${source.page}` : ''}`;
+                        } else if (claim.verification_status === 'OCR_REVIEW_REQUIRED') {
+                            status = `OCR-transkriptsioon${source.page ? ` · lk ${source.page}` : ''} · kontrolli originaalilt`;
+                        } else if (claim.verification_status === 'EVIDENCE_VERIFIED') {
+                            status = 'Seaduse tõendikatkend kontrollitud';
+                        } else if (claim.verification_status === 'INPUTS_VERIFIED') {
+                            status = source.kind === 'document'
+                                ? `Võrdluse dokumendisisend${source.page ? ` · lk ${source.page}` : ''}`
+                                : 'Võrdluse õigussisend';
+                        }
+                        meta.textContent = `${status} · ${formatLawTitle(source.title || source.id || '')}`;
+                        card.appendChild(meta);
+                        if (source.evidence) {
+                            const evidence = document.createElement('blockquote');
+                            evidence.className = 'claim-evidence';
+                            evidence.textContent = source.evidence;
+                            card.appendChild(evidence);
+                        }
+                    });
+                    claimList.appendChild(card);
+                });
+                claimDetails.content.appendChild(claimList);
+                detailsStack.appendChild(claimDetails.details);
+            }
+            const usedSourceIds = new Set(data.sources_used || []);
+            const displayedLaws = (data.found_laws || []).filter(
+                law => !usedSourceIds.size || usedSourceIds.has(law.id)
+            );
+            if (displayedLaws.length) {
+                const sourceDetails = makeDetails(`Kontrollitud õigusallikad (${displayedLaws.length})`);
+                const list = document.createElement('ul');
+                list.className = 'source-list';
+                displayedLaws.forEach(law => {
+                    const item = document.createElement('li');
+                    const title = document.createElement('span');
+                    title.className = 'source-title';
+                    title.textContent = formatLawTitle(law.title);
+                    item.appendChild(title);
+                    const source = formatLawSource(law.source);
+                    if (source) item.appendChild(document.createTextNode(` — ${source}`));
+                    list.appendChild(item);
+                });
+                sourceDetails.content.appendChild(list);
+                detailsStack.appendChild(sourceDetails.details);
+            }
+            if (data.pipeline?.stages?.length) {
+                const labels = {
+                    case_understanding: 'Juhtumi mõistmine',
+                    document_evidence: 'Dokumenditõendid',
+                    legal_retrieval: 'Õigusallikate otsing',
+                    model_analysis: 'Kohalik analüüs',
+                    source_verification: 'Viidete kontroll',
+                    evidence_verification: 'Tõendikatkendite kontroll',
+                    answer_packaging: 'Lihtsa vastuse koostamine'
+                };
+                const pipelineDetails = makeDetails('Kuidas vastus kontrolliti');
+                const list = document.createElement('ul'); list.className = 'pipeline-list';
+                data.pipeline.stages.forEach(stage => {
+                    const item = document.createElement('li');
+                    const name = document.createElement('span'); name.textContent = labels[stage.name] || stage.name;
+                    const status = document.createElement('strong');
+                    status.textContent = stage.status === 'completed' ? '✓ Valmis' : '– Ei käivitunud';
+                    item.append(name, status); list.appendChild(item);
+                });
+                pipelineDetails.content.appendChild(list);
+                detailsStack.appendChild(pipelineDetails.details);
+            }
+            if (detailsStack.childElementCount) message.bubble.appendChild(detailsStack);
+
+            if (data.warning) {
+                const notice = document.createElement('p');
+                notice.className = 'notice';
+                notice.textContent = data.warning;
+                message.bubble.appendChild(notice);
+            }
+
+            const actions = document.createElement('div');
+            actions.className = 'result-actions';
+            actions.appendChild(makeButton('Küsi vastuse kohta', 'inline-button primary-action', () => {
+                messageInput.placeholder = 'Küsi vastuse kohta…';
+                messageInput.focus();
+            }));
+            actions.appendChild(makeButton('Paranda või lisa asjaolu', 'inline-button', () => {
+                messageInput.placeholder = 'Näiteks: kuupäev oli tegelikult 10. august…';
+                messageInput.focus();
+            }));
+            const copyButton = makeButton('Kopeeri vastus', 'inline-button', () => copyAnswer(data, copyButton));
+            actions.appendChild(copyButton);
+            actions.appendChild(makeButton('Salvesta PDF-ina', 'inline-button', () => printAnswer(message.row)));
+            if (state.matterId) {
+                actions.appendChild(makeButton('Koosta dokumendikavand', 'inline-button', () => {
+                    showDraftOptions(message.bubble);
+                }));
+            }
+            actions.appendChild(makeButton('Uus juhtum', 'inline-button', resetConversation));
+            message.bubble.appendChild(actions);
+            addFeedback(message.bubble, data);
+
+            state.hasAnswer = true;
+            state.currentQuestion = '';
+            messageInput.placeholder = 'Küsi juurde või lisa midagi…';
+            scrollToLatest();
+        }
+
+        function buildAnalysisPayload() {
+            const description = buildCaseDescription();
+            const intake = state.currentIntake || {};
+            const currentMessage = state.turns.at(-1)?.text || '';
+            return {
+                case_description: description,
+                event_date: dateInput.value || null,
+                search_query: (intake.search_query || description).slice(0, 2000),
+                case_context: (intake.analysis_context || intake.summary || '').slice(0, 6000),
+                current_message: currentMessage.slice(0, 10000),
+                answer_requirements: (intake.answer_requirements || []).slice(0, 5),
+                matter_id: state.matterId || null,
+                document_ids: state.documents.map(document => document.document_id).slice(0, 20)
+            };
+        }
+
+        async function runAnalysis(activeGeneration) {
+            const progress = createProgress(
+                'Otsin sobivaid õigusallikaid…',
+                'Võrdlen sinu olukorda nii sõnade kui ka tähenduse järgi.',
+                [
+                    {
+                        delay: 2500,
+                        title: 'Järjestan leitud allikaid…',
+                        detail: 'Kontrollin, millised paragrahvid sobivad sinu olukorraga kõige täpsemalt.'
+                    },
+                    {
+                        delay: 7000,
+                        title: 'Koostan lühivastust…',
+                        detail: 'Seon vastuse ainult kontrollitud õigusallikatega.'
+                    },
+                    {
+                        delay: 18000,
+                        title: 'Kontrollin vastust ja viiteid…',
+                        detail: 'Veendun enne kuvamist, et viited toetavad vastust.'
+                    },
+                    {
+                        delay: 40000,
+                        title: 'Kontroll kestab veel…',
+                        detail: 'Pikema juhtumi analüüs võib võtta veidi rohkem aega. Sinu tekst on alles.'
+                    }
+                ]
+            );
+
+            try {
+                const response = await apiFetch('/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(buildAnalysisPayload())
+                });
+                const data = await readJson(response);
+                progress.remove();
+                if (activeGeneration !== generation) return;
+                if (!response.ok) {
+                    renderError(
+                        errorMessage(data, 'Selle info põhjal ei leidnud ma veel piisavalt täpset vastust. Lisa palun üks oluline asjaolu ja proovin uuesti.'),
+                        'Vajan veel natuke infot'
+                    );
+                    messageInput.placeholder = 'Lisa, kes tegi mida ja millal…';
+                    return;
+                }
+                renderResult(data);
+            } catch (_) {
+                progress.remove();
+                if (activeGeneration !== generation) return;
+                renderError(
+                    'Ühendus kohaliku teenusega katkes. Sinu vestlus on alles.',
+                    'Ühendus katkes',
+                    analyzeExistingInformation
+                );
+            }
+        }
+
+        async function understandCurrentCase(activeGeneration) {
+            const progress = createProgress(
+                'Loen sinu sõnumit…',
+                'Panen kokku juhtunu, osapooled ja selle, millist abi vajad.',
+                [
+                    {
+                        delay: 3500,
+                        title: 'Panen olulise kokku…',
+                        detail: 'Seon sündmused, dokumendid, summad ja osapooled üheks looks.'
+                    },
+                    {
+                        delay: 9000,
+                        title: 'Kontrollin, kas midagi olulist on puudu…',
+                        detail: 'Küsin ainult siis, kui vastuse jaoks on mõni otsustav asjaolu puudu.'
+                    }
+                ]
+            );
+
+            try {
+                const response = await apiFetch('/intake', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        case_description: buildCaseDescription(),
+                        event_date: dateInput.value || null,
+                        current_message: (state.turns.at(-1)?.text || '').slice(0, 10000),
+                        matter_id: state.matterId || null
+                    })
+                });
+                const data = await readJson(response);
+                progress.remove();
+                if (activeGeneration !== generation) return;
+                if (!response.ok) {
+                    renderError(errorMessage(data, 'Sõnumi lugemine ei õnnestunud.'), 'Ma ei saanud sellest veel aru');
+                    return;
+                }
+
+                state.currentIntake = data;
+                if (data.matter_id) state.matterId = data.matter_id;
+                if (data.case_card) state.caseCard = data.case_card;
+                const question = nextClarification(data);
+                if (question) {
+                    renderClarification(question, data);
+                    return;
+                }
+
+                renderUnderstanding(data);
+                await runAnalysis(activeGeneration);
+            } catch (_) {
+                progress.remove();
+                if (activeGeneration !== generation) return;
+                renderError(
+                    'Ühendus kohaliku teenusega katkes. Sinu vestlus on alles.',
+                    'Ühendus katkes',
+                    () => retryUnderstanding(activeGeneration)
+                );
+            }
+        }
+
+        async function retryUnderstanding(activeGeneration = generation) {
+            if (state.busy || !state.turns.length) return;
+            setBusy(true);
+            try {
+                await understandCurrentCase(activeGeneration);
+            } finally {
+                if (activeGeneration === generation) setBusy(false);
+            }
+        }
+
+        async function analyzeExistingInformation() {
+            if (state.busy || !state.turns.length) return;
+            const activeGeneration = generation;
+            expirePromptActions('Vastan olemasoleva info põhjal');
+            state.currentQuestion = '';
+            setBusy(true);
+            addAssistantText('Hästi — vastan praegu olemasoleva info põhjal.');
+            try {
+                await runAnalysis(activeGeneration);
+            } finally {
+                if (activeGeneration === generation) setBusy(false);
+            }
+        }
+
+        async function submitMessage(forcedText = '') {
+            if (state.busy) return;
+            const text = String(forcedText || messageInput.value).trim();
+            if (!text) {
+                messageInput.focus();
+                return;
+            }
+
+            const question = state.currentQuestion || (state.turns.length
+                ? 'Kas soovid midagi lisada või parandada?'
+                : '');
+            const prospectiveTurns = [...state.turns, { text, question }];
+            if (buildCaseDescription(prospectiveTurns).length > MAX_CASE_CHARS) {
+                renderError(
+                    'Vestlus on muutunud väga pikaks. Alusta palun uut juhtumit või lühenda viimast sõnumit nii, et ükski oluline asjaolu ei kaoks.',
+                    'Tekst on liiga pikk'
+                );
+                return;
+            }
+
+            if (!state.turns.length) expireStarterActions();
+            expirePromptActions();
+            state.turns.push({ text, question });
+            state.currentQuestion = '';
+            addUserMessage(text);
+            messageInput.value = '';
+            autoGrow();
+            messageInput.placeholder = 'Kirjuta järgmine sõnum…';
+            const activeGeneration = generation;
+            setBusy(true);
+            try {
+                await understandCurrentCase(activeGeneration);
+            } finally {
+                if (activeGeneration === generation) setBusy(false);
+            }
+        }
+
+        function resetConversation() {
+            const previousMatterId = state.matterId;
+            generation += 1;
+            state = createState();
+            if (previousMatterId) {
+                apiFetch(`/matters/${encodeURIComponent(previousMatterId)}`, { method: 'DELETE' }).catch(() => {});
+            }
+            clearChildren(chatLog);
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            messageInput.value = '';
+            messageInput.placeholder = 'Kirjuta oma küsimus või kirjelda olukorda…';
+            dateInput.value = '';
+            dateOption.open = false;
+            autoGrow();
+            renderWelcome();
+            messageInput.focus();
+        }
+
+        chatForm.addEventListener('submit', event => {
+            event.preventDefault();
+            submitMessage();
+        });
+
+        messageInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+                event.preventDefault();
+                chatForm.requestSubmit();
+            }
+        });
+
+        messageInput.addEventListener('input', autoGrow);
+        attachButton.addEventListener('click', () => documentInput.click());
+        documentInput.addEventListener('change', () => uploadDocument(documentInput.files?.[0]));
+        newChatButton.addEventListener('click', resetConversation);
+
+        async function initializeApp() {
+            autoGrow();
+            renderWelcome();
+            checkServiceHealth();
+            await initializeAccess();
+        }
+
+        initializeApp();
+    </script>
+</body>
+</html>

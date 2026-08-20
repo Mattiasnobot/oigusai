@@ -1,0 +1,862 @@
+[
+  {
+    "prefix": "VOS",
+    "name": "Võlaõigusseadus",
+    "url": "https://www.riigiteataja.ee/akt/VÕS"
+  },
+  {
+    "prefix": "TLS",
+    "name": "Töölepingu seadus",
+    "url": "https://www.riigiteataja.ee/akt/TLS"
+  },
+  {
+    "prefix": "ABIPOLS",
+    "name": "Abipolitseiniku seadus",
+    "url": "https://www.riigiteataja.ee/akt/APolS"
+  },
+  {
+    "prefix": "VTMS",
+    "name": "Väärteomenetluse seadustik",
+    "url": "https://www.riigiteataja.ee/akt/VTMS"
+  },
+  {
+    "prefix": "PKS",
+    "name": "Perekonnaseadus",
+    "url": "https://www.riigiteataja.ee/akt/PKS"
+  },
+  {
+    "prefix": "KARS",
+    "name": "Karistusseadustik",
+    "url": "https://www.riigiteataja.ee/akt/KarS"
+  },
+  {
+    "prefix": "ADVS",
+    "name": "Advokatuuriseadus",
+    "url": "https://www.riigiteataja.ee/akt/AdvS"
+  },
+  {
+    "prefix": "AKTS",
+    "name": "Aktsiisiseadus",
+    "url": "https://www.riigiteataja.ee/akt/AS"
+  },
+  {
+    "prefix": "AUS",
+    "name": "Ametiühingute seadus",
+    "url": "https://www.riigiteataja.ee/akt/AÜS"
+  },
+  {
+    "prefix": "ARHS",
+    "name": "Arhiiviseadus",
+    "url": "https://www.riigiteataja.ee/akt/ArhS"
+  },
+  {
+    "prefix": "AOS",
+    "name": "Asjaõigusseadus",
+    "url": "https://www.riigiteataja.ee/akt/AÕS"
+  },
+  {
+    "prefix": "ASJAKS",
+    "name": "Asjaõigusseaduse rakendamise seadus",
+    "url": "https://www.riigiteataja.ee/akt/AÕSRS"
+  },
+  {
+    "prefix": "AOKS",
+    "name": "Atmosfääriõhu kaitse seadus",
+    "url": "https://www.riigiteataja.ee/akt/AÕKS"
+  },
+  {
+    "prefix": "AUDS",
+    "name": "Audiitortegevuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/AudS"
+  },
+  {
+    "prefix": "AUTORS",
+    "name": "Autoriõiguse seadus",
+    "url": "https://www.riigiteataja.ee/akt/AutÕS"
+  },
+  {
+    "prefix": "AUTOVS",
+    "name": "Autoveoseadus",
+    "url": "https://www.riigiteataja.ee/akt/AutoVS"
+  },
+  {
+    "prefix": "AvTS",
+    "name": "Avaliku teabe seadus",
+    "url": "https://www.riigiteataja.ee/akt/AvTS"
+  },
+  {
+    "prefix": "ATS",
+    "name": "Avaliku teenistuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/ATS"
+  },
+  {
+    "prefix": "DTS",
+    "name": "Digitaalsete teenuste seadus",
+    "url": "https://www.riigiteataja.ee/akt/DTS"
+  },
+  {
+    "prefix": "EPS",
+    "name": "Eesti Panga seadus",
+    "url": "https://www.riigiteataja.ee/akt/EPS"
+  },
+  {
+    "prefix": "PS",
+    "name": "Eesti Vabariigi põhiseadus",
+    "url": "https://www.riigiteataja.ee/akt/PS"
+  },
+  {
+    "prefix": "EHS2",
+    "name": "Ehitusseadustik",
+    "url": "https://www.riigiteataja.ee/akt/EhS"
+  },
+  {
+    "prefix": "ELTS",
+    "name": "Elektrituruseadus",
+    "url": "https://www.riigiteataja.ee/akt/ELTS"
+  },
+  {
+    "prefix": "ESS",
+    "name": "Elektroonilise side seadus",
+    "url": "https://www.riigiteataja.ee/akt/ESS"
+  },
+  {
+    "prefix": "EKS",
+    "name": "Erakonnaseadus",
+    "url": "https://www.riigiteataja.ee/akt/EKS"
+  },
+  {
+    "prefix": "ERSS",
+    "name": "Erakorralise seisukorra seadus",
+    "url": "https://www.riigiteataja.ee/akt/ErSS"
+  },
+  {
+    "prefix": "EHS",
+    "name": "Eriolukorra seadus",
+    "url": "https://www.riigiteataja.ee/akt/EHS"
+  },
+  {
+    "prefix": "EPVS",
+    "name": "Euroopa Parlamendi valimise seadus",
+    "url": "https://www.riigiteataja.ee/akt/EPVS"
+  },
+  {
+    "prefix": "FIS",
+    "name": "Finantsinspektsiooni seadus",
+    "url": "https://www.riigiteataja.ee/akt/FIS"
+  },
+  {
+    "prefix": "FELS",
+    "name": "Finantskriisi ennetamise ja lahendamise seadus",
+    "url": "https://www.riigiteataja.ee/akt/FELS"
+  },
+  {
+    "prefix": "GMKS",
+    "name": "Geneetiliselt muundatud organismide keskkonda viimise seadus",
+    "url": "https://www.riigiteataja.ee/akt/GMKS"
+  },
+  {
+    "prefix": "HKMS",
+    "name": "Halduskohtumenetluse seadustik",
+    "url": "https://www.riigiteataja.ee/akt/HKMS"
+  },
+  {
+    "prefix": "HMS",
+    "name": "Haldusmenetluse seadus",
+    "url": "https://www.riigiteataja.ee/akt/HMS"
+  },
+  {
+    "prefix": "HUVIKS",
+    "name": "Huvikooli seadus",
+    "url": "https://www.riigiteataja.ee/akt/HuviKS"
+  },
+  {
+    "prefix": "HOS",
+    "name": "Hädaolukorra seadus",
+    "url": "https://www.riigiteataja.ee/akt/HOS"
+  },
+  {
+    "prefix": "IUTS",
+    "name": "Infoühiskonna teenuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/IÜTS"
+  },
+  {
+    "prefix": "IGUS",
+    "name": "Inimgeeniuuringute seadus",
+    "url": "https://www.riigiteataja.ee/akt/IGUS"
+  },
+  {
+    "prefix": "IFS",
+    "name": "Investeerimisfondide seadus",
+    "url": "https://www.riigiteataja.ee/akt/IFS"
+  },
+  {
+    "prefix": "IKS",
+    "name": "Isikuandmete kaitse seadus",
+    "url": "https://www.riigiteataja.ee/akt/IKS"
+  },
+  {
+    "prefix": "JAHIS",
+    "name": "Jahiseadus",
+    "url": "https://www.riigiteataja.ee/akt/JahiS"
+  },
+  {
+    "prefix": "JAS",
+    "name": "Julgeolekuasutuste seadus",
+    "url": "https://www.riigiteataja.ee/akt/JAS"
+  },
+  {
+    "prefix": "JAATS",
+    "name": "Jäätmeseadus",
+    "url": "https://www.riigiteataja.ee/akt/JäätS"
+  },
+  {
+    "prefix": "KALS",
+    "name": "Kaitseliidu seadus",
+    "url": "https://www.riigiteataja.ee/akt/KaLS"
+  },
+  {
+    "prefix": "KKS",
+    "name": "Kaitseväe korralduse seadus",
+    "url": "https://www.riigiteataja.ee/akt/KKS"
+  },
+  {
+    "prefix": "KVTS",
+    "name": "Kaitseväeteenistuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/KVTS"
+  },
+  {
+    "prefix": "KPS",
+    "name": "Kalapüügiseadus",
+    "url": "https://www.riigiteataja.ee/akt/KPS"
+  },
+  {
+    "prefix": "KALMS",
+    "name": "Kalmistuseadus",
+    "url": "https://www.riigiteataja.ee/akt/KalmS"
+  },
+  {
+    "prefix": "KAMS",
+    "name": "Kaubamärgiseadus",
+    "url": "https://www.riigiteataja.ee/akt/KaMS"
+  },
+  {
+    "prefix": "KAUBTS",
+    "name": "Kaubandustegevuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/KaubTS"
+  },
+  {
+    "prefix": "KKYTS",
+    "name": "Kaugkütteseadus",
+    "url": "https://www.riigiteataja.ee/akt/KKütS"
+  },
+  {
+    "prefix": "KEELES",
+    "name": "Keeleseadus",
+    "url": "https://www.riigiteataja.ee/akt/KeeleS"
+  },
+  {
+    "prefix": "KEMS",
+    "name": "Kemikaaliseadus",
+    "url": "https://www.riigiteataja.ee/akt/KemS"
+  },
+  {
+    "prefix": "KEHJS",
+    "name": "Keskkonnamõju hindamise ja keskkonnajuhtimise seadus",
+    "url": "https://www.riigiteataja.ee/akt/KeHJS"
+  },
+  {
+    "prefix": "KEUS",
+    "name": "Keskkonnaseadustiku üldosa seadus",
+    "url": "https://www.riigiteataja.ee/akt/KeÜS"
+  },
+  {
+    "prefix": "KETS",
+    "name": "Keskkonnatasude seadus",
+    "url": "https://www.riigiteataja.ee/akt/KeTS"
+  },
+  {
+    "prefix": "KEVS",
+    "name": "Keskkonnavastutuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/KeVS"
+  },
+  {
+    "prefix": "KIS",
+    "name": "Kiirgusseadus",
+    "url": "https://www.riigiteataja.ee/akt/KiS"
+  },
+  {
+    "prefix": "KRS",
+    "name": "Kinnistusraamatuseadus",
+    "url": "https://www.riigiteataja.ee/akt/KRS"
+  },
+  {
+    "prefix": "KODS",
+    "name": "Kodakondsuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/KodS"
+  },
+  {
+    "prefix": "KoPS",
+    "name": "Kogumispensionide seadus",
+    "url": "https://www.riigiteataja.ee/akt/KoPS"
+  },
+  {
+    "prefix": "KOKS",
+    "name": "Kohaliku omavalitsuse korralduse seadus",
+    "url": "https://www.riigiteataja.ee/akt/KOKS"
+  },
+  {
+    "prefix": "KOVVS",
+    "name": "Kohaliku omavalitsuse volikogu valimise seadus",
+    "url": "https://www.riigiteataja.ee/akt/KOVVS"
+  },
+  {
+    "prefix": "KES",
+    "name": "Kohtuekspertiisiseadus",
+    "url": "https://www.riigiteataja.ee/akt/KES"
+  },
+  {
+    "prefix": "KS",
+    "name": "Kohtute seadus",
+    "url": "https://www.riigiteataja.ee/akt/KS"
+  },
+  {
+    "prefix": "KTS",
+    "name": "Kohtutäituri seadus",
+    "url": "https://www.riigiteataja.ee/akt/KTS"
+  },
+  {
+    "prefix": "KTTLS",
+    "name": "Kollektiivse töötüli lahendamise seadus",
+    "url": "https://www.riigiteataja.ee/akt/KTTLS"
+  },
+  {
+    "prefix": "KONKS",
+    "name": "Konkurentsiseadus",
+    "url": "https://www.riigiteataja.ee/akt/KonkS"
+  },
+  {
+    "prefix": "KONS",
+    "name": "Konsulaarseadus",
+    "url": "https://www.riigiteataja.ee/akt/KonS"
+  },
+  {
+    "prefix": "KORS",
+    "name": "Korrakaitseseadus",
+    "url": "https://www.riigiteataja.ee/akt/KorS"
+  },
+  {
+    "prefix": "KRTS",
+    "name": "Korteriomandi- ja korteriühistuseadus",
+    "url": "https://www.riigiteataja.ee/akt/KrtS"
+  },
+  {
+    "prefix": "KAS",
+    "name": "Krediidiasutuste seadus",
+    "url": "https://www.riigiteataja.ee/akt/KAS"
+  },
+  {
+    "prefix": "KRHS",
+    "name": "Kriminaalhooldusseadus",
+    "url": "https://www.riigiteataja.ee/akt/KrHS"
+  },
+  {
+    "prefix": "KRMS",
+    "name": "Kriminaalmenetluse seadustik",
+    "url": "https://www.riigiteataja.ee/akt/KrMS"
+  },
+  {
+    "prefix": "KVEKS",
+    "name": "Kunstliku viljastamise ja embrüokaitse seadus",
+    "url": "https://www.riigiteataja.ee/akt/KVEKS"
+  },
+  {
+    "prefix": "KMS",
+    "name": "Käibemaksuseadus",
+    "url": "https://www.riigiteataja.ee/akt/KMS"
+  },
+  {
+    "prefix": "KHS",
+    "name": "Kõrgharidusseadus",
+    "url": "https://www.riigiteataja.ee/akt/KHS"
+  },
+  {
+    "prefix": "KUTS",
+    "name": "Küberturvalisuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/KüTS"
+  },
+  {
+    "prefix": "LasteKS",
+    "name": "Lastekaitseseadus",
+    "url": "https://www.riigiteataja.ee/akt/LasteKS"
+  },
+  {
+    "prefix": "LENNS",
+    "name": "Lennundusseadus",
+    "url": "https://www.riigiteataja.ee/akt/LennS"
+  },
+  {
+    "prefix": "LKINDS",
+    "name": "Liikluskindlustuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/LKindlS"
+  },
+  {
+    "prefix": "LS",
+    "name": "Liiklusseadus",
+    "url": "https://www.riigiteataja.ee/akt/LS"
+  },
+  {
+    "prefix": "LKS",
+    "name": "Looduskaitseseadus",
+    "url": "https://www.riigiteataja.ee/akt/LKS"
+  },
+  {
+    "prefix": "LOKS",
+    "name": "Loomakaitseseadus",
+    "url": "https://www.riigiteataja.ee/akt/LoKS"
+  },
+  {
+    "prefix": "LTTS",
+    "name": "Loomatauditõrje seadus",
+    "url": "https://www.riigiteataja.ee/akt/LTTS"
+  },
+  {
+    "prefix": "LOHKEM",
+    "name": "Lõhkematerjaliseadus",
+    "url": "https://www.riigiteataja.ee/akt/LMS"
+  },
+  {
+    "prefix": "MGS",
+    "name": "Maagaasiseadus",
+    "url": "https://www.riigiteataja.ee/akt/MGS"
+  },
+  {
+    "prefix": "MAAKATS",
+    "name": "Maakatastriseadus",
+    "url": "https://www.riigiteataja.ee/akt/MaaKatS"
+  },
+  {
+    "prefix": "MAAKS",
+    "name": "Maakorraldusseadus",
+    "url": "https://www.riigiteataja.ee/akt/MaaKS"
+  },
+  {
+    "prefix": "MAAPS",
+    "name": "Maapõueseadus",
+    "url": "https://www.riigiteataja.ee/akt/MaaPS"
+  },
+  {
+    "prefix": "MSYS",
+    "name": "Majandustegevuse seadustiku üldosa seadus",
+    "url": "https://www.riigiteataja.ee/akt/MSÜS"
+  },
+  {
+    "prefix": "MERAS",
+    "name": "Makseasutuste ja e-raha asutuste seadus",
+    "url": "https://www.riigiteataja.ee/akt/MERAS"
+  },
+  {
+    "prefix": "MKS",
+    "name": "Maksukorralduse seadus",
+    "url": "https://www.riigiteataja.ee/akt/MKS"
+  },
+  {
+    "prefix": "MMS",
+    "name": "Meditsiiniseadme seadus",
+    "url": "https://www.riigiteataja.ee/akt/MMS"
+  },
+  {
+    "prefix": "MSOS",
+    "name": "Meresõiduohutuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/MSOS"
+  },
+  {
+    "prefix": "METSAS",
+    "name": "Metsaseadus",
+    "url": "https://www.riigiteataja.ee/akt/MetsS"
+  },
+  {
+    "prefix": "MTUS",
+    "name": "Mittetulundusühingute seadus",
+    "url": "https://www.riigiteataja.ee/akt/MTÜS"
+  },
+  {
+    "prefix": "MOTM",
+    "name": "Mootorsõidukimaksu seadus",
+    "url": "https://www.riigiteataja.ee/akt/MoMS"
+  },
+  {
+    "prefix": "MUKS",
+    "name": "Muinsuskaitseseadus",
+    "url": "https://www.riigiteataja.ee/akt/MuKS"
+  },
+  {
+    "prefix": "NETS",
+    "name": "Nakkushaiguste ennetamise ja tõrje seadus",
+    "url": "https://www.riigiteataja.ee/akt/NETS"
+  },
+  {
+    "prefix": "NPALS",
+    "name": "Narkootiliste ja psühhotroopsete ainete ning nende lähteainete seadus",
+    "url": "https://www.riigiteataja.ee/akt/NPALS"
+  },
+  {
+    "prefix": "NTS",
+    "name": "Noorsootöö seadus",
+    "url": "https://www.riigiteataja.ee/akt/NTS"
+  },
+  {
+    "prefix": "NOTS",
+    "name": "Notari seadus",
+    "url": "https://www.riigiteataja.ee/akt/NotS"
+  },
+  {
+    "prefix": "OAS",
+    "name": "Ohvriabi seadus",
+    "url": "https://www.riigiteataja.ee/akt/OAS"
+  },
+  {
+    "prefix": "ODVS",
+    "name": "Orgaanidoonorluse seadus",
+    "url": "https://www.riigiteataja.ee/akt/ODVS"
+  },
+  {
+    "prefix": "PAKS",
+    "name": "Pakendiseadus",
+    "url": "https://www.riigiteataja.ee/akt/PakS"
+  },
+  {
+    "prefix": "PANKRS",
+    "name": "Pankrotiseadus",
+    "url": "https://www.riigiteataja.ee/akt/PankrS"
+  },
+  {
+    "prefix": "PATS",
+    "name": "Patendiseadus",
+    "url": "https://www.riigiteataja.ee/akt/PatS"
+  },
+  {
+    "prefix": "PLANS",
+    "name": "Planeerimisseadus",
+    "url": "https://www.riigiteataja.ee/akt/PlanS"
+  },
+  {
+    "prefix": "PPVS",
+    "name": "Politsei ja piirivalve seadus",
+    "url": "https://www.riigiteataja.ee/akt/PPVS"
+  },
+  {
+    "prefix": "PSAS",
+    "name": "Psühhiaatrilise abi seadus",
+    "url": "https://www.riigiteataja.ee/akt/PsAS"
+  },
+  {
+    "prefix": "PARS",
+    "name": "Pärimisseadus",
+    "url": "https://www.riigiteataja.ee/akt/PärS"
+  },
+  {
+    "prefix": "PASTES",
+    "name": "Päästeseadus",
+    "url": "https://www.riigiteataja.ee/akt/PäästeS"
+  },
+  {
+    "prefix": "PGS",
+    "name": "Põhikooli- ja gümnaasiumiseadus",
+    "url": "https://www.riigiteataja.ee/akt/PGS"
+  },
+  {
+    "prefix": "PSJKS",
+    "name": "Põhiseaduslikkuse järelevalve kohtumenetluse seadus",
+    "url": "https://www.riigiteataja.ee/akt/PSJKS"
+  },
+  {
+    "prefix": "POLAS",
+    "name": "Põllumajandusloomade aretuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/PõLAS"
+  },
+  {
+    "prefix": "RPS",
+    "name": "Raamatupidamise seadus",
+    "url": "https://www.riigiteataja.ee/akt/RPS"
+  },
+  {
+    "prefix": "RAHAPTS",
+    "name": "Rahapesu ja terrorismi rahastamise tõkestamise seadus",
+    "url": "https://www.riigiteataja.ee/akt/RahaPTS"
+  },
+  {
+    "prefix": "RTerS",
+    "name": "Rahvatervise seadus",
+    "url": "https://www.riigiteataja.ee/akt/RTerS"
+  },
+  {
+    "prefix": "REOS",
+    "name": "Rahvusvahelise eraõiguse seadus",
+    "url": "https://www.riigiteataja.ee/akt/REÕS"
+  },
+  {
+    "prefix": "RDTS",
+    "name": "Raudteeseadus",
+    "url": "https://www.riigiteataja.ee/akt/RdtS"
+  },
+  {
+    "prefix": "RAKS",
+    "name": "Ravikindlustuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/RaKS"
+  },
+  {
+    "prefix": "RAVS",
+    "name": "Ravimiseadus",
+    "url": "https://www.riigiteataja.ee/akt/RavS"
+  },
+  {
+    "prefix": "REKS",
+    "name": "Reklaamiseadus",
+    "url": "https://www.riigiteataja.ee/akt/RekS"
+  },
+  {
+    "prefix": "RELVS",
+    "name": "Relvaseadus",
+    "url": "https://www.riigiteataja.ee/akt/RelvS"
+  },
+  {
+    "prefix": "RTS",
+    "name": "Riigi Teataja seadus",
+    "url": "https://www.riigiteataja.ee/akt/RTS"
+  },
+  {
+    "prefix": "RES",
+    "name": "Riigieelarve seadus",
+    "url": "https://www.riigiteataja.ee/akt/RES"
+  },
+  {
+    "prefix": "RHS",
+    "name": "Riigihangete seadus",
+    "url": "https://www.riigiteataja.ee/akt/RHS"
+  },
+  {
+    "prefix": "RKVS",
+    "name": "Riigikogu valimise seadus",
+    "url": "https://www.riigiteataja.ee/akt/RKVS"
+  },
+  {
+    "prefix": "RKS",
+    "name": "Riigikontrolli seadus",
+    "url": "https://www.riigiteataja.ee/akt/RKS"
+  },
+  {
+    "prefix": "RLS",
+    "name": "Riigilõivuseadus",
+    "url": "https://www.riigiteataja.ee/akt/RLS"
+  },
+  {
+    "prefix": "RIPS",
+    "name": "Riigipiiri seadus",
+    "url": "https://www.riigiteataja.ee/akt/RiPS"
+  },
+  {
+    "prefix": "RSVS",
+    "name": "Riigisaladuse ja salastatud välisteabe seadus",
+    "url": "https://www.riigiteataja.ee/akt/RSVS"
+  },
+  {
+    "prefix": "RVS",
+    "name": "Riigivaraseadus",
+    "url": "https://www.riigiteataja.ee/akt/RVS"
+  },
+  {
+    "prefix": "RVASTS",
+    "name": "Riigivastutuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/RVastS"
+  },
+  {
+    "prefix": "SAS",
+    "name": "Sihtasutuste seadus",
+    "url": "https://www.riigiteataja.ee/akt/SAS"
+  },
+  {
+    "prefix": "SOVS",
+    "name": "Soolise võrdõiguslikkuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/SoVS"
+  },
+  {
+    "prefix": "SHS",
+    "name": "Sotsiaalhoolekande seadus",
+    "url": "https://www.riigiteataja.ee/akt/SHS"
+  },
+  {
+    "prefix": "SMS",
+    "name": "Sotsiaalmaksuseadus",
+    "url": "https://www.riigiteataja.ee/akt/SMS"
+  },
+  {
+    "prefix": "SPS",
+    "name": "Spordiseadus",
+    "url": "https://www.riigiteataja.ee/akt/SpS"
+  },
+  {
+    "prefix": "SOJS",
+    "name": "Sõjaseisukorra seadus",
+    "url": "https://www.riigiteataja.ee/akt/SõjS"
+  },
+  {
+    "prefix": "TFS",
+    "name": "Tagatisfondi seadus",
+    "url": "https://www.riigiteataja.ee/akt/TFS"
+  },
+  {
+    "prefix": "TAIMKS",
+    "name": "Taimekaitseseadus",
+    "url": "https://www.riigiteataja.ee/akt/TaimKS"
+  },
+  {
+    "prefix": "TKS",
+    "name": "Tarbijakaitseseadus",
+    "url": "https://www.riigiteataja.ee/akt/TKS"
+  },
+  {
+    "prefix": "TAKS",
+    "name": "Teadus- ja arendustegevuse korralduse seadus",
+    "url": "https://www.riigiteataja.ee/akt/TAKS"
+  },
+  {
+    "prefix": "TEES",
+    "name": "Teeseadus",
+    "url": "https://www.riigiteataja.ee/akt/TeeS"
+  },
+  {
+    "prefix": "TTKS",
+    "name": "Tervishoiuteenuste korraldamise seadus",
+    "url": "https://www.riigiteataja.ee/akt/TTKS"
+  },
+  {
+    "prefix": "TOLLS",
+    "name": "Tolliseadus",
+    "url": "https://www.riigiteataja.ee/akt/TollS"
+  },
+  {
+    "prefix": "TSMS",
+    "name": "Tsiviilkohtumenetluse seadustik",
+    "url": "https://www.riigiteataja.ee/akt/TsMS"
+  },
+  {
+    "prefix": "TSYS",
+    "name": "Tsiviilseadustiku üldosa seadus",
+    "url": "https://www.riigiteataja.ee/akt/TsÜS"
+  },
+  {
+    "prefix": "TUOS",
+    "name": "Tuleohutuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/TuOS"
+  },
+  {
+    "prefix": "TUMS",
+    "name": "Tulumaksuseadus",
+    "url": "https://www.riigiteataja.ee/akt/TuMS"
+  },
+  {
+    "prefix": "TAKS2",
+    "name": "Täiskasvanute koolituse seadus",
+    "url": "https://www.riigiteataja.ee/akt/TäKS"
+  },
+  {
+    "prefix": "TMS",
+    "name": "Täitemenetluse seadustik",
+    "url": "https://www.riigiteataja.ee/akt/TMS"
+  },
+  {
+    "prefix": "TDKS",
+    "name": "Tööstusdisaini kaitse seadus",
+    "url": "https://www.riigiteataja.ee/akt/TDKS"
+  },
+  {
+    "prefix": "TTOS",
+    "name": "Töötervishoiu ja tööohutuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/TTOS"
+  },
+  {
+    "prefix": "TKindlS",
+    "name": "Töötuskindlustuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/TKindlS"
+  },
+  {
+    "prefix": "TVLS",
+    "name": "Töövaidluse lahendamise seadus",
+    "url": "https://www.riigiteataja.ee/akt/TvLS"
+  },
+  {
+    "prefix": "VVS",
+    "name": "Vabariigi Valitsuse seadus",
+    "url": "https://www.riigiteataja.ee/akt/VVS"
+  },
+  {
+    "prefix": "VANGS",
+    "name": "Vangistusseadus",
+    "url": "https://www.riigiteataja.ee/akt/VangS"
+  },
+  {
+    "prefix": "VRS",
+    "name": "Varjupaigaseadus",
+    "url": "https://www.riigiteataja.ee/akt/VRS"
+  },
+  {
+    "prefix": "VEES",
+    "name": "Veeseadus",
+    "url": "https://www.riigiteataja.ee/akt/VeeS"
+  },
+  {
+    "prefix": "VereS",
+    "name": "Vereseadus",
+    "url": "https://www.riigiteataja.ee/akt/VereS"
+  },
+  {
+    "prefix": "VETKS",
+    "name": "Veterinaarkorralduse seadus",
+    "url": "https://www.riigiteataja.ee/akt/VetKS"
+  },
+  {
+    "prefix": "VMS",
+    "name": "Välismaalaste seadus",
+    "url": "https://www.riigiteataja.ee/akt/VMS"
+  },
+  {
+    "prefix": "VASS",
+    "name": "Välissuhtlemisseadus",
+    "url": "https://www.riigiteataja.ee/akt/VäSS"
+  },
+  {
+    "prefix": "VPTS",
+    "name": "Väärtpaberituru seadus",
+    "url": "https://www.riigiteataja.ee/akt/VPTS"
+  },
+  {
+    "prefix": "VORDKS",
+    "name": "Võrdse kohtlemise seadus",
+    "url": "https://www.riigiteataja.ee/akt/VõrdKS"
+  },
+  {
+    "prefix": "ARS",
+    "name": "Äriregistri seadus",
+    "url": "https://www.riigiteataja.ee/akt/ÄRS"
+  },
+  {
+    "prefix": "AS",
+    "name": "Äriseadustik",
+    "url": "https://www.riigiteataja.ee/akt/ÄS"
+  },
+  {
+    "prefix": "OAS2",
+    "name": "Õigusabi seadus",
+    "url": "https://www.riigiteataja.ee/akt/ÕAS"
+  },
+  {
+    "prefix": "OKS",
+    "name": "Õiguskantsleri seadus",
+    "url": "https://www.riigiteataja.ee/akt/ÕKS"
+  },
+  {
+    "prefix": "UTS",
+    "name": "Ühistranspordiseadus",
+    "url": "https://www.riigiteataja.ee/akt/ÜTS"
+  }
+]

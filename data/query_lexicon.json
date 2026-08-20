@@ -1,0 +1,466 @@
+[
+  {
+    "forms": ["abi politsei", "abipolitsei"],
+    "expand": ["abipolitseinik", "abipolitseiniku", "korrakaitse"],
+    "domains": ["ABIPOLS"],
+    "sections": ["ABIPOLS_3", "ABIPOLS_16"]
+  },
+  {
+    "forms": [
+      "abipolitsei trahvis",
+      "abipolitseinik trahvis",
+      "abipolitsei määras trahvi",
+      "abipolitseinik määras trahvi",
+      "abipolitsei tegi trahvi",
+      "abipolitseinik tegi trahvi"
+    ],
+    "expand": [
+      "abipolitseiniku pädevus",
+      "menetlusaluse isiku õigused",
+      "kiirmenetluse otsus",
+      "kaebuse tähtaeg"
+    ],
+    "domains": ["ABIPOLS", "VTMS"],
+    "sections": ["ABIPOLS_3", "ABIPOLS_16", "VTMS_19", "VTMS_57", "VTMS_114"]
+  },
+  {
+    "forms": ["vallandati", "vallandatud", "lasti lahti", "töölt lahti", "toost lahti"],
+    "expand": ["vallandamine", "tooleping", "tootaja", "tooandja"],
+    "domains": ["TLS"]
+  },
+  {
+    "forms": ["koondati", "koondatud", "koondamine"],
+    "expand": ["tooleping", "tootaja", "tooandja", "ulesutlemine"],
+    "domains": ["TLS"]
+  },
+  {
+    "forms": ["palk maksmata", "palka ei makstud", "palk hilineb"],
+    "expand": ["palk", "tooleping", "tooandja"],
+    "domains": ["TLS"]
+  },
+  {
+    "forms": ["korterist välja tõsta", "korterist valja tosta", "välja kolima", "valja kolima"],
+    "expand": ["uuri", "uurileping", "eluruum", "ulesutlemine"],
+    "domains": ["VOS"]
+  },
+  {
+    "forms": ["tagatisraha", "deposiit"],
+    "expand": ["uuri", "uurileping", "tagatisraha"],
+    "domains": ["VOS"],
+    "sections": ["VOS_308"]
+  },
+  {
+    "forms": ["üüri tõsta", "uuri tosta", "üüri suurendada", "uuri suurendada"],
+    "expand": ["uuri", "uurileping", "rent"],
+    "domains": ["VOS"]
+  },
+  {
+    "forms": ["trahv vaidlustada", "trahvi vaidlustada", "trahviga ei nõustu", "trahviga ei noustu"],
+    "expand": ["trahv", "vaie", "vaarteo", "menetlus"],
+    "domains": ["VTMS"]
+  },
+  {
+    "forms": ["trahviteade", "trahviteate", "trahviteadet", "hoiatustrahv", "hoiatustrahvi"],
+    "expand": ["kirjalik hoiatamismenetlus", "trahviteate sisu", "trahviteate vaidlustamine"],
+    "domains": ["VTMS"],
+    "sections": ["VTMS_54B2", "VTMS_54B5"]
+  },
+  {
+    "forms": ["lühimenetluse otsus", "luhimenetluse otsus", "mõjutustrahv", "mojutustrahv"],
+    "expand": ["lühimenetluse otsus", "lühimenetluse otsuse vaidlustamine"],
+    "domains": ["VTMS"],
+    "sections": ["VTMS_54B9", "VTMS_54B11"]
+  },
+  {
+    "forms": ["lahku minna", "abielu lahutada"],
+    "expand": ["lahutus", "abielu", "perekond"],
+    "domains": ["PKS"]
+  },
+  {
+    "forms": ["lapse elatis", "lapsele elatist", "elatist maksma", "elatist andma", "elatise nõue", "elatise noue"],
+    "expand": ["laps", "perekond", "elatis"],
+    "domains": ["PKS"],
+    "sections": ["PKS_100"]
+  },
+  {
+    "forms": ["lapse hooldus", "hooldusõigus", "hooldusoigus"],
+    "expand": ["laps", "hooldus", "perekond"],
+    "domains": ["PKS"]
+  },
+  {
+    "forms": ["mind peteti", "pettuse ohver", "pettus"],
+    "expand": ["pettus", "kuritegu", "karistus"],
+    "domains": ["KARS"]
+  },
+  {
+    "forms": ["varastati", "vargus", "vargusena"],
+    "expand": ["varas", "kuritegu", "karistus"],
+    "domains": ["KARS"],
+    "sections": ["KARS_199"]
+  },
+  {
+    "forms": ["isikuandmed", "isikuandmed avaldati", "minu andmed avaldati", "andmed lekkisid"],
+    "expand": ["isikuandmed", "andmekaitse", "privaatsus"],
+    "domains": ["IKS"]
+  },
+  {
+    "forms": ["korrakaitse ametnik", "korrakaitse seadus", "korrakaitseseadus", "rakendada sundi"],
+    "expand": ["korrakaitse", "korrakaitseseadus", "sund"],
+    "domains": ["KORS"]
+  },
+  {
+    "forms": ["vigane kaup", "puudusega kaup", "raha tagasi"],
+    "expand": ["tarbija", "puudus", "leping", "kahju"],
+    "domains": ["TKS", "VOS"]
+  },
+  {
+    "forms": ["ametniku otsus", "haldusorgani otsus", "ametiasutuse otsus", "ära kuulama", "ara kuulama", "ärakuulamine"],
+    "expand": ["haldusmenetlus", "haldusakt", "arakuulamine", "vaie"],
+    "domains": ["HMS", "HKMS"]
+  },
+  {
+    "forms": ["põhiõigus", "põhiõigused", "põhiõigusi", "põhiõiguste"],
+    "expand": ["pohioigus", "pohioigused", "riigivoim"],
+    "domains": ["PS"]
+  },
+  {
+    "forms": ["avalik teave", "avalikku teavet", "avaliku teabe", "teabenõue", "teabenoue"],
+    "expand": ["avalik", "teave", "teabenoue", "juurdepaas"],
+    "domains": ["AVTS"]
+  },
+  {
+    "forms": ["korteriühistu", "korteriuhistu", "ühistu koosolek", "uhistu koosolek"],
+    "expand": ["korteriuhistu", "korteriomand"],
+    "domains": ["KRTS"]
+  },
+  {
+    "forms": ["toandia", "toandja", "palla"],
+    "expand": ["tooandja", "tootasu", "palgapaev", "maksma"],
+    "domains": ["TLS"],
+    "sections": ["TLS_33"]
+  },
+  {
+    "forms": ["tagatis raha", "kolme kuu jagu"],
+    "expand": ["tagatisraha", "uurileping", "eluruum"],
+    "domains": ["VOS"],
+    "sections": ["VOS_308"]
+  },
+  {
+    "forms": ["naabrimees", "aia minu maa", "aia maa peale"],
+    "expand": ["kinnisasi", "omandi kaitse", "rikkumine", "piirirajatis"],
+    "domains": ["AOS"],
+    "sections": ["AOS_89", "AOS_151"]
+  },
+  {
+    "forms": ["kogu palga", "pangast kogu", "kogu sissetuleku", "konto täielikult arestiti"],
+    "expand": ["sissetuleku arest", "arestist vabastamine", "sissenouet poorata", "mittearestitav"],
+    "domains": ["TMS"],
+    "sections": ["TMS_132", "TMS_133"]
+  },
+  {
+    "forms": ["mendid", "nime ja dokumenti", "dokumenti küsida", "dokumenti kusida"],
+    "expand": ["politsei", "isikusamasus", "tuvastamine", "dokument"],
+    "domains": ["KORS"],
+    "sections": ["KORS_32"]
+  },
+  {
+    "forms": ["netipoest", "14 paeva", "14 päeva", "tagasi saata"],
+    "expand": ["sidevahend", "lepingust taganeda", "taganemisoigus", "14 paeva"],
+    "domains": ["VOS"],
+    "sections": ["VOS_56"]
+  },
+  {
+    "forms": ["läksid lekkesse", "laksid lekkesse", "andmeleke", "andmed lekkisid"],
+    "expand": ["isikuandmed", "rikkumine", "teavitamine", "andmekaitse"],
+    "domains": ["IKS"],
+    "sections": ["IKS_45"]
+  },
+  {
+    "forms": ["remont on mega kallis", "hääletus kahtlane", "haaletus kahtlane"],
+    "expand": ["korteriuhistu", "majandamiskulud", "otsus", "haalteenamus"],
+    "domains": ["KRTS"],
+    "sections": ["KRTS_22", "KRTS_35", "KRTS_40"]
+  },
+  {
+    "forms": ["tood pole", "tööd pole", "toopuudus"],
+    "expand": ["koondamine", "toomahu vahenemine", "ulesutlemine"],
+    "domains": ["TLS"],
+    "sections": ["TLS_89"]
+  },
+  {
+    "forms": ["maksuameti otsus", "vastu vaielda"],
+    "expand": ["maksuhaldur", "vaide esitamise oigus", "vastuväide", "maksuotsus"],
+    "domains": ["MKS"],
+    "sections": ["MKS_137"]
+  },
+  {
+    "forms": ["ei kuulanud mind", "kuulanud enne otsust"],
+    "expand": ["arakuulamine", "arvamus", "vastuvaide", "haldusakt"],
+    "domains": ["HMS"],
+    "sections": ["HMS_40"]
+  },
+  {
+    "forms": ["riigilt dokumenti", "dokumenti näha", "dokumenti naha", "kaua nad vastata"],
+    "expand": ["teabenoue taitmise tahtaeg", "viie toopaeva", "juurdepaas", "avalik teave"],
+    "domains": ["AVTS"],
+    "sections": ["AVTS_18"]
+  },
+  {
+    "forms": ["ei maksa sentigi", "lapse isa ei maksa", "lapse ema ei maksa"],
+    "expand": ["elatis", "ulalpidamise andmise viis", "perioodiline maksmine", "vanem"],
+    "domains": ["PKS"],
+    "sections": ["PKS_100"]
+  },
+  {
+    "forms": ["ei lase mul last näha", "ei lase mul last naha", "last näha", "last naha"],
+    "expand": ["laps", "vanem", "suhtlemisoigus", "suhtlemine"],
+    "domains": ["PKS"],
+    "sections": ["PKS_143"]
+  },
+  {
+    "forms": ["internetist ostetud", "pood keeldub tagasi"],
+    "expand": ["tarbija", "kaugleping", "lepingutingimus", "kahju"],
+    "domains": ["TKS", "VOS"],
+    "sections": ["VOS_56", "VOS_217", "TKS_12", "TKS_46"]
+  },
+  {
+    "forms": ["eksitav müügivõte", "eksitav muugivote", "eksitavat müügivõtet", "eksitavat muugivotet"],
+    "expand": ["ebaaus kauplemisvote", "tarbija", "kahju huvitamine"],
+    "domains": ["TKS", "VOS"],
+    "sections": ["TKS_13", "VOS_127"]
+  },
+  {
+    "forms": ["abipolitseinik kontrollis", "abipolitseiniku volitused"],
+    "expand": ["abipolitseinik", "isikusamasus", "kinnipidamine"],
+    "domains": ["ABIPOLS", "KORS"],
+    "sections": ["ABIPOLS_16", "KORS_32"]
+  },
+  {
+    "forms": ["abipolitseinik pidas"],
+    "expand": ["abipolitseinik", "kinnipidamine", "isiku kinnipidamine"],
+    "domains": ["ABIPOLS", "KORS"],
+    "sections": ["ABIPOLS_16", "KORS_46"]
+  },
+  {
+    "forms": ["abipolitseinik kasutas", "abipolitseiniku ja vahetu sunni"],
+    "expand": ["abipolitseinik", "vahetu sund", "joud"],
+    "domains": ["ABIPOLS", "KORS"],
+    "sections": ["ABIPOLS_28", "ABIPOLS_35", "KORS_74"]
+  },
+  {
+    "forms": ["abipoliteinik"],
+    "expand": ["abipolitseinik", "kinnipidamine"],
+    "domains": ["ABIPOLS"],
+    "sections": ["ABIPOLS_16"]
+  },
+  {
+    "forms": ["halduskohtusse minna", "vaide- ja kaebekord", "vaide ja kaebekord"],
+    "expand": ["vaie", "haldusakt", "halduskaebus", "kaebetahtaeg"],
+    "domains": ["HMS", "HKMS"],
+    "sections": ["HMS_71", "HMS_75", "HKMS_46"]
+  },
+  {
+    "forms": ["maksuameti otsus rikub", "kohtus vaidlustada"],
+    "expand": ["maksuhaldur", "vaie", "halduskaebus", "kaebetahtaeg"],
+    "domains": ["MKS", "HKMS"],
+    "sections": ["MKS_137", "HKMS_46"]
+  },
+  {
+    "forms": ["väärteootsuse", "vaarteootsuse", "parkimise eest", "maakohtus vaidlustada"],
+    "expand": ["liiklus", "parkimine", "vaartegu", "kaebus"],
+    "domains": ["LS", "VTMS"],
+    "sections": ["LS_20", "VTMS_114"]
+  },
+  {
+    "forms": ["liiklusõnnetuse", "liiklusonnetuse", "auto sai kahjustada"],
+    "expand": ["liiklusonnetus", "juhi kohustus", "kahju", "kahju huvitamine"],
+    "domains": ["LS", "VOS"],
+    "sections": ["LS_169", "VOS_127"]
+  },
+  {
+    "forms": ["kohtutäitur alustas müüki", "kohtutaitur alustas muuki", "korteri võõrandamiseks"],
+    "expand": ["korteriomand", "voorandamine", "kohtutaitur", "enampakkumine"],
+    "domains": ["KRTS", "TMS"],
+    "sections": ["KRTS_32", "TMS_24", "TMS_78"]
+  },
+  {
+    "forms": ["juurdepääsu üle naabri", "juurdepaasu ule naabri", "puudub teeühendus", "puudub teeuhendus"],
+    "expand": ["juurdepaas", "kinnisasi", "avaldus", "hagita menetlus"],
+    "domains": ["AOS", "TSMS"],
+    "sections": ["AOS_156", "TSMS_363"]
+  },
+  {
+    "forms": ["ametnikule määrati distsiplinaarkaristus", "ametnikule maarati distsiplinaarkaristus", "ilma teda ära kuulamata"],
+    "expand": ["ametnik", "distsiplinaarmenetlus", "arakuulamine", "pohjendamine"],
+    "domains": ["ATS", "HMS"],
+    "sections": ["ATS_69", "HMS_40", "HMS_56"]
+  },
+  {
+    "forms": ["politsei pidas mind", "ohu tõrjumiseks kinni", "ohu torjumiseks kinni"],
+    "expand": ["kinnipidamine", "vabadus", "proportsionaalsus", "vahetu sund"],
+    "domains": ["KORS", "PS"],
+    "sections": ["KORS_46", "PS_20"]
+  },
+  {
+    "forms": ["politsei inimese kinni", "politsei mind kinni", "politsei kinni pidada"],
+    "expand": ["isiku kinnipidamine", "füüsiline vabadus", "ohu torjumine"],
+    "domains": ["KORS"],
+    "sections": ["KORS_46"]
+  },
+  {
+    "forms": ["kinnistu sundvõõrandada", "kinnistu sundvoorandada", "sundvõõrandamine"],
+    "expand": ["sundvoorandamine", "omand", "haldusakt", "pohjendamine"],
+    "domains": ["HMS", "PS"],
+    "sections": ["PS_32", "HMS_56"]
+  },
+  {
+    "forms": ["kohtult suhtlemiskorda", "lapsega suhelda"],
+    "expand": ["suhtlemisoigus", "laps", "avaldus", "hagita menetlus"],
+    "domains": ["PKS", "TSMS"],
+    "sections": ["PKS_143", "TSMS_550"]
+  },
+  {
+    "forms": ["elatis on välja mõistetud", "elatis on valja moistetud", "kohtutäitur arestib", "kohtutaitur arestib"],
+    "expand": ["elatis", "ulalpidamine", "sundtaitmine", "arest"],
+    "domains": ["PKS", "TMS"],
+    "sections": ["PKS_100", "TMS_132", "TMS_133"]
+  },
+  {
+    "forms": ["kätte toimetada", "katte toimetada", "kättetoimetamise viis", "kattetoimetamise viis"],
+    "expand": ["kattetoimetamine", "haldusakt", "postiga", "elektrooniliselt"],
+    "domains": ["HMS"],
+    "sections": ["HMS_25"]
+  },
+  {
+    "forms": ["tapmise ähvardamine", "tapmisega ähvardamine", "ähvardatakse ära tappa", "ahvardatakse ara tappa"],
+    "expand": ["ahvardamine", "tapmisega ahvardamine", "kuritegu"],
+    "domains": ["KARS"],
+    "sections": ["KARS_120"]
+  },
+  {
+    "forms": ["põhiõiguste piiramine", "pohioiguste piiramine", "põhiõiguste piiramisele", "pohioiguste piiramisele"],
+    "expand": ["pohioiguse piiramine", "demokraatlik uhiskond", "vajalik"],
+    "domains": ["PS"],
+    "sections": ["PS_11"]
+  },
+  {
+    "forms": ["seaduse ees võrdselt", "seaduse ees vordselt", "seaduse ees võrdsed", "seaduse ees vordsed"],
+    "expand": ["vordsus", "vordne kohtlemine", "diskrimineerimine"],
+    "domains": ["PS"],
+    "sections": ["PS_12"]
+  },
+  {
+    "forms": ["haldusakti peale vaie", "toimingu peale vaie", "haldusakti või toimingu peale vaie", "haldusakti voi toimingu peale vaie"],
+    "expand": ["vaide esitamise oigus", "haldusakt", "toiming"],
+    "domains": ["HMS"],
+    "sections": ["HMS_71"]
+  },
+  {
+    "forms": ["halduskohtule esitatavas kaebuses", "halduskohtule esitatava kaebuse nõuded", "halduskohtule esitatava kaebuse nouded"],
+    "expand": ["halduskaebus", "kaebuse noue", "tuhistamiskaebus"],
+    "domains": ["HKMS"],
+    "sections": ["HKMS_37"]
+  },
+  {
+    "forms": ["halduskohtusse oma õiguse kaitseks", "halduskohtusse oma oiguse kaitseks", "ainult oma õiguse kaitseks", "ainult oma oiguse kaitseks"],
+    "expand": ["kaebeõigus", "halduskohtusse poordumine", "oiguste kaitse"],
+    "domains": ["HKMS"],
+    "sections": ["HKMS_44"]
+  },
+  {
+    "forms": ["haldusakti tühistamiseks kohtusse", "haldusakti tuhistamiseks kohtusse", "tühistamiskaebuse tähtaeg", "tuhistamiskaebuse tahtaeg"],
+    "expand": ["tuhistamiskaebus", "kaebetahtaeg", "haldusakt"],
+    "domains": ["HKMS"],
+    "sections": ["HKMS_46"]
+  },
+  {
+    "forms": ["esialgne õiguskaitse", "esialgset õiguskaitset", "esialgne oiguskaitse", "esialgset oiguskaitset"],
+    "expand": ["esialgne oiguskaitse", "halduskohtumenetlus"],
+    "domains": ["HKMS"],
+    "sections": ["HKMS_249"]
+  },
+  {
+    "forms": ["tsiviilkohtus oma väiteid tõendama", "tsiviilkohtus oma vaiteid toendama", "tõendamiskoormus tsiviilkohtus", "toendamiskoormus tsiviilkohtus"],
+    "expand": ["toendamiskohustus", "tsiviilkohtumenetlus", "toendid"],
+    "domains": ["TSMS"],
+    "sections": ["TSMS_230"]
+  },
+  {
+    "forms": ["maakohtu otsuse peale apellatsiooni", "maakohtu otsuse apellatsioon", "tsiviilasjas apellatsiooni tähtaeg", "tsiviilasjas apellatsiooni tahtaeg"],
+    "expand": ["apellatsioonkaebus", "maakohtu otsus", "tahtaeg"],
+    "domains": ["TSMS"],
+    "sections": ["TSMS_632"]
+  },
+  {
+    "forms": ["väärteoprotokoll", "vaarteoprotokoll", "väärteoprotokolli sisu", "vaarteoprotokolli sisu"],
+    "expand": ["vaarteoprotokoll", "protokolli sisu", "vaarteomenetlus"],
+    "domains": ["VTMS"],
+    "sections": ["VTMS_69"]
+  },
+  {
+    "forms": ["mootorsõidukijuht alkoholijoobes", "mootorsoidukijuht alkoholijoobes", "alkoholijoobes juht"],
+    "expand": ["alkoholijoove", "mootorsoidukijuht", "liiklus"],
+    "domains": ["LS"],
+    "sections": ["LS_69"]
+  },
+  {
+    "forms": ["laps nõustuda oma andmete töötlemisega", "laps noustuda oma andmete tootlemisega", "oma andmete töötlemisega veebiteenuses", "oma andmete tootlemisega veebiteenuses", "lapse nõusolek veebiteenuses", "lapse nousolek veebiteenuses"],
+    "expand": ["lapse nousolek", "infoühiskonna teenus", "isikuandmed"],
+    "domains": ["IKS"],
+    "sections": ["IKS_8"]
+  },
+  {
+    "forms": ["õiguskaitseasutus töödelda eriliiki isikuandmeid", "oiguskaitseasutus toodelda eriliiki isikuandmeid", "õiguskaitseasutuse eriliiki isikuandmed", "oiguskaitseasutuse eriliiki isikuandmed"],
+    "expand": ["eriliiki isikuandmed", "oiguskaitseasutus", "andmetootlus"],
+    "domains": ["IKS"],
+    "sections": ["IKS_20"]
+  },
+  {
+    "forms": ["tarbija õiguste rikkumisega pöörduda", "tarbija oiguste rikkumisega poorduda", "tarbijakaitseamet", "tarbijakaitse ja tehnilise järelevalve amet"],
+    "expand": ["tarbija oiguste kaitse", "tarbijakaitseamet", "jarelevalve"],
+    "domains": ["TKS"],
+    "sections": ["TKS_21"]
+  },
+  {
+    "forms": ["valdaja nõuda kui valdust rikutakse", "valdaja nouda kui valdust rikutakse", "valdust rikutakse", "valduse rikkumise lõpetamist", "valduse rikkumise lopetamist"],
+    "expand": ["valduse kaitse", "valduse rikkumine", "nõue"],
+    "domains": ["AOS"],
+    "sections": ["AOS_44"]
+  },
+  {
+    "forms": ["täitemenetluse nõude aegumise tõttu", "taitemenetluse noude aegumise tottu", "täitemenetluse lõpetamine aegumise tõttu", "taitemenetluse lopetamine aegumise tottu"],
+    "expand": ["taitemenetluse lopetamine", "aegumine", "kohtutaitur"],
+    "domains": ["TMS"],
+    "sections": ["TMS_48B1"]
+  },
+  {
+    "forms": ["kuusissetulekust arestimata", "sissetulekust arestimata", "arestimata jääma", "arestimata jaama", "sissetuleku arestimise piirid", "mittearestitav sissetulek"],
+    "expand": ["sissetuleku arest", "mittearestitav", "tootasu"],
+    "domains": ["TMS"],
+    "sections": ["TMS_132"]
+  },
+  {
+    "forms": ["ametniku katseaeg", "ametniku katseaja", "avaliku teenistuse katseaeg"],
+    "expand": ["ametniku katseaeg", "avalik teenistus"],
+    "domains": ["ATS"],
+    "sections": ["ATS_24"]
+  },
+  {
+    "forms": ["ametniku palk", "ametniku palga", "ametniku töötasu", "ametniku tootasu"],
+    "expand": ["ametniku palk", "põhipalk", "muutuvpalk"],
+    "domains": ["ATS"],
+    "sections": ["ATS_61"]
+  },
+  {
+    "forms": ["ametniku distsiplinaarsüütegu", "ametniku distsiplinaarsüüteoks", "ametniku distsiplinaarsüüteona", "ametniku distsiplinaarsyytegu"],
+    "expand": ["distsiplinaarsüütegu", "teenistuskohustus", "ametnik"],
+    "domains": ["ATS"],
+    "sections": ["ATS_69"]
+  },
+  {
+    "forms": ["asutusesiseseks kasutamiseks", "asutusesisese kasutamise alus", "asutusesisese teabe alus"],
+    "expand": ["asutusesisene teave", "juurdepääsupiirang", "avalik teave"],
+    "domains": ["AVTS"],
+    "sections": ["AVTS_35"]
+  }
+]

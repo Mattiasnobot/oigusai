@@ -1,0 +1,24 @@
+{
+  "name": "V10 Step 1C — move model execution and source verification into AnalysisOrchestrator",
+  "base_commit": "0f5fef9ad076aada59855fe94a368924c58aacdd",
+  "base_files": [
+    {
+      "path": "main.py",
+      "git_blob_sha": "f6eb4407c5d65c1d8232be7fe0dd2d790f806c10"
+    },
+    {
+      "path": "services/analysis_orchestrator.py",
+      "git_blob_sha": "e2feb146cf2cf9ce72c02b3e396bc1ef753f9b97"
+    },
+    {
+      "path": "tests/test_analysis_orchestrator.py",
+      "git_blob_sha": "36039b0b247c9c1cff62afd9fc0e1752d54ce715"
+    }
+  ],
+  "new_files": [],
+  "tests": [
+    ["{python}", "-m", "unittest", "tests.test_analysis_orchestrator"],
+    ["{python}", "-m", "unittest", "tests.test_retrieval_policy"],
+    ["{python}", "-m", "unittest", "tests.test_main"]
+  ]
+}

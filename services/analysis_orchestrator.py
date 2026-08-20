@@ -14,6 +14,9 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from services.analysis_pipeline import AnalysisPipelineRun
+from services.case_intake import CaseIntakeService
+from services.documents import LocalDocumentService
+from services.offline_ai import OfflineAIService
 from services.legal_search import HistoricalDataUnavailableError, LegalSearchService
 from services.matters import MatterNotFoundError
 from services.retrieval_policy import RetrievalPlan, RetrievalPolicy
@@ -47,6 +50,21 @@ class PreparedAnalysis:
     analysis_laws: List[Dict[str, Any]]
     relevance_text: str
     route_plan: RetrievalPlan
+
+
+@dataclass
+class ExecutedAnalysis:
+    """Model and source-verification result ready for response packaging."""
+
+    analysis_case: str
+    analysis_laws: List[Dict[str, Any]]
+    document_claims: List[Dict[str, Any]]
+    structured_claims: List[Dict[str, Any]]
+    analysis_text: str
+    is_mock: bool
+    fallback_used: bool
+    coverage_fallback_used: bool
+    verified_sources: List[str]
 
 
 class AnalysisOrchestrator:
@@ -234,4 +252,295 @@ class AnalysisOrchestrator:
             analysis_laws=analysis_laws,
             relevance_text=relevance_text,
             route_plan=route_plan,
+        )
+
+    async def execute(
+        self,
+        request: Any,
+        prepared: PreparedAnalysis,
+        *,
+        ai_service: Any,
+        source_verifier: Any,
+    ) -> ExecutedAnalysis:
+        """Run model analysis and return only source-verified output."""
+        pipeline = prepared.pipeline
+        current_turn = prepared.current_turn
+        answer_requirements = prepared.answer_requirements
+        document_spans = prepared.document_spans
+        relevance_text = prepared.relevance_text
+        route_plan = prepared.route_plan
+        analysis_laws = list(prepared.analysis_laws)
+
+        fallback_used = False
+        coverage_fallback_used = False
+        case_description = str(getattr(request, "case_description", "") or "")
+        analysis_case = (
+            CaseIntakeService._user_evidence_text(case_description)
+            or case_description.strip()
+        )
+        case_context = str(getattr(request, "case_context", "") or "").strip()
+        if len(analysis_case) > 6000:
+            if case_context:
+                analysis_case = (
+                    f"Kasutaja algteksti algus:\n{analysis_case[:3000]}\n\n"
+                    f"Kontrollitud juhtumikokkuvõte:\n{case_context}"
+                )[:6000]
+            else:
+                analysis_case = (
+                    f"Kasutaja algteksti algus:\n{analysis_case[:4000]}\n\n"
+                    f"Kasutaja algteksti lõpp:\n{analysis_case[-1500:]}"
+                )
+
+        normalized_current = " ".join(current_turn.casefold().split())
+        normalized_analysis_case = " ".join(analysis_case.casefold().split())
+        repeat_current_turn = bool(
+            normalized_current and normalized_current != normalized_analysis_case
+        )
+        if current_turn and (repeat_current_turn or answer_requirements):
+            requirement_text = "\n".join(
+                f"- {value}" for value in answer_requirements
+            )
+            if repeat_current_turn:
+                analysis_case += (
+                    f"\n\nKASUTAJA VIIMANE SÕNUM:\n{current_turn[:3000]}\n\n"
+                    "Kasuta viimast sõnumit koos alltoodud vastusekohustustega. "
+                    "Varasem tekst on ainult taust."
+                )
+            if requirement_text:
+                analysis_case += f"\nVASTUS PEAB KÄSITLEMA:\n{requirement_text}"
+
+        model_case = analysis_case
+        if document_spans and not isinstance(ai_service, OfflineAIService):
+            document_context = "\n".join(
+                f"[{span['span_id']}] {span['file_name']}, lk {span['page']}: "
+                f"{span['text']}"
+                for span in document_spans
+            )
+            model_case += (
+                "\n\nKONTROLLITUD DOKUMENDIKATKENDID:\n"
+                + document_context
+                + "\nKasuta neid ainult juhtumi faktilise taustana. Ära muuda OCR-teksti "
+                "seaduseallikaks ega mõtle puuduvaid dokumente juurde."
+            )
+
+        document_claims: List[Dict[str, Any]] = []
+        for index, span in enumerate(document_spans[:4], start=1):
+            excerpt = LocalDocumentService.focused_excerpt(span, relevance_text)
+            method = str(span.get("method") or "text")
+            document_claims.append({
+                "claim_id": f"DOC-{index}",
+                "kind": "document_excerpt",
+                "text": excerpt["text"],
+                "verification_status": (
+                    "OCR_REVIEW_REQUIRED"
+                    if method == "ocr"
+                    else "DOCUMENT_TEXT_VERIFIED"
+                ),
+                "sources": [{
+                    "kind": "document",
+                    "id": span["span_id"],
+                    "document_id": span["document_id"],
+                    "title": span["file_name"],
+                    "source": f"Dokument, lk {span['page']}",
+                    "evidence": excerpt["text"],
+                    "page": span["page"],
+                    "start": excerpt["start"],
+                    "end": excerpt["end"],
+                    "method": method,
+                }],
+            })
+
+        structured_claims: List[Dict[str, Any]] = []
+        try:
+            if isinstance(ai_service, OfflineAIService):
+                analysis_text, is_mock, structured_claims = await self.run_guarded_work(
+                    "analysis",
+                    ai_service.analyze_case_structured,
+                    model_case,
+                    analysis_laws,
+                    str(getattr(request, "event_date", "") or ""),
+                    document_spans,
+                )
+            else:
+                analysis_text, is_mock = await self.run_guarded_work(
+                    "analysis",
+                    ai_service.analyze_case,
+                    model_case,
+                    analysis_laws,
+                    str(getattr(request, "event_date", "") or ""),
+                )
+        except Exception as exc:
+            self.logger.error(
+                "AI analysis unavailable; returning verified source digest: %s",
+                exc,
+            )
+            analysis_text = ai_service.build_source_only_fallback(
+                analysis_case, analysis_laws
+            )
+            if isinstance(ai_service, OfflineAIService):
+                structured_claims = ai_service.claims_from_verified_analysis(
+                    analysis_text, analysis_laws
+                )
+            is_mock = False
+            fallback_used = True
+
+        normalized_answer = " ".join(str(analysis_text).casefold().split())
+        form_answer_complete = (
+            "kirjalikku taasesitamist võimaldavas vormis" in normalized_answer
+            and "tühine" in normalized_answer
+        )
+        if route_plan.employment_form_question and not form_answer_complete:
+            form_law = next(
+                (
+                    law for law in analysis_laws
+                    if str(law.get("id", "")).upper() == "TLS_95"
+                ),
+                None,
+            )
+            if form_law is None and isinstance(
+                self.legal_service, LegalSearchService
+            ):
+                try:
+                    form_law = self.legal_service.get_law_by_id("TLS_95")
+                except ValueError:
+                    form_law = None
+            if form_law is None:
+                self.logger.error(
+                    "TLS_95 missing for mandatory employment form coverage"
+                )
+                raise AnalysisOrchestrationError(
+                    500, "Töölepingu ülesütlemise vorminõude allikas puudub."
+                )
+            analysis_laws = [form_law]
+            analysis_text = (
+                "OLUKORD:\n"
+                "Küsimus puudutab, kas töölepingu saab üles öelda ainult suuliselt.\n\n"
+                "LÜHIVASTUS:\n"
+                "Töölepingu ülesütlemisavaldus tuleb teha kirjalikku taasesitamist "
+                "võimaldavas vormis. Vorminõuet rikkudes tehtud ülesütlemisavaldus "
+                "on tühine [TLS_95].\n\n"
+                "ÕIGUSLIK KOHALDAMINE:\n"
+                "Tööandja peab ülesütlemist põhjendama [TLS_95]. Põhjendus peab samuti olema "
+                "kirjalikku taasesitamist võimaldavas vormis [TLS_95].\n\n"
+                "SOOVITUSED:\n"
+                "1. Säilita tööandjaga peetud kirjavahetus ja pane suulise vestluse aeg "
+                "ning sisu enda jaoks kirja.\n"
+                "2. Küsi tööandjalt ülesütlemisavaldus ja selle põhjendus kirjalikku "
+                "taasesitamist võimaldavas vormis.\n\n"
+                "KASUTATUD ALLIKAD:\n"
+                "[TLS_95]"
+            )
+            if isinstance(ai_service, OfflineAIService):
+                structured_claims = ai_service.claims_from_verified_analysis(
+                    analysis_text, analysis_laws
+                )
+            else:
+                structured_claims = []
+            is_mock = False
+            fallback_used = True
+            coverage_fallback_used = True
+            self.logger.warning(
+                "Model answer missed mandatory employment form coverage; "
+                "returning verified TLS_95 answer"
+            )
+
+        is_valid, verified_sources = source_verifier.verify_sources(
+            analysis_text, analysis_laws
+        )
+        if not is_valid and not fallback_used:
+            self.logger.warning(
+                "AI response failed citation verification; returning verified source digest"
+            )
+            analysis_text = ai_service.build_source_only_fallback(
+                analysis_case, analysis_laws
+            )
+            if isinstance(ai_service, OfflineAIService):
+                structured_claims = ai_service.claims_from_verified_analysis(
+                    analysis_text, analysis_laws
+                )
+            is_valid, verified_sources = source_verifier.verify_sources(
+                analysis_text, analysis_laws
+            )
+            fallback_used = True
+
+        if not is_valid:
+            self.logger.error(
+                "Deterministic source digest failed citation verification"
+            )
+            raise AnalysisOrchestrationError(
+                500, "Kontrollitud allikate kuvamine ebaõnnestus."
+            )
+
+        cited_ids = set(verified_sources)
+        cited_laws = [
+            law for law in analysis_laws
+            if str(law.get("id", "")).upper() in cited_ids
+        ]
+        answer_relevance = self.relevance_verifier.verify_answer(
+            relevance_text, analysis_text, cited_laws
+        )
+        if not answer_relevance.relevant and not fallback_used:
+            self.logger.warning(
+                "AI response failed semantic relevance check; "
+                "returning verified source digest"
+            )
+            analysis_text = ai_service.build_source_only_fallback(
+                analysis_case, analysis_laws
+            )
+            if isinstance(ai_service, OfflineAIService):
+                structured_claims = ai_service.claims_from_verified_analysis(
+                    analysis_text, analysis_laws
+                )
+            is_valid, verified_sources = source_verifier.verify_sources(
+                analysis_text, analysis_laws
+            )
+            fallback_used = True
+            cited_ids = set(verified_sources)
+            cited_laws = [
+                law for law in analysis_laws
+                if str(law.get("id", "")).upper() in cited_ids
+            ]
+            answer_relevance = self.relevance_verifier.verify_answer(
+                relevance_text, analysis_text, cited_laws
+            )
+
+        if not is_valid:
+            self.logger.error("Relevance fallback failed citation verification")
+            raise AnalysisOrchestrationError(
+                500, "Kontrollitud allikate kuvamine ebaõnnestus."
+            )
+        if not answer_relevance.relevant:
+            self.logger.warning(
+                "Final answer failed semantic relevance check for concepts: %s",
+                ", ".join(answer_relevance.missing_concepts),
+            )
+            raise AnalysisOrchestrationError(
+                422,
+                answer_relevance.clarification
+                or self.relevance_verifier.clarification_for(answer_relevance),
+            )
+
+        pipeline.complete(
+            "model_analysis",
+            fallback=fallback_used,
+            mock=is_mock,
+            structured_claim_count=len(structured_claims),
+        )
+        pipeline.complete(
+            "source_verification",
+            citation_valid=is_valid,
+            semantic_relevance=answer_relevance.relevant,
+            verified_source_count=len(verified_sources),
+        )
+
+        return ExecutedAnalysis(
+            analysis_case=analysis_case,
+            analysis_laws=analysis_laws,
+            document_claims=document_claims,
+            structured_claims=structured_claims,
+            analysis_text=analysis_text,
+            is_mock=bool(is_mock),
+            fallback_used=fallback_used,
+            coverage_fallback_used=coverage_fallback_used,
+            verified_sources=list(verified_sources),
         )

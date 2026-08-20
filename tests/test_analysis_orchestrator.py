@@ -228,6 +228,81 @@ class AnalysisOrchestratorTests(unittest.TestCase):
         self.assertIn("kirjalikku taasesitamist võimaldavas vormis", executed.analysis_text)
         self.assertIn("on tühine", executed.analysis_text)
 
+    def test_finalize_verifies_evidence_packages_answer_and_records_metrics(self):
+        orchestrator = AnalysisOrchestrator(
+            legal_service=Mock(),
+            matter_store=None,
+            relevance_verifier=Mock(),
+            run_guarded_work=immediate_work,
+        )
+        pipeline = AnalysisPipelineRun()
+        for stage in (
+            "case_understanding",
+            "document_evidence",
+            "legal_retrieval",
+            "model_analysis",
+            "source_verification",
+        ):
+            pipeline.complete(stage)
+        prepared = SimpleNamespace(
+            analysis_started=0.0,
+            pipeline=pipeline,
+            document_spans=[],
+            case_card={},
+        )
+        claim = {
+            "claim_id": "LAW-1",
+            "kind": "legal",
+            "text": "Dokument toimetatakse kätte.",
+            "verification_status": "EVIDENCE_VERIFIED",
+            "sources": [{"id": "HMS_25"}],
+        }
+        executed = SimpleNamespace(
+            analysis_laws=[{
+                "id": "HMS_25",
+                "title": "HMS § 25",
+                "text": "Dokument toimetatakse kätte.",
+                "source": "RT",
+            }],
+            document_claims=[],
+            structured_claims=[claim],
+            analysis_text="Dokument toimetatakse kätte [HMS_25].",
+            is_mock=False,
+            fallback_used=False,
+            coverage_fallback_used=False,
+            verified_sources=["HMS_25"],
+        )
+        request = SimpleNamespace(
+            case_description="Kuidas otsus kätte toimetatakse?",
+            event_date=None,
+        )
+        evidence_verifier = Mock()
+        evidence_verifier.verify.return_value = (True, [claim])
+        urgency_analyzer = Mock()
+        urgency_analyzer.analyze.return_value = {"urgent": False, "questions": []}
+        verified_answer_builder = Mock()
+        verified_answer_builder.build.return_value = {
+            "confidence": "supported",
+            "unknowns": [],
+        }
+        metrics_store = Mock()
+
+        finalized = orchestrator.finalize(
+            request,
+            prepared,
+            executed,
+            evidence_verifier=evidence_verifier,
+            urgency_analyzer=urgency_analyzer,
+            verified_answer_builder=verified_answer_builder,
+            metrics_store=metrics_store,
+        )
+
+        self.assertEqual(finalized["verification_status"], "EVIDENCE_VERIFIED")
+        self.assertEqual(finalized["verified_sources"], ["HMS_25"])
+        self.assertEqual(finalized["combined_claims"], [claim])
+        self.assertEqual(finalized["pipeline"]["status"], "completed")
+        metrics_store.record_analysis.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

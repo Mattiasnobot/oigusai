@@ -544,3 +544,135 @@ class AnalysisOrchestrator:
             coverage_fallback_used=coverage_fallback_used,
             verified_sources=list(verified_sources),
         )
+
+
+    def finalize(
+        self,
+        request: Any,
+        prepared: PreparedAnalysis,
+        executed: ExecutedAnalysis,
+        *,
+        evidence_verifier: Any,
+        urgency_analyzer: Any,
+        verified_answer_builder: Any,
+        metrics_store: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """Verify evidence and package the final HTTP-neutral analysis result."""
+        pipeline = prepared.pipeline
+        document_spans = prepared.document_spans
+        case_card = prepared.case_card
+        analysis_laws = list(executed.analysis_laws)
+        analysis_text = executed.analysis_text
+        fallback_used = executed.fallback_used
+        verified_sources = list(executed.verified_sources)
+
+        warning = (
+            "Viidete ID-d ja mudeli valitud tõendikatkendid on kontrollitud etteantud "
+            "õigusallikate vastu, kuid see ei tõenda automaatselt iga järelduse materiaalset "
+            "õigsust. Tegemist on esmase analüüsiga, mitte õigusnõuga."
+        )
+        if executed.is_mock:
+            warning = "TESTREŽIIM: Ollama vastus on näidisvastus. " + warning
+        if executed.coverage_fallback_used:
+            warning = (
+                "Vastus on piiritletud töölepingu ülesütlemise vorminõudega ja põhineb "
+                "kontrollitud TLS §-l 95. Tegemist on esmase selgituse, mitte õigusnõuga."
+            )
+        elif fallback_used:
+            warning = (
+                "Selgitus põhineb kontrollitud õigusallikatel. Täpsema vastuse saab anda "
+                "dokumendi pealkirja ja sellele märgitud rikkumise põhjal."
+            )
+        if document_spans:
+            warning += (
+                " Dokumendikatkendid on seotud faili ja leheküljega; OCR-teksti puhul "
+                "tuleb olulised nimed, kuupäevad ja summad originaalilt üle kontrollida."
+            )
+
+        combined_claims = [
+            *executed.document_claims,
+            *executed.structured_claims,
+        ]
+        evidence_valid = False
+        if combined_claims:
+            evidence_valid, combined_claims = evidence_verifier.verify(
+                combined_claims,
+                analysis_laws,
+                document_spans,
+            )
+            if not evidence_valid:
+                self.logger.error("Structured evidence failed the V7 API boundary")
+                raise AnalysisOrchestrationError(
+                    500, "Kontrollitud tõendite kuvamine ebaõnnestus."
+                )
+        pipeline.complete(
+            "evidence_verification",
+            valid=evidence_valid or not combined_claims,
+            claim_count=len(combined_claims),
+        )
+
+        has_ocr_evidence = any(
+            claim.get("verification_status") == "OCR_REVIEW_REQUIRED"
+            for claim in combined_claims
+        )
+        has_cross_source_comparison = any(
+            claim.get("kind") == "inference" for claim in combined_claims
+        )
+        verification_status = (
+            "SOURCE_ONLY_FALLBACK"
+            if fallback_used
+            else "OCR_REVIEW_REQUIRED" if has_ocr_evidence
+            else "INPUTS_VERIFIED" if has_cross_source_comparison
+            else "EVIDENCE_VERIFIED"
+            if evidence_valid
+            and executed.structured_claims
+            and all(
+                claim.get("verification_status") == "EVIDENCE_VERIFIED"
+                for claim in executed.structured_claims
+            )
+            else "CITATIONS_VERIFIED"
+        )
+
+        urgency = urgency_analyzer.analyze(
+            str(getattr(request, "case_description", "") or ""),
+            event_date=str(getattr(request, "event_date", "") or ""),
+            document_spans=document_spans,
+        )
+        layered_answer = verified_answer_builder.build(
+            analysis=analysis_text,
+            claims=combined_claims,
+            verification_status=verification_status,
+            warning=warning,
+            case_card=case_card,
+            urgency=urgency,
+            fallback_used=fallback_used,
+        )
+        pipeline.complete(
+            "answer_packaging",
+            layered=True,
+            confidence=layered_answer.get("confidence", ""),
+            unknown_count=len(layered_answer.get("unknowns") or []),
+        )
+        pipeline_result = pipeline.public()
+
+        if metrics_store is not None:
+            metrics_store.record_analysis(
+                duration_ms=(time.perf_counter() - prepared.analysis_started) * 1000,
+                verification_status=verification_status,
+                fallback=fallback_used,
+                claim_count=len(combined_claims),
+                source_count=len(verified_sources),
+            )
+
+        return {
+            "analysis_text": analysis_text,
+            "analysis_laws": analysis_laws,
+            "verified_sources": verified_sources,
+            "is_mock": executed.is_mock,
+            "fallback_used": fallback_used,
+            "warning": warning,
+            "combined_claims": combined_claims,
+            "verification_status": verification_status,
+            "layered_answer": layered_answer,
+            "pipeline": pipeline_result,
+        }

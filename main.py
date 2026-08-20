@@ -799,12 +799,6 @@ async def analyze_case(
     except AnalysisOrchestrationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
-    analysis_started = prepared.analysis_started
-    pipeline = prepared.pipeline
-    document_spans = prepared.document_spans
-    case_card = prepared.case_card
-    query_context = prepared.query_context
-
     try:
         executed = await orchestrator.execute(
             request,
@@ -812,130 +806,35 @@ async def analyze_case(
             ai_service=ai_service,
             source_verifier=verifier,
         )
+        finalized = orchestrator.finalize(
+            request,
+            prepared,
+            executed,
+            evidence_verifier=evidence_verifier,
+            urgency_analyzer=urgency_analyzer,
+            verified_answer_builder=verified_answer_builder,
+            metrics_store=getattr(app.state, "metrics_store", None),
+        )
     except AnalysisOrchestrationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
-    analysis_case = executed.analysis_case
-    analysis_laws = executed.analysis_laws
-    document_claims = executed.document_claims
-    structured_claims = executed.structured_claims
-    analysis_text = executed.analysis_text
-    is_mock = executed.is_mock
-    fallback_used = executed.fallback_used
-    coverage_fallback_used = executed.coverage_fallback_used
-    verified_sources = executed.verified_sources
-
-    warning = (
-        "Viidete ID-d ja mudeli valitud tõendikatkendid on kontrollitud etteantud "
-        "õigusallikate vastu, kuid see ei tõenda automaatselt iga järelduse materiaalset "
-        "õigsust. Tegemist on esmase analüüsiga, mitte õigusnõuga."
-    )
-    if is_mock:
-        warning = "TESTREŽIIM: Ollama vastus on näidisvastus. " + warning
-    if coverage_fallback_used:
-        warning = (
-            "Vastus on piiritletud töölepingu ülesütlemise vorminõudega ja põhineb "
-            "kontrollitud TLS §-l 95. Tegemist on esmase selgituse, mitte õigusnõuga."
-        )
-    elif fallback_used:
-        warning = (
-            "Selgitus põhineb kontrollitud õigusallikatel. Täpsema vastuse saab anda "
-            "dokumendi pealkirja ja sellele märgitud rikkumise põhjal."
-        )
-    if document_spans:
-        warning += (
-            " Dokumendikatkendid on seotud faili ja leheküljega; OCR-teksti puhul "
-            "tuleb olulised nimed, kuupäevad ja summad originaalilt üle kontrollida."
-        )
-
-    combined_claims = [*document_claims, *structured_claims]
-    evidence_valid = False
-    if combined_claims:
-        evidence_valid, combined_claims = evidence_verifier.verify(
-            combined_claims,
-            analysis_laws,
-            document_spans,
-        )
-        if not evidence_valid:
-            logger.error("Structured evidence failed the V7 API boundary")
-            raise HTTPException(
-                status_code=500,
-                detail="Kontrollitud tõendite kuvamine ebaõnnestus.",
-            )
-    pipeline.complete(
-        "evidence_verification",
-        valid=evidence_valid or not combined_claims,
-        claim_count=len(combined_claims),
-    )
-
-    has_ocr_evidence = any(
-        claim.get("verification_status") == "OCR_REVIEW_REQUIRED"
-        for claim in combined_claims
-    )
-    has_cross_source_comparison = any(
-        claim.get("kind") == "inference" for claim in combined_claims
-    )
-
-    final_verification_status = (
-        "SOURCE_ONLY_FALLBACK"
-        if fallback_used
-        else "OCR_REVIEW_REQUIRED" if has_ocr_evidence
-        else "INPUTS_VERIFIED" if has_cross_source_comparison
-        else "EVIDENCE_VERIFIED" if evidence_valid and structured_claims
-        and all(
-            claim.get("verification_status") == "EVIDENCE_VERIFIED"
-            for claim in structured_claims
-        )
-        else "CITATIONS_VERIFIED"
-    )
-    urgency = urgency_analyzer.analyze(
-        request.case_description,
-        event_date=request.event_date or "",
-        document_spans=document_spans,
-    )
-    layered_answer = verified_answer_builder.build(
-        analysis=analysis_text,
-        claims=combined_claims,
-        verification_status=final_verification_status,
-        warning=warning,
-        case_card=case_card,
-        urgency=urgency,
-        fallback_used=fallback_used,
-    )
-    pipeline.complete(
-        "answer_packaging",
-        layered=True,
-        confidence=layered_answer.get("confidence", ""),
-        unknown_count=len(layered_answer.get("unknowns") or []),
-    )
-    pipeline_result = pipeline.public()
-    metrics = getattr(app.state, "metrics_store", None)
-    if metrics is not None:
-        metrics.record_analysis(
-            duration_ms=(time.perf_counter() - analysis_started) * 1000,
-            verification_status=final_verification_status,
-            fallback=fallback_used,
-            claim_count=len(combined_claims),
-            source_count=len(verified_sources),
-        )
-
     return CaseAnalysisResponse(
-        analysis=analysis_text,
-        sources_used=verified_sources,
-        verification_status=final_verification_status,
-        is_mock=is_mock,
-        warning=warning,
+        analysis=finalized["analysis_text"],
+        sources_used=finalized["verified_sources"],
+        verification_status=finalized["verification_status"],
+        is_mock=finalized["is_mock"],
+        warning=finalized["warning"],
         found_laws=[
             LawReference(id=law["id"], title=law["title"], source=law["source"])
-            for law in analysis_laws
+            for law in finalized["analysis_laws"]
         ],
-        query_interpretation=QueryInterpretationResponse(**query_context),
+        query_interpretation=QueryInterpretationResponse(**prepared.query_context),
         claims=[
             EvidenceClaimResponse(**claim)
-            for claim in combined_claims
+            for claim in finalized["combined_claims"]
         ],
-        layered_answer=layered_answer,
-        pipeline=pipeline_result,
+        layered_answer=finalized["layered_answer"],
+        pipeline=finalized["pipeline"],
     )
 
 

@@ -1,0 +1,39 @@
+{
+  "name": "V10 Step 1D — move evidence verification and final response packaging into AnalysisOrchestrator",
+  "base_commit": "01f6eb4b61b0a1b49738374b812d16bd1a16c883",
+  "base_files": [
+    {
+      "path": "main.py",
+      "git_blob_sha": "947a6dba6538ea3b9759966f8584a6c82b1dc198"
+    },
+    {
+      "path": "services/analysis_orchestrator.py",
+      "git_blob_sha": "3ed22c3c73d3ffee05449e615d39eb0d6368c2ee"
+    },
+    {
+      "path": "tests/test_analysis_orchestrator.py",
+      "git_blob_sha": "3fbb724fb1e53c096b832d58064563d9ec106fe7"
+    }
+  ],
+  "new_files": [],
+  "tests": [
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_analysis_orchestrator"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_retrieval_policy"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_main"
+    ]
+  ]
+}

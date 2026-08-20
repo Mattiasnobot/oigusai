@@ -1,0 +1,13 @@
+{
+  "name": "V10.1B — local real-Ollama model evaluation",
+  "base_commit": "2bcc394693ec76b89820665e58a9abe1e3a2f869",
+  "base_files": [],
+  "new_files": [
+    {"path": "scripts/evaluate_model.py", "sha256": "cf37abe1f1d3f80f12702c52d3757f1e83108401166b4fe90be71c0aee4bd9ee"},
+    {"path": "eval/model_cases.json", "sha256": "60900855320ffb457f1f58ac42569fca0542021cb550f0ddfcbf7e48b39540ec"},
+    {"path": "tests/test_evaluate_model.py", "sha256": "9d5e1bcdab270d444e3aafb811f45fd5e0250a13783b5f7ce99bcc6354b14acb"}
+  ],
+  "tests": [
+    ["{python}", "-m", "unittest", "tests.test_evaluate_model"]
+  ]
+}

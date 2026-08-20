@@ -1,0 +1,16 @@
+{
+  "name": "V10.1.1 — fix CI retrieval baseline, optional LanceDB test isolation, and Node 24 actions",
+  "base_commit": "2bcc394693ec76b89820665e58a9abe1e3a2f869",
+  "base_files": [
+    {"path": ".github/workflows/ci.yml", "git_blob_sha": "f370c8b1e64645aa33580eb840f827267ef1578c"},
+    {"path": "scripts/evaluate_workflow.py", "git_blob_sha": "e3aa821a78ba5987e119b2236950e6f9f943b918"},
+    {"path": "tests/test_hybrid_retrieval.py", "git_blob_sha": "ee3e9d0d952f83daa004899949b19feaa5efc45c"},
+    {"path": "tests/test_workflow_evaluation.py", "git_blob_sha": "b4bcee01a9e11899051c81966b272a20109690b6"}
+  ],
+  "new_files": [],
+  "tests": [
+    ["{python}", "-m", "unittest", "tests.test_hybrid_retrieval", "tests.test_workflow_evaluation", "tests.test_ci_quality_gate"],
+    ["{python}", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"],
+    ["{python}", "scripts/ci_quality_gate.py"]
+  ]
+}

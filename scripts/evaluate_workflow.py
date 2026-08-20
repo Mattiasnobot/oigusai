@@ -56,15 +56,18 @@ def evaluate_workflow_case(service, intake_service, case: dict, domains: set, id
     }
 
 
-def build_report(results: list[dict], duration_seconds: float) -> dict:
+def build_report(
+    results: list[dict], duration_seconds: float, retrieval_baseline_required: int = 184
+) -> dict:
     total = len(results)
     keys = ("intake_summary", "case_card", "deadline_safe", "no_identifier_question", "retrieval")
     checks = {key: sum(bool(item["checks"].get(key)) for item in results) for key in keys}
     safety_keys = tuple(key for key in keys if key != "retrieval")
+    retrieval_floor = min(total, max(0, int(retrieval_baseline_required)))
     acceptance_passed = bool(
         total
         and all(checks[key] == total for key in safety_keys)
-        and checks["retrieval"] >= min(total, 184)
+        and checks["retrieval"] >= retrieval_floor
     )
     return {
         "version": "0.9.1",
@@ -72,7 +75,7 @@ def build_report(results: list[dict], duration_seconds: float) -> dict:
         "workflow_passed": sum(item["workflow_ok"] for item in results),
         "checks": checks,
         "acceptance_passed": acceptance_passed,
-        "retrieval_baseline_required": min(total, 184),
+        "retrieval_baseline_required": retrieval_floor,
         "duration_seconds": round(duration_seconds, 2),
         "failures": [item["id"] for item in results if not item["workflow_ok"]],
         "method": "audited_200_query_workflow_without_free_form_generation",
@@ -83,6 +86,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Evaluate ÕigusAI V9.1 workflow")
     parser.add_argument("--cases", default="eval/query_cases.json")
     parser.add_argument("--json-output", default="")
+    parser.add_argument(
+        "--retrieval-floor",
+        type=int,
+        default=184,
+        help="Minimum retrieval passes required for this retrieval mode (default: 184).",
+    )
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -102,7 +111,11 @@ def main() -> int:
         evaluate_workflow_case(service, intake_service, case, domains, ids)
         for case in cases
     ]
-    report = build_report(results, time.perf_counter() - started)
+    report = build_report(
+        results,
+        time.perf_counter() - started,
+        retrieval_baseline_required=args.retrieval_floor,
+    )
     print("ÕigusAI V9.1 workflow evaluation")
     print(f"Cases: {report['cases']}")
     print(f"Workflow pass: {report['workflow_passed']}/{report['cases']}")

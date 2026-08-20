@@ -22,6 +22,24 @@ class WorkflowEvaluationTests(unittest.TestCase):
         self.assertEqual(report["failures"], ["A"])
         self.assertFalse(report["acceptance_passed"])
 
+    def test_report_accepts_explicit_retrieval_floor_for_ci_mode(self):
+        results = [{
+            "id": "A",
+            "checks": {
+                "intake_summary": True,
+                "case_card": True,
+                "deadline_safe": True,
+                "no_identifier_question": True,
+                "retrieval": True,
+            },
+            "workflow_ok": True,
+        }]
+
+        report = build_report(results, 0.25, retrieval_baseline_required=1)
+
+        self.assertTrue(report["acceptance_passed"])
+        self.assertEqual(report["retrieval_baseline_required"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

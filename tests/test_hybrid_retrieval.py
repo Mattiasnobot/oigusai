@@ -164,10 +164,13 @@ class HybridRetrievalTests(unittest.TestCase):
             })
             laws = [self._record("TEST_1")]
 
-            vector_search = LanceDBVectorSearch(settings=settings, laws=laws)
+            fake_lancedb = Mock()
+            with patch("services.vector_search.lancedb", fake_lancedb):
+                vector_search = LanceDBVectorSearch(settings=settings, laws=laws)
 
             self.assertFalse(vector_search.ready)
             self.assertIn("ei vasta praegusele", vector_search.error)
+            fake_lancedb.connect.assert_not_called()
 
     def test_embedding_response_shape_is_validated(self):
         service = OllamaEmbeddingService(

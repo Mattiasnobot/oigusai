@@ -29,8 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -47,8 +47,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -60,10 +60,12 @@ jobs:
       - name: Run deterministic 200-case workflow evaluation
         run: |
           mkdir -p artifacts
-          python scripts/evaluate_workflow.py --json-output artifacts/workflow-report.json
+          # V5 lexical-only frozen baseline is 174/200. This CI job deliberately
+          # disables hybrid retrieval and the reranker, so the V6.1 184 floor is not comparable.
+          python scripts/evaluate_workflow.py --retrieval-floor 174 --json-output artifacts/workflow-report.json
       - name: Upload workflow report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: workflow-quality-report
           path: artifacts/workflow-report.json

@@ -1,0 +1,47 @@
+{
+  "version": "V10.1-model-smoke-1",
+  "description": "Small real-Ollama smoke suite. Fallbacks remain safe runtime behavior but do not count as model passes.",
+  "acceptance": {
+    "max_fallback_rate": 0.25,
+    "min_model_pass_rate": 0.75
+  },
+  "cases": [
+    {
+      "id": "MODEL-TLS-FORM-01",
+      "query": "Kas tööandja võib töölepingu ainult suuliselt üles öelda?",
+      "expected_source_groups": [["TLS_95"]],
+      "required_phrases_all": ["kirjalikku taasesitamist võimaldavas vormis", "tühine"]
+    },
+    {
+      "id": "MODEL-TLS-REDUNDANCY-01",
+      "query": "Mind koondatakse. Millistel alustel võib tööandja koondada ja kui pikk etteteatamine on?",
+      "expected_source_groups": [["TLS_89"], ["TLS_97"]],
+      "required_phrases_any": ["koond", "etteteat"]
+    },
+    {
+      "id": "MODEL-VOS-DEPOSIT-01",
+      "query": "Kas üürileandja võib nõuda minult nelja kuu tagatisraha?",
+      "expected_source_groups": [["VOS_308"]],
+      "required_phrases_any": ["tagatisraha"]
+    },
+    {
+      "id": "MODEL-HMS-SERVICE-01",
+      "query": "Kuidas võib haldusorgan otsuse mulle kätte toimetada?",
+      "expected_source_groups": [["HMS_25"]],
+      "required_phrases_any": ["kätte toimet", "toimetatakse"]
+    },
+    {
+      "id": "MODEL-TYPO-ABIPOL-01",
+      "query": "Abipoliteinuku antud trahv: kas abipolitseinikul oli õigus seda teha?",
+      "expected_source_groups": [["ABIPOLS_3", "ABIPOLS_16"]],
+      "required_phrases_any": ["abipolitsei", "pädev"]
+    },
+    {
+      "id": "MODEL-MULTI-FINE-01",
+      "query": "Sain rahatrahvi. Kaebetähtaeg läks mööda. Kas tähtaega saab ennistada ja kas trahvi saab ositi maksta?",
+      "expected_source_groups": [["VTMS_114", "VTMS_118"], ["KARS_66", "VTMS_204"]],
+      "required_phrases_all": ["ositi"],
+      "required_phrases_any": ["ennist", "läbi vaatamata"]
+    }
+  ]
+}

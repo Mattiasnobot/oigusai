@@ -1,0 +1,534 @@
+diff --git a/scripts/evaluate_model.py b/scripts/evaluate_model.py
+new file mode 100644
+index 0000000..ed75c75
+--- /dev/null
++++ b/scripts/evaluate_model.py
+@@ -0,0 +1,395 @@
++#!/usr/bin/env python3
++"""Run a local end-to-end ÕigusAI model smoke evaluation against real Ollama.
++
++Unlike GitHub-hosted deterministic CI, this runner intentionally executes the
++configured local analysis model through the same AnalysisOrchestrator
++prepare -> execute -> finalize path used by the application.  A deterministic
++fallback may keep the user-facing pipeline safe, but it does *not* count as a
++real-model pass in this evaluation.
++"""
++from __future__ import annotations
++
++import argparse
++import asyncio
++import json
++import os
++import re
++import sys
++import time
++from pathlib import Path
++from types import SimpleNamespace
++from typing import Any, Dict, Iterable, List, Sequence
++
++PROJECT_ROOT = Path(__file__).resolve().parent.parent
++DEFAULT_CASES = PROJECT_ROOT / "eval" / "model_cases.json"
++
++
++class ModelEvalError(RuntimeError):
++    """Raised when the model-evaluation suite or local runtime is invalid."""
++
++
++def _normalize(value: Any) -> str:
++    return re.sub(r"\s+", " ", str(value or "")).strip().casefold()
++
++
++def load_suite(path: Path) -> Dict[str, Any]:
++    try:
++        payload = json.loads(path.read_text(encoding="utf-8"))
++    except FileNotFoundError as exc:
++        raise ModelEvalError(f"Model-eval suite puudub: {path}") from exc
++    except (OSError, json.JSONDecodeError) as exc:
++        raise ModelEvalError(f"Model-eval suite ei ole loetav JSON: {exc}") from exc
++    if not isinstance(payload, dict):
++        raise ModelEvalError("Model-eval suite peab olema JSON objekt.")
++    cases = payload.get("cases")
++    if not isinstance(cases, list) or not cases:
++        raise ModelEvalError("Model-eval suite peab sisaldama vähemalt üht juhtumit.")
++    seen = set()
++    for index, case in enumerate(cases, start=1):
++        if not isinstance(case, dict):
++            raise ModelEvalError(f"Juhtum {index} ei ole objekt.")
++        case_id = str(case.get("id") or "").strip()
++        query = str(case.get("query") or "").strip()
++        if not case_id or not query:
++            raise ModelEvalError(f"Juhtum {index} vajab id ja query väärtust.")
++        if case_id in seen:
++            raise ModelEvalError(f"Dubleeritud model-eval id: {case_id}")
++        seen.add(case_id)
++    acceptance = payload.get("acceptance") or {}
++    if not isinstance(acceptance, dict):
++        raise ModelEvalError("acceptance peab olema objekt.")
++    return payload
++
++
++def _source_groups_pass(verified_sources: Iterable[str], groups: Sequence[Sequence[str]]) -> bool:
++    actual = {str(value).strip().upper() for value in verified_sources if str(value).strip()}
++    for group in groups or []:
++        wanted = {str(value).strip().upper() for value in group if str(value).strip()}
++        if wanted and not actual.intersection(wanted):
++            return False
++    return True
++
++
++def assess_case(case: Dict[str, Any], finalized: Dict[str, Any], *, fallback_used: bool) -> Dict[str, Any]:
++    analysis_text = str(finalized.get("analysis_text") or "")
++    normalized = _normalize(analysis_text)
++    verified_sources = list(finalized.get("verified_sources") or [])
++    pipeline = finalized.get("pipeline") or {}
++    verification_status = str(finalized.get("verification_status") or "")
++    is_mock = bool(finalized.get("is_mock"))
++
++    source_groups = case.get("expected_source_groups") or []
++    source_groups_ok = _source_groups_pass(verified_sources, source_groups)
++    required_all = [_normalize(value) for value in case.get("required_phrases_all") or []]
++    required_any = [_normalize(value) for value in case.get("required_phrases_any") or []]
++    phrases_all_ok = all(value in normalized for value in required_all)
++    phrases_any_ok = not required_any or any(value in normalized for value in required_any)
++    pipeline_ok = pipeline.get("status") == "completed"
++    has_verified_source = bool(verified_sources)
++    safe_pass = bool(
++        pipeline_ok
++        and verification_status
++        and has_verified_source
++        and not is_mock
++    )
++    real_model_used = bool(not fallback_used and not is_mock)
++    model_pass = bool(
++        safe_pass
++        and real_model_used
++        and source_groups_ok
++        and phrases_all_ok
++        and phrases_any_ok
++    )
++    return {
++        "safe_pass": safe_pass,
++        "model_pass": model_pass,
++        "real_model_used": real_model_used,
++        "fallback_used": bool(fallback_used),
++        "is_mock": is_mock,
++        "verification_status": verification_status,
++        "verified_sources": verified_sources,
++        "source_groups_ok": source_groups_ok,
++        "phrases_all_ok": phrases_all_ok,
++        "phrases_any_ok": phrases_any_ok,
++    }
++
++
++def build_report(
++    suite: Dict[str, Any],
++    results: List[Dict[str, Any]],
++    *,
++    model_name: str,
++    duration_seconds: float,
++) -> Dict[str, Any]:
++    total = len(results)
++    safe_passed = sum(bool(item.get("safe_pass")) for item in results)
++    model_passed = sum(bool(item.get("model_pass")) for item in results)
++    fallback_count = sum(bool(item.get("fallback_used")) for item in results)
++    mock_count = sum(bool(item.get("is_mock")) for item in results)
++    fallback_rate = (fallback_count / total) if total else 1.0
++    model_pass_rate = (model_passed / total) if total else 0.0
++
++    acceptance = suite.get("acceptance") or {}
++    max_fallback_rate = float(acceptance.get("max_fallback_rate", 0.25))
++    min_model_pass_rate = float(acceptance.get("min_model_pass_rate", 0.75))
++    acceptance_passed = bool(
++        total
++        and safe_passed == total
++        and mock_count == 0
++        and fallback_rate <= max_fallback_rate
++        and model_pass_rate >= min_model_pass_rate
++    )
++    return {
++        "version": str(suite.get("version") or ""),
++        "model": model_name,
++        "cases": total,
++        "safe_passed": safe_passed,
++        "model_passed": model_passed,
++        "fallback_count": fallback_count,
++        "mock_count": mock_count,
++        "fallback_rate": round(fallback_rate, 4),
++        "model_pass_rate": round(model_pass_rate, 4),
++        "acceptance": {
++            "max_fallback_rate": max_fallback_rate,
++            "min_model_pass_rate": min_model_pass_rate,
++        },
++        "acceptance_passed": acceptance_passed,
++        "duration_seconds": round(duration_seconds, 2),
++        "failures": [
++            item.get("id") for item in results if not item.get("model_pass")
++        ],
++        "results": results,
++        "method": "real_ollama_analysis_orchestrator_smoke_eval",
++    }
++
++
++async def _run_guarded_work(_label: str, func: Any, *args: Any) -> Any:
++    """Match the runtime's off-event-loop execution without queue semantics."""
++    return await asyncio.to_thread(func, *args)
++
++
++def _runtime_environment(*, lexical_only: bool) -> Dict[str, str]:
++    env = dict(os.environ)
++    env.update({
++        "ALLOW_MOCK_ANALYSIS": "false",
++        "ALLOW_LIVE_RT_FALLBACK": "false",
++        "APP_RELOAD": "false",
++    })
++    if lexical_only:
++        env.update({
++            "HYBRID_RETRIEVAL_ENABLED": "false",
++            "RERANKER_ENABLED": "false",
++        })
++    return env
++
++
++def _check_ollama(host: str, timeout: float = 5.0) -> None:
++    import requests
++
++    url = host.rstrip("/") + "/api/tags"
++    try:
++        response = requests.get(url, timeout=timeout)
++        response.raise_for_status()
++    except requests.RequestException as exc:
++        raise ModelEvalError(
++            f"Ollama ei vasta aadressil {host}. Käivita Ollama enne model-eval'i."
++        ) from exc
++
++
++async def run_case(
++    case: Dict[str, Any],
++    *,
++    orchestrator: Any,
++    ai_service: Any,
++    source_verifier: Any,
++    evidence_verifier: Any,
++    urgency_analyzer: Any,
++    verified_answer_builder: Any,
++) -> Dict[str, Any]:
++    query = str(case["query"]).strip()
++    request = SimpleNamespace(
++        case_description=query,
++        current_message=query,
++        answer_requirements=list(case.get("answer_requirements") or []),
++        matter_id=None,
++        document_ids=[],
++        search_query=None,
++        event_date=str(case.get("event_date") or ""),
++        case_context="",
++    )
++    started = time.perf_counter()
++    result: Dict[str, Any] = {"id": case["id"], "query": query}
++    try:
++        prepared = await orchestrator.prepare(request)
++        executed = await orchestrator.execute(
++            request,
++            prepared,
++            ai_service=ai_service,
++            source_verifier=source_verifier,
++        )
++        finalized = orchestrator.finalize(
++            request,
++            prepared,
++            executed,
++            evidence_verifier=evidence_verifier,
++            urgency_analyzer=urgency_analyzer,
++            verified_answer_builder=verified_answer_builder,
++            metrics_store=None,
++        )
++        result.update(
++            assess_case(case, finalized, fallback_used=executed.fallback_used)
++        )
++        result["analysis_preview"] = str(finalized.get("analysis_text") or "")[:1200]
++    except Exception as exc:
++        result.update({
++            "safe_pass": False,
++            "model_pass": False,
++            "real_model_used": False,
++            "fallback_used": False,
++            "is_mock": False,
++            "verification_status": "ERROR",
++            "verified_sources": [],
++            "source_groups_ok": False,
++            "phrases_all_ok": False,
++            "phrases_any_ok": False,
++            "error": f"{type(exc).__name__}: {exc}",
++        })
++    result["duration_seconds"] = round(time.perf_counter() - started, 2)
++    return result
++
++
++async def run_evaluation(
++    suite: Dict[str, Any],
++    *,
++    lexical_only: bool,
++    limit: int,
++) -> Dict[str, Any]:
++    if str(PROJECT_ROOT) not in sys.path:
++        sys.path.insert(0, str(PROJECT_ROOT))
++
++    from config import load_settings
++    from services.analysis_orchestrator import AnalysisOrchestrator
++    from services.analysis_pipeline import VerifiedAnswerBuilder
++    from services.case_workspace import UrgencyAnalyzer
++    from services.legal_search import LegalSearchService
++    from services.offline_ai import OfflineAIService
++    from verifiers.evidence_verifier import EvidenceVerifier
++    from verifiers.relevance_verifier import RelevanceVerifier
++    from verifiers.source_verifier import SourceVerifier
++
++    settings = load_settings(_runtime_environment(lexical_only=lexical_only))
++    _check_ollama(settings.ollama_host)
++
++    legal_service = LegalSearchService(
++        data_file=settings.legal_data_file,
++        settings=settings,
++        use_riigi_teataja=False,
++    )
++    relevance_verifier = RelevanceVerifier()
++    orchestrator = AnalysisOrchestrator(
++        legal_service=legal_service,
++        matter_store=None,
++        relevance_verifier=relevance_verifier,
++        run_guarded_work=_run_guarded_work,
++    )
++    ai_service = OfflineAIService(settings=settings, allow_mock=False)
++    source_verifier = SourceVerifier()
++    evidence_verifier = EvidenceVerifier()
++    urgency_analyzer = UrgencyAnalyzer()
++    verified_answer_builder = VerifiedAnswerBuilder()
++
++    cases = list(suite["cases"])
++    if limit > 0:
++        cases = cases[:limit]
++    started = time.perf_counter()
++    results: List[Dict[str, Any]] = []
++    for index, case in enumerate(cases, start=1):
++        print(f"[{index}/{len(cases)}] {case['id']} ...", flush=True)
++        result = await run_case(
++            case,
++            orchestrator=orchestrator,
++            ai_service=ai_service,
++            source_verifier=source_verifier,
++            evidence_verifier=evidence_verifier,
++            urgency_analyzer=urgency_analyzer,
++            verified_answer_builder=verified_answer_builder,
++        )
++        results.append(result)
++        marker = "PASS" if result.get("model_pass") else "FAIL"
++        print(
++            f"  {marker} status={result.get('verification_status')} "
++            f"fallback={result.get('fallback_used')} "
++            f"sources={','.join(result.get('verified_sources') or [])}",
++            flush=True,
++        )
++
++    return build_report(
++        suite,
++        results,
++        model_name=settings.ollama_model,
++        duration_seconds=time.perf_counter() - started,
++    )
++
++
++def _write_report(path: Path, report: Dict[str, Any]) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_text(
++        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
++        encoding="utf-8",
++    )
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser(
++        description="Run a real local Ollama smoke evaluation through ÕigusAI."
++    )
++    parser.add_argument("--cases", default=str(DEFAULT_CASES))
++    parser.add_argument("--json-output", default="artifacts/model-eval.json")
++    parser.add_argument(
++        "--lexical-only",
++        action="store_true",
++        help="Disable hybrid retrieval and reranker; Ollama answer model still runs.",
++    )
++    parser.add_argument(
++        "--limit",
++        type=int,
++        default=0,
++        help="Run only the first N cases (0 = all).",
++    )
++    args = parser.parse_args()
++    if hasattr(sys.stdout, "reconfigure"):
++        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
++
++    cases_path = Path(args.cases)
++    if not cases_path.is_absolute():
++        cases_path = PROJECT_ROOT / cases_path
++    output_path = Path(args.json_output)
++    if not output_path.is_absolute():
++        output_path = PROJECT_ROOT / output_path
++
++    try:
++        suite = load_suite(cases_path)
++        report = asyncio.run(
++            run_evaluation(
++                suite,
++                lexical_only=bool(args.lexical_only),
++                limit=max(0, int(args.limit)),
++            )
++        )
++    except ModelEvalError as exc:
++        print(f"MODEL EVAL ERROR: {exc}", file=sys.stderr)
++        return 2
++
++    _write_report(output_path, report)
++    print("\nÕigusAI real-model evaluation")
++    print(f"Model: {report['model']}")
++    print(f"Safe pass: {report['safe_passed']}/{report['cases']}")
++    print(f"Real-model pass: {report['model_passed']}/{report['cases']}")
++    print(f"Fallbacks: {report['fallback_count']}/{report['cases']}")
++    print(f"Acceptance: {'PASS' if report['acceptance_passed'] else 'FAIL'}")
++    print(f"Report: {output_path}")
++    return 0 if report["acceptance_passed"] else 2
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/eval/model_cases.json b/eval/model_cases.json
+new file mode 100644
+index 0000000..f0f513e
+--- /dev/null
++++ b/eval/model_cases.json
+@@ -0,0 +1,47 @@
++{
++  "version": "V10.1-model-smoke-1",
++  "description": "Small real-Ollama smoke suite. Fallbacks remain safe runtime behavior but do not count as model passes.",
++  "acceptance": {
++    "max_fallback_rate": 0.25,
++    "min_model_pass_rate": 0.75
++  },
++  "cases": [
++    {
++      "id": "MODEL-TLS-FORM-01",
++      "query": "Kas tööandja võib töölepingu ainult suuliselt üles öelda?",
++      "expected_source_groups": [["TLS_95"]],
++      "required_phrases_all": ["kirjalikku taasesitamist võimaldavas vormis", "tühine"]
++    },
++    {
++      "id": "MODEL-TLS-REDUNDANCY-01",
++      "query": "Mind koondatakse. Millistel alustel võib tööandja koondada ja kui pikk etteteatamine on?",
++      "expected_source_groups": [["TLS_89"], ["TLS_97"]],
++      "required_phrases_any": ["koond", "etteteat"]
++    },
++    {
++      "id": "MODEL-VOS-DEPOSIT-01",
++      "query": "Kas üürileandja võib nõuda minult nelja kuu tagatisraha?",
++      "expected_source_groups": [["VOS_308"]],
++      "required_phrases_any": ["tagatisraha"]
++    },
++    {
++      "id": "MODEL-HMS-SERVICE-01",
++      "query": "Kuidas võib haldusorgan otsuse mulle kätte toimetada?",
++      "expected_source_groups": [["HMS_25"]],
++      "required_phrases_any": ["kätte toimet", "toimetatakse"]
++    },
++    {
++      "id": "MODEL-TYPO-ABIPOL-01",
++      "query": "Abipoliteinuku antud trahv: kas abipolitseinikul oli õigus seda teha?",
++      "expected_source_groups": [["ABIPOLS_3", "ABIPOLS_16"]],
++      "required_phrases_any": ["abipolitsei", "pädev"]
++    },
++    {
++      "id": "MODEL-MULTI-FINE-01",
++      "query": "Sain rahatrahvi. Kaebetähtaeg läks mööda. Kas tähtaega saab ennistada ja kas trahvi saab ositi maksta?",
++      "expected_source_groups": [["VTMS_114", "VTMS_118"], ["KARS_66", "VTMS_204"]],
++      "required_phrases_all": ["ositi"],
++      "required_phrases_any": ["ennist", "läbi vaatamata"]
++    }
++  ]
++}
+diff --git a/tests/test_evaluate_model.py b/tests/test_evaluate_model.py
+new file mode 100644
+index 0000000..b522bd6
+--- /dev/null
++++ b/tests/test_evaluate_model.py
+@@ -0,0 +1,74 @@
++import json
++import unittest
++from pathlib import Path
++from tempfile import TemporaryDirectory
++
++from scripts.evaluate_model import assess_case, build_report, load_suite
++
++
++class EvaluateModelTests(unittest.TestCase):
++    def test_load_suite_rejects_duplicate_ids(self):
++        with TemporaryDirectory() as temp:
++            path = Path(temp) / "cases.json"
++            path.write_text(json.dumps({
++                "cases": [
++                    {"id": "A", "query": "üks"},
++                    {"id": "A", "query": "kaks"},
++                ]
++            }), encoding="utf-8")
++            with self.assertRaises(Exception):
++                load_suite(path)
++
++    def test_assess_case_requires_each_source_group(self):
++        case = {
++            "expected_source_groups": [["VTMS_118"], ["KARS_66", "VTMS_204"]],
++            "required_phrases_all": ["ositi"],
++            "required_phrases_any": ["ennist", "läbi vaatamata"],
++        }
++        finalized = {
++            "analysis_text": "Tähtaega võib ennistada ja rahatrahvi võib tasuda ositi.",
++            "verified_sources": ["VTMS_118", "KARS_66"],
++            "pipeline": {"status": "completed"},
++            "verification_status": "EVIDENCE_VERIFIED",
++            "is_mock": False,
++        }
++        result = assess_case(case, finalized, fallback_used=False)
++        self.assertTrue(result["safe_pass"])
++        self.assertTrue(result["model_pass"])
++
++    def test_fallback_is_safe_but_not_model_pass(self):
++        case = {"expected_source_groups": [["TLS_95"]]}
++        finalized = {
++            "analysis_text": "Kontrollitud fallback [TLS_95].",
++            "verified_sources": ["TLS_95"],
++            "pipeline": {"status": "completed"},
++            "verification_status": "SOURCE_ONLY_FALLBACK",
++            "is_mock": False,
++        }
++        result = assess_case(case, finalized, fallback_used=True)
++        self.assertTrue(result["safe_pass"])
++        self.assertFalse(result["model_pass"])
++        self.assertFalse(result["real_model_used"])
++
++    def test_report_applies_model_and_fallback_thresholds(self):
++        suite = {
++            "version": "test",
++            "acceptance": {
++                "max_fallback_rate": 0.25,
++                "min_model_pass_rate": 0.75,
++            },
++        }
++        results = [
++            {"id": "A", "safe_pass": True, "model_pass": True, "fallback_used": False, "is_mock": False},
++            {"id": "B", "safe_pass": True, "model_pass": True, "fallback_used": False, "is_mock": False},
++            {"id": "C", "safe_pass": True, "model_pass": True, "fallback_used": False, "is_mock": False},
++            {"id": "D", "safe_pass": True, "model_pass": False, "fallback_used": True, "is_mock": False},
++        ]
++        report = build_report(suite, results, model_name="test-model", duration_seconds=1.0)
++        self.assertTrue(report["acceptance_passed"])
++        self.assertEqual(report["fallback_rate"], 0.25)
++        self.assertEqual(report["model_pass_rate"], 0.75)
++
++
++if __name__ == "__main__":
++    unittest.main()

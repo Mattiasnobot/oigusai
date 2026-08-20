@@ -1,0 +1,45 @@
+{
+  "name": "V10.1 — GitHub CI and deterministic quality gate",
+  "base_commit": "e79f70fcc23851554206945edcd2000b01523748",
+  "base_files": [],
+  "new_files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "f965a1c0742eda3e6071664a3a645489acfad01d99012387658e61f2b42f4253"
+    },
+    {
+      "path": "requirements-ci.txt",
+      "sha256": "c36ec3aa19761233fb6c3b16af185eca6505da9996dba0c67ec6bd9b73845324"
+    },
+    {
+      "path": "scripts/ci_quality_gate.py",
+      "sha256": "ec8b3a25f685355ec6e49d311c107af39c9a93c2f2f32725ee0d2abae37b6e45"
+    },
+    {
+      "path": "tests/test_ci_quality_gate.py",
+      "sha256": "ed9632db78b804c6b2198ea248f29fc88b69b97a1ccc81c005436ab6020801d4"
+    }
+  ],
+  "tests": [
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_ci_quality_gate"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-p",
+      "test_*.py"
+    ],
+    [
+      "{python}",
+      "scripts/ci_quality_gate.py"
+    ]
+  ]
+}

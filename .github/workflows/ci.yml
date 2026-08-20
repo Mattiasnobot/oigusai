@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+  HYBRID_RETRIEVAL_ENABLED: "false"
+  RERANKER_ENABLED: "false"
+  ALLOW_LIVE_RT_FALLBACK: "false"
+  ALLOW_MOCK_ANALYSIS: "false"
+  APP_RELOAD: "false"
+  LOG_LEVEL: "WARNING"
+
+jobs:
+  tests:
+    name: Unit and regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-ci.txt
+      - name: Install CPU-only CI dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements-ci.txt
+      - name: Compile Python sources
+        run: python -m compileall -q main.py config.py services verifiers scripts tests
+      - name: Run unittest suite
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+  quality-gate:
+    name: Corpus and deterministic workflow gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-ci.txt
+      - name: Install CPU-only CI dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements-ci.txt
+      - name: Validate config, corpus and evaluation assets
+        run: python scripts/ci_quality_gate.py
+      - name: Run deterministic 200-case workflow evaluation
+        run: |
+          mkdir -p artifacts
+          python scripts/evaluate_workflow.py --json-output artifacts/workflow-report.json
+      - name: Upload workflow report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-quality-report
+          path: artifacts/workflow-report.json
+          if-no-files-found: ignore
+          retention-days: 14

@@ -1,0 +1,315 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+new file mode 100644
+index 0000000..f370c8b
+--- /dev/null
++++ b/.github/workflows/ci.yml
+@@ -0,0 +1,71 @@
++name: CI
++
++on:
++  push:
++    branches: [main]
++  pull_request:
++  workflow_dispatch:
++
++permissions:
++  contents: read
++
++concurrency:
++  group: ci-${{ github.workflow }}-${{ github.ref }}
++  cancel-in-progress: true
++
++env:
++  PYTHONUTF8: "1"
++  PYTHONDONTWRITEBYTECODE: "1"
++  HYBRID_RETRIEVAL_ENABLED: "false"
++  RERANKER_ENABLED: "false"
++  ALLOW_LIVE_RT_FALLBACK: "false"
++  ALLOW_MOCK_ANALYSIS: "false"
++  APP_RELOAD: "false"
++  LOG_LEVEL: "WARNING"
++
++jobs:
++  tests:
++    name: Unit and regression tests
++    runs-on: ubuntu-latest
++    timeout-minutes: 15
++    steps:
++      - uses: actions/checkout@v4
++      - uses: actions/setup-python@v5
++        with:
++          python-version: "3.12"
++          cache: pip
++          cache-dependency-path: requirements-ci.txt
++      - name: Install CPU-only CI dependencies
++        run: python -m pip install --upgrade pip && python -m pip install -r requirements-ci.txt
++      - name: Compile Python sources
++        run: python -m compileall -q main.py config.py services verifiers scripts tests
++      - name: Run unittest suite
++        run: python -m unittest discover -s tests -p "test_*.py" -v
++
++  quality-gate:
++    name: Corpus and deterministic workflow gate
++    runs-on: ubuntu-latest
++    timeout-minutes: 15
++    steps:
++      - uses: actions/checkout@v4
++      - uses: actions/setup-python@v5
++        with:
++          python-version: "3.12"
++          cache: pip
++          cache-dependency-path: requirements-ci.txt
++      - name: Install CPU-only CI dependencies
++        run: python -m pip install --upgrade pip && python -m pip install -r requirements-ci.txt
++      - name: Validate config, corpus and evaluation assets
++        run: python scripts/ci_quality_gate.py
++      - name: Run deterministic 200-case workflow evaluation
++        run: |
++          mkdir -p artifacts
++          python scripts/evaluate_workflow.py --json-output artifacts/workflow-report.json
++      - name: Upload workflow report
++        if: always()
++        uses: actions/upload-artifact@v4
++        with:
++          name: workflow-quality-report
++          path: artifacts/workflow-report.json
++          if-no-files-found: ignore
++          retention-days: 14
+
+diff --git a/requirements-ci.txt b/requirements-ci.txt
+new file mode 100644
+index 0000000..5958a90
+--- /dev/null
++++ b/requirements-ci.txt
+@@ -0,0 +1,12 @@
++# CPU-only CI dependencies. Optional local ML/vector packages stay out of GitHub-hosted CI.
++fastapi>=0.110.0,<0.120.0
++starlette>=0.36.0
++uvicorn>=0.27.0
++jinja2>=3.1.0
++pydantic>=2.6.0
++requests>=2.31.0
++python-dotenv>=1.0.0
++httpx>=0.27.0
++pypdf>=6.14.0,<7.0.0
++pypdfium2>=4.30.0,<5.0.0
++Pillow>=12.0.0,<13.0.0
+
+diff --git a/scripts/ci_quality_gate.py b/scripts/ci_quality_gate.py
+new file mode 100644
+index 0000000..a73c876
+--- /dev/null
++++ b/scripts/ci_quality_gate.py
+@@ -0,0 +1,158 @@
++#!/usr/bin/env python3
++"""Deterministic CPU-only quality gate for GitHub CI.
++
++This intentionally exercises the same trusted corpus and query-understanding
++startup path as runtime while disabling optional local ML/vector retrieval.
++It never calls Ollama or the live Riigi Teataja service.
++"""
++from __future__ import annotations
++
++import json
++import os
++import sys
++from pathlib import Path
++from typing import Any, Dict, Iterable
++
++PROJECT_ROOT = Path(__file__).resolve().parent.parent
++if str(PROJECT_ROOT) not in sys.path:
++    sys.path.insert(0, str(PROJECT_ROOT))
++
++from config import CONFIG_SCHEMA_VERSION, load_settings
++from services.legal_search import LegalSearchService
++from services.vector_search import compute_corpus_fingerprint
++
++
++class QualityGateError(RuntimeError):
++    pass
++
++
++def _load_json(path: Path, *, expected_type: type) -> Any:
++    try:
++        value = json.loads(path.read_text(encoding="utf-8"))
++    except FileNotFoundError as exc:
++        raise QualityGateError(f"Required file is missing: {path}") from exc
++    except (OSError, json.JSONDecodeError) as exc:
++        raise QualityGateError(f"Invalid JSON file {path}: {exc}") from exc
++    if not isinstance(value, expected_type):
++        raise QualityGateError(
++            f"{path} must contain {expected_type.__name__}, got {type(value).__name__}."
++        )
++    return value
++
++
++def validate_laws(laws: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
++    records = list(laws)
++    if not records:
++        raise QualityGateError("Trusted legal corpus is empty.")
++
++    ids = []
++    required = ("id", "title", "text", "source")
++    for index, law in enumerate(records, start=1):
++        if not isinstance(law, dict):
++            raise QualityGateError(f"Corpus row {index} is not an object.")
++        missing = [name for name in required if not str(law.get(name) or "").strip()]
++        if missing:
++            raise QualityGateError(
++                f"Corpus row {index} is missing required values: {', '.join(missing)}"
++            )
++        ids.append(str(law["id"]).upper())
++
++    if len(set(ids)) != len(ids):
++        duplicates = sorted({law_id for law_id in ids if ids.count(law_id) > 1})
++        raise QualityGateError(
++            "Duplicate trusted-corpus IDs: " + ", ".join(duplicates[:20])
++        )
++
++    fingerprint = compute_corpus_fingerprint(records)
++    if len(fingerprint) != 64 or any(ch not in "0123456789abcdef" for ch in fingerprint):
++        raise QualityGateError("Corpus fingerprint is not a valid SHA-256 digest.")
++
++    return {
++        "legal_sections": len(records),
++        "unique_ids": len(ids),
++        "corpus_fingerprint": fingerprint,
++    }
++
++
++def validate_evaluation_assets(project_root: Path) -> Dict[str, Any]:
++    cases = _load_json(project_root / "eval/query_cases.json", expected_type=list)
++    baseline = _load_json(
++        project_root / "eval/V91_WORKFLOW_BASELINE_2026-08-11.json",
++        expected_type=dict,
++    )
++    case_ids = [str(item.get("id") or "").strip() for item in cases if isinstance(item, dict)]
++    if len(case_ids) != len(cases) or any(not value for value in case_ids):
++        raise QualityGateError("Every workflow evaluation case must have a non-empty id.")
++    if len(set(case_ids)) != len(case_ids):
++        raise QualityGateError("Workflow evaluation case IDs must be unique.")
++
++    expected_cases = int(baseline.get("cases") or 0)
++    if expected_cases <= 0 or len(cases) != expected_cases:
++        raise QualityGateError(
++            f"Workflow case count changed: baseline={expected_cases}, current={len(cases)}."
++        )
++    if baseline.get("acceptance_passed") is not True:
++        raise QualityGateError("Committed V9.1 workflow baseline is not an accepted baseline.")
++    retrieval_floor = int(baseline.get("retrieval_baseline_required") or 0)
++    if retrieval_floor <= 0 or retrieval_floor > expected_cases:
++        raise QualityGateError("Workflow retrieval baseline is invalid.")
++
++    return {
++        "workflow_cases": len(cases),
++        "retrieval_floor": retrieval_floor,
++    }
++
++
++def deterministic_settings() -> Any:
++    env = dict(os.environ)
++    env.update(
++        {
++            "HYBRID_RETRIEVAL_ENABLED": "false",
++            "RERANKER_ENABLED": "false",
++            "ALLOW_LIVE_RT_FALLBACK": "false",
++            "ALLOW_MOCK_ANALYSIS": "false",
++            "APP_RELOAD": "false",
++            "LOG_LEVEL": "WARNING",
++        }
++    )
++    return load_settings(env)
++
++
++def run_gate(project_root: Path = PROJECT_ROOT) -> Dict[str, Any]:
++    settings = deterministic_settings()
++    service = LegalSearchService(
++        data_file=settings.legal_data_file,
++        settings=settings,
++        use_riigi_teataja=False,
++    )
++    corpus = validate_laws(service.laws)
++    evaluation = validate_evaluation_assets(project_root)
++    if CONFIG_SCHEMA_VERSION <= 0:
++        raise QualityGateError("CONFIG_SCHEMA_VERSION must be positive.")
++    return {
++        "config_schema_version": CONFIG_SCHEMA_VERSION,
++        "query_vocabulary_terms": service.query_understanding.vocabulary_size,
++        **corpus,
++        **evaluation,
++    }
++
++
++def main() -> int:
++    try:
++        report = run_gate()
++    except QualityGateError as exc:
++        print(f"QUALITY GATE FAILED: {exc}", file=sys.stderr)
++        return 2
++    except Exception as exc:
++        print(f"QUALITY GATE ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
++        return 3
++
++    print("ÕigusAI deterministic CI quality gate")
++    for key, value in report.items():
++        print(f"{key}: {value}")
++    print("QUALITY GATE PASSED")
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+
+diff --git a/tests/test_ci_quality_gate.py b/tests/test_ci_quality_gate.py
+new file mode 100644
+index 0000000..859a2c5
+--- /dev/null
++++ b/tests/test_ci_quality_gate.py
+@@ -0,0 +1,46 @@
++import json
++import tempfile
++import unittest
++from pathlib import Path
++
++from scripts.ci_quality_gate import QualityGateError, validate_evaluation_assets, validate_laws
++
++
++class CIQualityGateTests(unittest.TestCase):
++    def test_validate_laws_accepts_unique_required_records(self):
++        report = validate_laws([
++            {"id": "A_1", "title": "A § 1", "text": "Esimene.", "source": "RT", "content_hash": "a"},
++            {"id": "B_2", "title": "B § 2", "text": "Teine.", "source": "RT", "content_hash": "b"},
++        ])
++        self.assertEqual(report["legal_sections"], 2)
++        self.assertEqual(report["unique_ids"], 2)
++        self.assertEqual(len(report["corpus_fingerprint"]), 64)
++
++    def test_validate_laws_rejects_duplicate_ids(self):
++        with self.assertRaises(QualityGateError):
++            validate_laws([
++                {"id": "A_1", "title": "A § 1", "text": "Üks.", "source": "RT"},
++                {"id": "a_1", "title": "A § 1", "text": "Kaks.", "source": "RT"},
++            ])
++
++    def test_evaluation_assets_must_match_committed_case_count(self):
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            (root / "eval").mkdir()
++            (root / "eval/query_cases.json").write_text(
++                json.dumps([{"id": "CASE-1"}], ensure_ascii=False), encoding="utf-8"
++            )
++            (root / "eval/V91_WORKFLOW_BASELINE_2026-08-11.json").write_text(
++                json.dumps({
++                    "cases": 2,
++                    "acceptance_passed": True,
++                    "retrieval_baseline_required": 1,
++                }),
++                encoding="utf-8",
++            )
++            with self.assertRaises(QualityGateError):
++                validate_evaluation_assets(root)
++
++
++if __name__ == "__main__":
++    unittest.main()
+

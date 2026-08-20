@@ -119,6 +119,54 @@ class CoverageVerifierTests(unittest.TestCase):
         self.assertIn("[TLS_97]", digest)
         self.assertIn("ÕIGUSLIK KOHALDAMINE:", digest)
 
+
+    def test_repair_instructions_pin_redundancy_claims_to_exact_sources(self):
+        plan = MultiIssueRetrievalPlanner.plan(
+            case_description="Mind koondatakse. Kui pikk etteteatamine on?",
+            search_text="koondamine etteteatamine",
+            current_intents=["deadline"],
+            fine_context=False,
+        )
+        laws = [
+            {"id": "TLS_89", "text": "Koondamine."},
+            {"id": "TLS_97", "text": "Etteteatamine."},
+        ]
+        report = CoverageVerifier.verify(plan, laws, ["TLS_89"])
+        instructions = CoverageVerifier.repair_instructions(report)
+
+        self.assertIn("TÄPSELT 2 elementi", instructions)
+        self.assertIn("KOHUSTUS 1/2 [procedure]", instructions)
+        self.assertIn("- source_id: TLS_89", instructions)
+        self.assertIn("KOHUSTUS 2/2 [deadline]", instructions)
+        self.assertIn("- source_id: TLS_97", instructions)
+        self.assertIn("Ära kuluta ühtegi claims elementi kõrvalteemale", instructions)
+
+    def test_repair_instructions_pin_multi_fine_to_three_audited_sources(self):
+        plan = MultiIssueRetrievalPlanner.plan(
+            case_description=(
+                "Sain rahatrahvi. Kaebetähtaeg läks mööda. "
+                "Kas tähtaega saab ennistada ja kas trahvi saab ositi maksta?"
+            ),
+            search_text="rahatrahv kaebetähtaeg ennistada ositi maksta",
+            current_intents=["missed_deadline", "challenge_decision", "payment_plan"],
+            fine_context=True,
+        )
+        laws = [
+            {"id": "VTMS_118", "text": "Tähtaja ennistamine."},
+            {"id": "VTMS_114", "text": "Kaebus."},
+            {"id": "KARS_66", "text": "Rahatrahvi tasumine ositi."},
+        ]
+        report = CoverageVerifier.verify(plan, laws, [])
+        instructions = CoverageVerifier.repair_instructions(report)
+
+        self.assertIn("TÄPSELT 3 elementi", instructions)
+        self.assertIn("KOHUSTUS 1/3 [deadline]", instructions)
+        self.assertIn("- source_id: VTMS_118", instructions)
+        self.assertIn("KOHUSTUS 2/3 [remedy]", instructions)
+        self.assertIn("- source_id: VTMS_114", instructions)
+        self.assertIn("KOHUSTUS 3/3 [payment]", instructions)
+        self.assertIn("- source_id: KARS_66", instructions)
+
     def test_orchestrator_repairs_missing_coverage_without_fallback(self):
         laws = [
             {"id": "TLS_89", "title": "TLS § 89", "text": "Koondamise alus on kirjeldatud sättes.", "source": "RT"},

@@ -179,26 +179,41 @@ class CoverageVerifier:
         if not rows or not report.get("needs_repair"):
             return ""
 
-        lines = [
-            "KATVUSE PARANDUS:",
-            "Eelmine vastus ei katnud kõiki auditeeritud vastusekohustusi.",
-            "Kirjuta KOGU vastus uuesti ja kata kõik allolevad kohustused eraldi väitega.",
-            "Kasuta iga kohustuse juures vähemalt üht näidatud lubatud source_id väärtust, kui allika tekst seda väidet toetab.",
-        ]
+        targets: List[Tuple[str, str, str]] = []
         for row in rows:
-            groups = [
-                "/".join(group)
-                for group in (row.get("expected_source_groups") or [])
-                if group
+            candidate_sources = [
+                cls._normalize_id(value)
+                for value in (row.get("candidate_sources") or [])
+                if cls._normalize_id(value)
             ]
-            state = "PUUDU" if row.get("status") != cls.STATUS_COVERED else "SÄILITA"
-            lines.append(
-                f"- {state}: {row.get('answer_requirement') or row.get('kind')} "
-                f"(allikas: {', '.join(groups)})"
-            )
-        lines.append(
-            "Ära lisa ühtegi normi ega järeldust, mida etteantud allikatekst ei toeta."
-        )
+            if not candidate_sources:
+                continue
+            targets.append((
+                str(row.get("kind") or ""),
+                str(row.get("answer_requirement") or row.get("kind") or ""),
+                candidate_sources[0],
+            ))
+
+        if not targets:
+            return ""
+
+        lines = [
+            "KATVUSE PARANDUS — RANGE CLAIM-CHECKLIST:",
+            "Eelmine vastus ei katnud kõiki auditeeritud vastusekohustusi.",
+            f"Tagasta claims massiivis TÄPSELT {len(targets)} elementi — üks iga alloleva kohustuse kohta ja samas järjekorras.",
+            "Iga claim peab kasutama just talle määratud source_id väärtust ning evidence peab olema sellest samast allikast täpselt kopeeritud katkematu katkend.",
+            "Ära kuluta ühtegi claims elementi kõrvalteemale, soovitusele ega muule source_id-le.",
+        ]
+        for index, (kind, requirement, source_id) in enumerate(targets, start=1):
+            lines.extend([
+                f"KOHUSTUS {index}/{len(targets)} [{kind}]",
+                f"- küsimus: {requirement}",
+                f"- source_id: {source_id}",
+            ])
+        lines.extend([
+            "Kui allikatekst ei võimalda laiemat järeldust, tee väide evidence teksti kitsaks ümberütluseks.",
+            "Ära lisa ühtegi normi, tähtaega, arvu ega järeldust, mida määratud allikatekst ei toeta.",
+        ])
         return "\n".join(lines)
 
     @classmethod

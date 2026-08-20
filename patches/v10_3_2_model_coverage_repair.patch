@@ -1,0 +1,122 @@
+diff --git a/services/coverage_verifier.py b/services/coverage_verifier.py
+index 43cd1a4..876ba10 100644
+--- a/services/coverage_verifier.py
++++ b/services/coverage_verifier.py
+@@ -179,26 +179,41 @@ class CoverageVerifier:
+         if not rows or not report.get("needs_repair"):
+             return ""
+ 
++        targets: List[Tuple[str, str, str]] = []
++        for row in rows:
++            candidate_sources = [
++                cls._normalize_id(value)
++                for value in (row.get("candidate_sources") or [])
++                if cls._normalize_id(value)
++            ]
++            if not candidate_sources:
++                continue
++            targets.append((
++                str(row.get("kind") or ""),
++                str(row.get("answer_requirement") or row.get("kind") or ""),
++                candidate_sources[0],
++            ))
++
++        if not targets:
++            return ""
++
+         lines = [
+-            "KATVUSE PARANDUS:",
++            "KATVUSE PARANDUS — RANGE CLAIM-CHECKLIST:",
+             "Eelmine vastus ei katnud kõiki auditeeritud vastusekohustusi.",
+-            "Kirjuta KOGU vastus uuesti ja kata kõik allolevad kohustused eraldi väitega.",
+-            "Kasuta iga kohustuse juures vähemalt üht näidatud lubatud source_id väärtust, kui allika tekst seda väidet toetab.",
++            f"Tagasta claims massiivis TÄPSELT {len(targets)} elementi — üks iga alloleva kohustuse kohta ja samas järjekorras.",
++            "Iga claim peab kasutama just talle määratud source_id väärtust ning evidence peab olema sellest samast allikast täpselt kopeeritud katkematu katkend.",
++            "Ära kuluta ühtegi claims elementi kõrvalteemale, soovitusele ega muule source_id-le.",
+         ]
+-        for row in rows:
+-            groups = [
+-                "/".join(group)
+-                for group in (row.get("expected_source_groups") or [])
+-                if group
+-            ]
+-            state = "PUUDU" if row.get("status") != cls.STATUS_COVERED else "SÄILITA"
+-            lines.append(
+-                f"- {state}: {row.get('answer_requirement') or row.get('kind')} "
+-                f"(allikas: {', '.join(groups)})"
+-            )
+-        lines.append(
+-            "Ära lisa ühtegi normi ega järeldust, mida etteantud allikatekst ei toeta."
+-        )
++        for index, (kind, requirement, source_id) in enumerate(targets, start=1):
++            lines.extend([
++                f"KOHUSTUS {index}/{len(targets)} [{kind}]",
++                f"- küsimus: {requirement}",
++                f"- source_id: {source_id}",
++            ])
++        lines.extend([
++            "Kui allikatekst ei võimalda laiemat järeldust, tee väide evidence teksti kitsaks ümberütluseks.",
++            "Ära lisa ühtegi normi, tähtaega, arvu ega järeldust, mida määratud allikatekst ei toeta.",
++        ])
+         return "\n".join(lines)
+ 
+     @classmethod
+diff --git a/tests/test_coverage_verifier.py b/tests/test_coverage_verifier.py
+index eb0a59d..3ed7332 100644
+--- a/tests/test_coverage_verifier.py
++++ b/tests/test_coverage_verifier.py
+@@ -119,6 +119,54 @@ class CoverageVerifierTests(unittest.TestCase):
+         self.assertIn("[TLS_97]", digest)
+         self.assertIn("ÕIGUSLIK KOHALDAMINE:", digest)
+ 
++
++    def test_repair_instructions_pin_redundancy_claims_to_exact_sources(self):
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description="Mind koondatakse. Kui pikk etteteatamine on?",
++            search_text="koondamine etteteatamine",
++            current_intents=["deadline"],
++            fine_context=False,
++        )
++        laws = [
++            {"id": "TLS_89", "text": "Koondamine."},
++            {"id": "TLS_97", "text": "Etteteatamine."},
++        ]
++        report = CoverageVerifier.verify(plan, laws, ["TLS_89"])
++        instructions = CoverageVerifier.repair_instructions(report)
++
++        self.assertIn("TÄPSELT 2 elementi", instructions)
++        self.assertIn("KOHUSTUS 1/2 [procedure]", instructions)
++        self.assertIn("- source_id: TLS_89", instructions)
++        self.assertIn("KOHUSTUS 2/2 [deadline]", instructions)
++        self.assertIn("- source_id: TLS_97", instructions)
++        self.assertIn("Ära kuluta ühtegi claims elementi kõrvalteemale", instructions)
++
++    def test_repair_instructions_pin_multi_fine_to_three_audited_sources(self):
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description=(
++                "Sain rahatrahvi. Kaebetähtaeg läks mööda. "
++                "Kas tähtaega saab ennistada ja kas trahvi saab ositi maksta?"
++            ),
++            search_text="rahatrahv kaebetähtaeg ennistada ositi maksta",
++            current_intents=["missed_deadline", "challenge_decision", "payment_plan"],
++            fine_context=True,
++        )
++        laws = [
++            {"id": "VTMS_118", "text": "Tähtaja ennistamine."},
++            {"id": "VTMS_114", "text": "Kaebus."},
++            {"id": "KARS_66", "text": "Rahatrahvi tasumine ositi."},
++        ]
++        report = CoverageVerifier.verify(plan, laws, [])
++        instructions = CoverageVerifier.repair_instructions(report)
++
++        self.assertIn("TÄPSELT 3 elementi", instructions)
++        self.assertIn("KOHUSTUS 1/3 [deadline]", instructions)
++        self.assertIn("- source_id: VTMS_118", instructions)
++        self.assertIn("KOHUSTUS 2/3 [remedy]", instructions)
++        self.assertIn("- source_id: VTMS_114", instructions)
++        self.assertIn("KOHUSTUS 3/3 [payment]", instructions)
++        self.assertIn("- source_id: KARS_66", instructions)
++
+     def test_orchestrator_repairs_missing_coverage_without_fallback(self):
+         laws = [
+             {"id": "TLS_89", "title": "TLS § 89", "text": "Koondamise alus on kirjeldatud sättes.", "source": "RT"},

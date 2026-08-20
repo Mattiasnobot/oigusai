@@ -1,0 +1,21 @@
+{
+  "name": "V10.3.2 — focused model coverage repair checklist",
+  "base_commit": "c2b8177eb182221fa4e6dbf4a6a543ad86156224",
+  "base_files": [
+    {
+      "path": "services/coverage_verifier.py",
+      "git_blob_sha": "43cd1a46bf1ba0afd26e9a75681dbc5bc66f7787"
+    },
+    {
+      "path": "tests/test_coverage_verifier.py",
+      "git_blob_sha": "eb0a59d94daab9786de74c34eef554406698ef7c"
+    }
+  ],
+  "new_files": [],
+  "tests": [
+    ["{python}", "-m", "unittest", "tests.test_coverage_verifier"],
+    ["{python}", "-m", "unittest", "tests.test_analysis_orchestrator"],
+    ["{python}", "-m", "unittest", "tests.test_offline_ai"],
+    ["{python}", "-m", "unittest", "tests.test_main"]
+  ]
+}

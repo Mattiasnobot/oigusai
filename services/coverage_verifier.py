@@ -50,8 +50,8 @@ class CoverageVerifier:
             rationale="Möödunud väärteokaebuse tähtaja auditeeritud routing kasutab VTMS § 118.",
         ),
         "fine_context:challenge_decision": CoverageRule(
-            source_groups=(("VTMS_114",),),
-            rationale="Väärteootsuse vaidlustamise auditeeritud routing kasutab VTMS § 114.",
+            source_groups=(("VTMS_114", "VTMS_118"),),
+            rationale="Möödunud tähtaja kontekstis võib vaidlustamise katte anda VTMS § 114 või tähtaja ennistamist käsitlev VTMS § 118.",
         ),
         "fine_context:payment_plan": CoverageRule(
             source_groups=(("KARS_66",),),

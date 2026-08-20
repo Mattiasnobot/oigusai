@@ -479,7 +479,6 @@ class AnalysisOrchestrator:
         )
         if (
             route_plan.employment_form_question
-            and obligation_plan is None
             and not form_answer_complete
         ):
             form_law = next(
@@ -781,7 +780,20 @@ class AnalysisOrchestrator:
         )
         if executed.is_mock:
             warning = "TESTREŽIIM: Ollama vastus on näidisvastus. " + warning
-        if executed.coverage_fallback_used:
+        if (
+            executed.coverage_fallback_used
+            and getattr(prepared.route_plan, "employment_form_question", False)
+            and {
+                str(value).strip().upper()
+                for value in verified_sources
+                if str(value).strip()
+            } == {"TLS_95"}
+        ):
+            warning = (
+                "Vastus on piiritletud töölepingu ülesütlemise vorminõudega ja põhineb "
+                "kontrollitud TLS §-l 95. Tegemist on esmase selgituse, mitte õigusnõuga."
+            )
+        elif executed.coverage_fallback_used:
             warning = (
                 "Mudeli vastus ei katnud kõiki tuvastatud küsimuse osi. Lõppvastus "
                 "piirati auditeeritud kohustustega seotud kontrollitud "

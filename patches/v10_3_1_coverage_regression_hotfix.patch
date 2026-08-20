@@ -1,0 +1,47 @@
+diff --git a/services/analysis_orchestrator.py b/services/analysis_orchestrator.py
+--- a/services/analysis_orchestrator.py
++++ b/services/analysis_orchestrator.py
+@@ -5,7 +5,6 @@
+         )
+         if (
+             route_plan.employment_form_question
+-            and obligation_plan is None
+             and not form_answer_complete
+         ):
+             form_law = next(
+@@ -34,7 +33,20 @@
+         )
+         if executed.is_mock:
+             warning = "TESTREŽIIM: Ollama vastus on näidisvastus. " + warning
+-        if executed.coverage_fallback_used:
++        if (
++            executed.coverage_fallback_used
++            and getattr(prepared.route_plan, "employment_form_question", False)
++            and {
++                str(value).strip().upper()
++                for value in verified_sources
++                if str(value).strip()
++            } == {"TLS_95"}
++        ):
++            warning = (
++                "Vastus on piiritletud töölepingu ülesütlemise vorminõudega ja põhineb "
++                "kontrollitud TLS §-l 95. Tegemist on esmase selgituse, mitte õigusnõuga."
++            )
++        elif executed.coverage_fallback_used:
+             warning = (
+                 "Mudeli vastus ei katnud kõiki tuvastatud küsimuse osi. Lõppvastus "
+                 "piirati auditeeritud kohustustega seotud kontrollitud "
+diff --git a/services/coverage_verifier.py b/services/coverage_verifier.py
+--- a/services/coverage_verifier.py
++++ b/services/coverage_verifier.py
+@@ -3,8 +3,8 @@
+             rationale="Möödunud väärteokaebuse tähtaja auditeeritud routing kasutab VTMS § 118.",
+         ),
+         "fine_context:challenge_decision": CoverageRule(
+-            source_groups=(("VTMS_114",),),
+-            rationale="Väärteootsuse vaidlustamise auditeeritud routing kasutab VTMS § 114.",
++            source_groups=(("VTMS_114", "VTMS_118"),),
++            rationale="Möödunud tähtaja kontekstis võib vaidlustamise katte anda VTMS § 114 või tähtaja ennistamist käsitlev VTMS § 118.",
+         ),
+         "fine_context:payment_plan": CoverageRule(
+             source_groups=(("KARS_66",),),

@@ -1,0 +1,56 @@
+{
+  "name": "V10.3 — deterministic obligation coverage verifier and one-shot model repair",
+  "base_commit": "97b92be86412e2834016fb720126ee8b5a31a864",
+  "base_files": [
+    {
+      "path": "services/analysis_orchestrator.py",
+      "git_blob_sha": "5382243fb5168dbbbd4824519560e18585209fc2"
+    },
+    {
+      "path": "scripts/evaluate_model.py",
+      "git_blob_sha": "ed75c753f40c1d99e5bc0525239609117aaee8de"
+    }
+  ],
+  "new_files": [
+    {
+      "path": "services/coverage_verifier.py",
+      "sha256": "642fd6874a9a36cda2a495e564b2f796b0aaaf2ebf5a625b76728417a56d5371"
+    },
+    {
+      "path": "tests/test_coverage_verifier.py",
+      "sha256": "5e8be26f802bb638984f11aa2d831ee6f259a0108e98b30c5530e3f76fec7a2e"
+    }
+  ],
+  "tests": [
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_coverage_verifier"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_analysis_orchestrator"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_retrieval_planner"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_retrieval_policy"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_main"
+    ]
+  ]
+}

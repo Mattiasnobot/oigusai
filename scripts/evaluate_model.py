@@ -77,6 +77,7 @@ def assess_case(case: Dict[str, Any], finalized: Dict[str, Any], *, fallback_use
     pipeline = finalized.get("pipeline") or {}
     verification_status = str(finalized.get("verification_status") or "")
     is_mock = bool(finalized.get("is_mock"))
+    coverage = dict(finalized.get("coverage") or {})
 
     source_groups = case.get("expected_source_groups") or []
     source_groups_ok = _source_groups_pass(verified_sources, source_groups)
@@ -111,6 +112,7 @@ def assess_case(case: Dict[str, Any], finalized: Dict[str, Any], *, fallback_use
         "source_groups_ok": source_groups_ok,
         "phrases_all_ok": phrases_all_ok,
         "phrases_any_ok": phrases_any_ok,
+        "coverage": coverage,
     }
 
 
@@ -252,6 +254,7 @@ async def run_case(
             "source_groups_ok": False,
             "phrases_all_ok": False,
             "phrases_any_ok": False,
+            "coverage": {},
             "error": f"{type(exc).__name__}: {exc}",
         })
     result["duration_seconds"] = round(time.perf_counter() - started, 2)

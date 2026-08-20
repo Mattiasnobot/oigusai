@@ -1,0 +1,722 @@
+diff --git a/services/analysis_orchestrator.py b/services/analysis_orchestrator.py
+--- a/services/analysis_orchestrator.py
++++ b/services/analysis_orchestrator.py
+@@ -13,6 +13,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
+ 
+ from services.analysis_pipeline import AnalysisPipelineRun
+ from services.case_intake import CaseIntakeService
++from services.coverage_verifier import CoverageVerifier
+ from services.documents import LocalDocumentService
+ from services.offline_ai import OfflineAIService
+ from services.legal_search import HistoricalDataUnavailableError, LegalSearchService
+@@ -61,6 +62,8 @@ class ExecutedAnalysis:
+     is_mock: bool
+     fallback_used: bool
+     coverage_fallback_used: bool
++    coverage_repair_used: bool
++    coverage_report: Dict[str, Any]
+     verified_sources: List[str]
+ 
+ 
+@@ -363,6 +366,8 @@ class AnalysisOrchestrator:
+ 
+         fallback_used = False
+         coverage_fallback_used = False
++        coverage_repair_used = False
++        coverage_report: Dict[str, Any] = {}
+         case_description = str(getattr(request, "case_description", "") or "")
+         analysis_case = (
+             CaseIntakeService._user_evidence_text(case_description)
+@@ -474,7 +479,11 @@ class AnalysisOrchestrator:
+             "kirjalikku taasesitamist võimaldavas vormis" in normalized_answer
+             and "tühine" in normalized_answer
+         )
+-        if route_plan.employment_form_question and not form_answer_complete:
++        if (
++            route_plan.employment_form_question
++            and obligation_plan is None
++            and not form_answer_complete
++        ):
+             form_law = next(
+                 (
+                     law for law in analysis_laws
+@@ -554,6 +563,102 @@ class AnalysisOrchestrator:
+                 500, "Kontrollitud allikate kuvamine ebaõnnestus."
+             )
+ 
++        coverage_report = CoverageVerifier.verify(
++            obligation_plan,
++            analysis_laws,
++            verified_sources,
++        )
++        if (
++            coverage_report.get("needs_repair")
++            and not fallback_used
++            and isinstance(ai_service, OfflineAIService)
++        ):
++            repair_instructions = CoverageVerifier.repair_instructions(
++                coverage_report
++            )
++            if repair_instructions:
++                repair_case = (
++                    f"{analysis_case}\n\n{repair_instructions}"
++                )[:9000]
++                try:
++                    repair_text, repair_mock, repair_claims = await self.run_guarded_work(
++                        "analysis",
++                        ai_service.analyze_case_structured,
++                        repair_case,
++                        analysis_laws,
++                        str(getattr(request, "event_date", "") or ""),
++                        document_spans,
++                    )
++                    repair_valid, repair_sources = source_verifier.verify_sources(
++                        repair_text,
++                        analysis_laws,
++                    )
++                    repaired_coverage = CoverageVerifier.verify(
++                        obligation_plan,
++                        analysis_laws,
++                        repair_sources if repair_valid else [],
++                    )
++                    if repair_valid and repaired_coverage.get("passed"):
++                        analysis_text = repair_text
++                        structured_claims = repair_claims
++                        is_mock = repair_mock
++                        verified_sources = repair_sources
++                        is_valid = True
++                        coverage_report = repaired_coverage
++                        coverage_repair_used = True
++                        self.logger.info(
++                            "Coverage repair succeeded for obligations: %s",
++                            ", ".join(
++                                row.get("kind", "")
++                                for row in coverage_report.get("obligations", [])
++                                if row.get("enforced")
++                            ),
++                        )
++                except Exception as exc:
++                    self.logger.warning("Coverage repair attempt failed: %s", exc)
++
++        if coverage_report.get("enforced") and not coverage_report.get("passed"):
++            if coverage_report.get("missing_source"):
++                raise AnalysisOrchestrationError(
++                    422,
++                    "Kontrollitud õigusallikad ei kata veel kõiki tuvastatud "
++                    "küsimuse osi. Täpsusta dokumendi liiki või menetluskonteksti.",
++                )
++            coverage_digest = CoverageVerifier.build_source_digest(
++                coverage_report,
++                analysis_laws,
++            )
++            if not coverage_digest:
++                raise AnalysisOrchestrationError(
++                    500,
++                    "Kontrollitud allikate katvuse kuvamine ebaõnnestus.",
++                )
++            analysis_text = coverage_digest
++            if isinstance(ai_service, OfflineAIService):
++                structured_claims = ai_service.claims_from_verified_analysis(
++                    analysis_text,
++                    analysis_laws,
++                )
++            else:
++                structured_claims = []
++            is_valid, verified_sources = source_verifier.verify_sources(
++                analysis_text,
++                analysis_laws,
++            )
++            fallback_used = True
++            coverage_fallback_used = True
++            coverage_report = CoverageVerifier.verify(
++                obligation_plan,
++                analysis_laws,
++                verified_sources if is_valid else [],
++            )
++            if not is_valid or not coverage_report.get("passed"):
++                self.logger.error("Coverage source digest failed verification")
++                raise AnalysisOrchestrationError(
++                    500,
++                    "Kontrollitud allikate katvuse kuvamine ebaõnnestus.",
++                )
++
+         cited_ids = set(verified_sources)
+         cited_laws = [
+             law for law in analysis_laws
+@@ -568,10 +663,14 @@ class AnalysisOrchestrator:
+             self.logger.warning(
+                 "AI response failed semantic relevance check; "
+                 "returning verified source digest"
+             )
+-            analysis_text = ai_service.build_source_only_fallback(
+-                analysis_case, analysis_laws
++            coverage_digest = CoverageVerifier.build_source_digest(
++                coverage_report,
++                analysis_laws,
+             )
++            analysis_text = coverage_digest or ai_service.build_source_only_fallback(
++                analysis_case, analysis_laws
++            )
+             if isinstance(ai_service, OfflineAIService):
+                 structured_claims = ai_service.claims_from_verified_analysis(
+                     analysis_text, analysis_laws
+@@ -579,6 +678,13 @@ class AnalysisOrchestrator:
+                 analysis_text, analysis_laws
+             )
+             fallback_used = True
++            if coverage_digest:
++                coverage_fallback_used = True
++            coverage_report = CoverageVerifier.verify(
++                obligation_plan,
++                analysis_laws,
++                verified_sources if is_valid else [],
++            )
+             cited_ids = set(verified_sources)
+             cited_laws = [
+                 law for law in analysis_laws
+@@ -601,6 +707,10 @@ class AnalysisOrchestrator:
+                 answer_relevance.clarification
+                 or self.relevance_verifier.clarification_for(answer_relevance),
+             )
++        if coverage_report.get("enforced") and not coverage_report.get("passed"):
++            raise AnalysisOrchestrationError(
++                500, "Lõppvastuse kohustuste katvuse kontroll ebaõnnestus."
++            )
+ 
+         pipeline.complete(
+             "model_analysis",
+@@ -614,6 +724,9 @@ class AnalysisOrchestrator:
+             citation_valid=is_valid,
+             semantic_relevance=answer_relevance.relevant,
+             verified_source_count=len(verified_sources),
++            coverage_passed=bool(coverage_report.get("passed", True)),
++            coverage_repair=coverage_repair_used,
++            missing_coverage=len(coverage_report.get("missing_answer") or []),
+         )
+ 
+         return ExecutedAnalysis(
+@@ -626,5 +739,7 @@ class AnalysisOrchestrator:
+             is_mock=bool(is_mock),
+             fallback_used=fallback_used,
+             coverage_fallback_used=coverage_fallback_used,
++            coverage_repair_used=coverage_repair_used,
++            coverage_report=dict(coverage_report),
+             verified_sources=list(verified_sources),
+         )
+@@ -661,9 +776,10 @@ class AnalysisOrchestrator:
+         if executed.is_mock:
+             warning = "TESTREŽIIM: Ollama vastus on näidisvastus. " + warning
+         if executed.coverage_fallback_used:
+             warning = (
+-                "Vastus on piiritletud töölepingu ülesütlemise vorminõudega ja põhineb "
+-                "kontrollitud TLS §-l 95. Tegemist on esmase selgituse, mitte õigusnõuga."
++                "Mudeli vastus ei katnud kõiki tuvastatud küsimuse osi. Lõppvastus "
++                "piirati auditeeritud kohustustega seotud kontrollitud "
++                "õigusallikakatkenditega. Tegemist on esmase selgituse, mitte õigusnõuga."
+             )
+         elif fallback_used:
+             warning = (
+@@ -757,4 +873,5 @@ class AnalysisOrchestrator:
+             "verification_status": verification_status,
+             "layered_answer": layered_answer,
+             "pipeline": pipeline_result,
++            "coverage": dict(getattr(executed, "coverage_report", {}) or {}),
+         }
+diff --git a/scripts/evaluate_model.py b/scripts/evaluate_model.py
+--- a/scripts/evaluate_model.py
++++ b/scripts/evaluate_model.py
+@@ -78,6 +78,7 @@ def assess_case(case: Dict[str, Any], finalized: Dict[str, Any], *, fallback_used: bool) -> Dict[str, Any]:
+     pipeline = finalized.get("pipeline") or {}
+     verification_status = str(finalized.get("verification_status") or "")
+     is_mock = bool(finalized.get("is_mock"))
++    coverage = dict(finalized.get("coverage") or {})
+ 
+     source_groups = case.get("expected_source_groups") or []
+     source_groups_ok = _source_groups_pass(verified_sources, source_groups)
+@@ -112,4 +113,5 @@ def assess_case(case: Dict[str, Any], finalized: Dict[str, Any], *, fallback_used: bool) -> Dict[str, Any]:
+         "source_groups_ok": source_groups_ok,
+         "phrases_all_ok": phrases_all_ok,
+         "phrases_any_ok": phrases_any_ok,
++        "coverage": coverage,
+     }
+@@ -242,5 +244,6 @@ async def run_case(
+             "source_groups_ok": False,
+             "phrases_all_ok": False,
+             "phrases_any_ok": False,
++            "coverage": {},
+             "error": f"{type(exc).__name__}: {exc}",
+         })
+diff --git a/services/coverage_verifier.py b/services/coverage_verifier.py
+new file mode 100644
+--- /dev/null
++++ b/services/coverage_verifier.py
+@@ -0,0 +1,286 @@
++"""Deterministic obligation coverage verification for ÕigusAI V10.3.
++
++Coverage is deliberately narrower than legal reasoning.  The verifier checks
++whether an audited retrieval obligation has at least one trusted source in the
++model context and whether the final cited answer actually uses the required
++source group.  It never creates a new authority and it never treats model
++memory as a legal source.
++
++The small rule map below is intentionally explicit and temporary.  V10.4 moves
++these auditable obligation -> source-group rules into the policy registry.
++"""
++from __future__ import annotations
++
++from dataclasses import dataclass
++import re
++from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
++
++
++@dataclass(frozen=True)
++class CoverageRule:
++    """Audited source groups required for one retrieval-obligation reason."""
++
++    source_groups: Tuple[Tuple[str, ...], ...]
++    rationale: str
++
++
++class CoverageVerifier:
++    """Verify retrieval and answer coverage without making legal conclusions."""
++
++    STATUS_COVERED = "COVERED"
++    STATUS_ANSWER_MISSING = "ANSWER_MISSING"
++    STATUS_SOURCE_MISSING = "SOURCE_MISSING"
++    STATUS_RULE_UNRESOLVED = "RULE_UNRESOLVED"
++
++    _RULES: Mapping[str, CoverageRule] = {
++        "employment_context:redundancy_basis": CoverageRule(
++            source_groups=(("TLS_89",),),
++            rationale="Koondamise aluse auditeeritud routing kasutab TLS § 89.",
++        ),
++        "employment_context:notice_period": CoverageRule(
++            source_groups=(("TLS_97",),),
++            rationale="Koondamise etteteatamise auditeeritud routing kasutab TLS § 97.",
++        ),
++        "employment_context:termination_form": CoverageRule(
++            source_groups=(("TLS_95",),),
++            rationale="Töölepingu ülesütlemise vorminõude auditeeritud routing kasutab TLS § 95.",
++        ),
++        "fine_context:missed_deadline": CoverageRule(
++            source_groups=(("VTMS_118",),),
++            rationale="Möödunud väärteokaebuse tähtaja auditeeritud routing kasutab VTMS § 118.",
++        ),
++        "fine_context:challenge_decision": CoverageRule(
++            source_groups=(("VTMS_114",),),
++            rationale="Väärteootsuse vaidlustamise auditeeritud routing kasutab VTMS § 114.",
++        ),
++        "fine_context:payment_plan": CoverageRule(
++            source_groups=(("KARS_66",),),
++            rationale="Rahatrahvi ositi tasumise auditeeritud routing kasutab KarS § 66.",
++        ),
++    }
++
++    @staticmethod
++    def _normalize_id(value: Any) -> str:
++        return re.sub(r"[^A-ZÕÄÖÜ0-9_]", "", str(value or "").strip().upper())
++
++    @classmethod
++    def verify(
++        cls,
++        obligation_plan: Any,
++        available_laws: Iterable[Dict[str, Any]],
++        verified_sources: Iterable[str],
++    ) -> Dict[str, Any]:
++        """Return an inspectable coverage report for the current answer."""
++        obligations = list(getattr(obligation_plan, "obligations", ()) or ())
++        available_ids = {
++            cls._normalize_id(law.get("id"))
++            for law in (available_laws or [])
++            if cls._normalize_id(law.get("id"))
++        }
++        cited_ids = {
++            cls._normalize_id(value)
++            for value in (verified_sources or [])
++            if cls._normalize_id(value)
++        }
++
++        rows: List[Dict[str, Any]] = []
++        missing_answer: List[str] = []
++        missing_source: List[str] = []
++        unresolved_rules: List[str] = []
++        enforced_count = 0
++        covered_count = 0
++
++        for obligation in obligations:
++            kind = str(getattr(obligation, "kind", "") or "")
++            reason = str(getattr(obligation, "reason", "") or "")
++            answer_requirement = str(
++                getattr(obligation, "answer_requirement", "") or ""
++            )
++            rule = cls._RULES.get(reason)
++            if rule is None:
++                unresolved_rules.append(kind)
++                rows.append({
++                    "kind": kind,
++                    "reason": reason,
++                    "answer_requirement": answer_requirement,
++                    "enforced": False,
++                    "status": cls.STATUS_RULE_UNRESOLVED,
++                    "expected_source_groups": [],
++                    "candidate_sources": [],
++                    "cited_sources": [],
++                    "rationale": "V10.3-l puudub sellele kohustusele veel auditeeritud coverage-reegel.",
++                })
++                continue
++
++            enforced_count += 1
++            normalized_groups = tuple(
++                tuple(cls._normalize_id(value) for value in group if cls._normalize_id(value))
++                for group in rule.source_groups
++            )
++            source_missing_groups = [
++                group for group in normalized_groups
++                if not available_ids.intersection(group)
++            ]
++            answer_missing_groups = [
++                group for group in normalized_groups
++                if available_ids.intersection(group)
++                and not cited_ids.intersection(group)
++            ]
++            candidate_sources = sorted({
++                source_id
++                for group in normalized_groups
++                for source_id in group
++                if source_id in available_ids
++            })
++            cited_sources = sorted(set(candidate_sources).intersection(cited_ids))
++
++            if source_missing_groups:
++                status = cls.STATUS_SOURCE_MISSING
++                missing_source.append(kind)
++            elif answer_missing_groups:
++                status = cls.STATUS_ANSWER_MISSING
++                missing_answer.append(kind)
++            else:
++                status = cls.STATUS_COVERED
++                covered_count += 1
++
++            rows.append({
++                "kind": kind,
++                "reason": reason,
++                "answer_requirement": answer_requirement,
++                "enforced": True,
++                "status": status,
++                "expected_source_groups": [list(group) for group in normalized_groups],
++                "candidate_sources": candidate_sources,
++                "cited_sources": cited_sources,
++                "rationale": rule.rationale,
++            })
++
++        passed = not missing_answer and not missing_source
++        return {
++            "passed": passed,
++            "enforced": enforced_count > 0,
++            "enforced_count": enforced_count,
++            "covered_count": covered_count,
++            "missing_answer": missing_answer,
++            "missing_source": missing_source,
++            "unresolved_rules": unresolved_rules,
++            "needs_repair": bool(missing_answer) and not bool(missing_source),
++            "obligations": rows,
++        }
++
++    @classmethod
++    def repair_instructions(cls, report: Mapping[str, Any]) -> str:
++        """Build deterministic instructions for one model coverage-repair attempt."""
++        rows = [
++            row for row in (report.get("obligations") or [])
++            if isinstance(row, dict) and row.get("enforced")
++        ]
++        if not rows or not report.get("needs_repair"):
++            return ""
++
++        lines = [
++            "KATVUSE PARANDUS:",
++            "Eelmine vastus ei katnud kõiki auditeeritud vastusekohustusi.",
++            "Kirjuta KOGU vastus uuesti ja kata kõik allolevad kohustused eraldi väitega.",
++            "Kasuta iga kohustuse juures vähemalt üht näidatud lubatud source_id väärtust, kui allika tekst seda väidet toetab.",
++        ]
++        for row in rows:
++            groups = [
++                "/".join(group)
++                for group in (row.get("expected_source_groups") or [])
++                if group
++            ]
++            state = "PUUDU" if row.get("status") != cls.STATUS_COVERED else "SÄILITA"
++            lines.append(
++                f"- {state}: {row.get('answer_requirement') or row.get('kind')} "
++                f"(allikas: {', '.join(groups)})"
++            )
++        lines.append(
++            "Ära lisa ühtegi normi ega järeldust, mida etteantud allikatekst ei toeta."
++        )
++        return "\n".join(lines)
++
++    @classmethod
++    def build_source_digest(
++        cls,
++        report: Mapping[str, Any],
++        laws: Sequence[Dict[str, Any]],
++    ) -> str:
++        """Build a coverage-preserving deterministic digest from exact source text.
++
++        The digest contains source excerpts, not newly inferred legal conclusions.
++        It is used only after a model answer cannot satisfy the audited coverage
++        requirements.
++        """
++        if not report.get("enforced"):
++            return ""
++        if report.get("missing_source"):
++            return ""
++
++        law_map = {
++            cls._normalize_id(law.get("id")): law
++            for law in (laws or [])
++            if cls._normalize_id(law.get("id"))
++        }
++        ordered_ids: List[str] = []
++        for row in report.get("obligations") or []:
++            if not isinstance(row, dict) or not row.get("enforced"):
++                continue
++            for group in row.get("expected_source_groups") or []:
++                chosen = next(
++                    (
++                        cls._normalize_id(source_id)
++                        for source_id in group
++                        if cls._normalize_id(source_id) in law_map
++                    ),
++                    "",
++                )
++                if chosen and chosen not in ordered_ids:
++                    ordered_ids.append(chosen)
++
++        application_lines: List[str] = []
++        used_ids: List[str] = []
++        for source_id in ordered_ids:
++            law = law_map[source_id]
++            excerpts = cls._source_sentences(str(law.get("text", "")), limit=2)
++            if not excerpts:
++                continue
++            for excerpt in excerpts:
++                application_lines.append(f"{excerpt.rstrip('.!?;:')} [{source_id}].")
++            used_ids.append(source_id)
++
++        if not application_lines:
++            return ""
++
++        return "\n".join([
++            "OLUKORD:",
++            "Mudeli vastus ei katnud kõiki tuvastatud küsimuse osi. Allpool kuvatakse ainult auditeeritud kohustustega seotud kontrollitud allikakatkendid.",
++            "",
++            "ÕIGUSLIK KOHALDAMINE:",
++            *application_lines,
++            "",
++            "SOOVITUSED:",
++            "Kontrolli otsuse või dokumendi täpset liiki, kuupäevi ja menetlejat, kui need võivad kohaldatavat menetlusteed muuta.",
++            "",
++            "KASUTATUD ALLIKAD: " + " ".join(f"[{source_id}]" for source_id in used_ids),
++        ]).strip()
++
++    @staticmethod
++    def _source_sentences(text: str, *, limit: int) -> List[str]:
++        normalized = str(text or "").replace("\r", "\n")
++        parts = [
++            re.sub(r"\s+", " ", value).strip()
++            for value in re.split(r"(?<=[.!?])\s+|\n+", normalized)
++            if re.sub(r"\s+", " ", value).strip()
++        ]
++        result: List[str] = []
++        for value in parts:
++            if len(value) > 700:
++                value = value[:700].rstrip()
++            if len(re.findall(r"[A-Za-zÕÄÖÜõäöü]{2,}", value)) < 3:
++                continue
++            result.append(value)
++            if len(result) >= limit:
++                break
++        return result
+diff --git a/tests/test_coverage_verifier.py b/tests/test_coverage_verifier.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_coverage_verifier.py
+@@ -0,0 +1,178 @@
++import asyncio
++import unittest
++from types import SimpleNamespace
++from unittest.mock import Mock
++
++from services.analysis_orchestrator import AnalysisOrchestrator
++from services.analysis_pipeline import AnalysisPipelineRun
++from services.coverage_verifier import CoverageVerifier
++from services.offline_ai import OfflineAIService
++from services.retrieval_planner import MultiIssueRetrievalPlanner
++from verifiers.source_verifier import SourceVerifier
++
++
++async def immediate_work(_label, func, *args):
++    return func(*args)
++
++
++class _RepairingOfflineAI(OfflineAIService):
++    def __init__(self):
++        self.calls = 0
++
++    def analyze_case_structured(self, *_args, **_kwargs):
++        self.calls += 1
++        if self.calls == 1:
++            return (
++                "ÕIGUSLIK KOHALDAMINE:\nKoondamise alus on kirjeldatud sättes [TLS_89].\n\n"
++                "SOOVITUSED:\nSäilita dokumendid.\n\nKASUTATUD ALLIKAD: [TLS_89]",
++                False,
++                [],
++            )
++        return (
++            "ÕIGUSLIK KOHALDAMINE:\nKoondamise alus on kirjeldatud sättes [TLS_89].\n"
++            "Etteteatamise tähtaeg on kirjeldatud sättes [TLS_97].\n\n"
++            "SOOVITUSED:\nSäilita dokumendid.\n\nKASUTATUD ALLIKAD: [TLS_89] [TLS_97]",
++            False,
++            [],
++        )
++
++    def claims_from_verified_analysis(self, *_args, **_kwargs):
++        return []
++
++    def build_source_only_fallback(self, *_args, **_kwargs):
++        raise AssertionError("Coverage repair should succeed before fallback")
++
++
++class CoverageVerifierTests(unittest.TestCase):
++    def test_redundancy_deadline_is_reported_missing_from_answer(self):
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description="Mind koondatakse. Kui pikk etteteatamine on?",
++            search_text="Mind koondatakse. Kui pikk etteteatamine on?",
++            current_intents=["deadline"],
++            fine_context=False,
++        )
++        report = CoverageVerifier.verify(
++            plan,
++            [
++                {"id": "TLS_89", "text": "Koondamine."},
++                {"id": "TLS_97", "text": "Etteteatamine."},
++            ],
++            ["TLS_89"],
++        )
++        self.assertFalse(report["passed"])
++        self.assertTrue(report["needs_repair"])
++        self.assertIn("deadline", report["missing_answer"])
++
++    def test_multi_fine_requires_deadline_remedy_and_payment_sources(self):
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description=(
++                "Sain rahatrahvi. Kaebetähtaeg läks mööda. "
++                "Kas tähtaega saab ennistada ja kas trahvi saab ositi maksta?"
++            ),
++            search_text="rahatrahv kaebetähtaeg ennistada ositi maksta",
++            current_intents=["missed_deadline", "challenge_decision", "payment_plan"],
++            fine_context=True,
++        )
++        laws = [
++            {"id": "VTMS_118", "text": "Tähtaja ennistamine."},
++            {"id": "VTMS_114", "text": "Kaebus."},
++            {"id": "KARS_66", "text": "Rahatrahvi tasumine ositi."},
++        ]
++        report = CoverageVerifier.verify(
++            plan,
++            laws,
++            ["VTMS_118", "VTMS_114", "KARS_66"],
++        )
++        self.assertTrue(report["passed"])
++        self.assertEqual(report["covered_count"], 3)
++
++    def test_missing_trusted_source_is_not_repairable_by_model(self):
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description="Mind koondatakse. Kui pikk etteteatamine on?",
++            search_text="koondamine etteteatamine",
++            current_intents=["deadline"],
++            fine_context=False,
++        )
++        report = CoverageVerifier.verify(
++            plan,
++            [{"id": "TLS_89", "text": "Koondamine."}],
++            ["TLS_89"],
++        )
++        self.assertFalse(report["passed"])
++        self.assertFalse(report["needs_repair"])
++        self.assertIn("deadline", report["missing_source"])
++
++    def test_source_digest_cites_each_required_source(self):
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description="Mind koondatakse. Kui pikk etteteatamine on?",
++            search_text="koondamine etteteatamine",
++            current_intents=["deadline"],
++            fine_context=False,
++        )
++        laws = [
++            {"id": "TLS_89", "text": "Koondamine on töölepingu erakorralise ülesütlemise alus."},
++            {"id": "TLS_97", "text": "Tööandja peab töölepingu ülesütlemisest ette teatama."},
++        ]
++        report = CoverageVerifier.verify(plan, laws, ["TLS_89"])
++        digest = CoverageVerifier.build_source_digest(report, laws)
++        self.assertIn("[TLS_89]", digest)
++        self.assertIn("[TLS_97]", digest)
++        self.assertIn("ÕIGUSLIK KOHALDAMINE:", digest)
++
++    def test_orchestrator_repairs_missing_coverage_without_fallback(self):
++        laws = [
++            {"id": "TLS_89", "title": "TLS § 89", "text": "Koondamise alus on kirjeldatud sättes.", "source": "RT"},
++            {"id": "TLS_97", "title": "TLS § 97", "text": "Etteteatamise tähtaeg on kirjeldatud sättes.", "source": "RT"},
++        ]
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description="Mind koondatakse. Kui pikk etteteatamine on?",
++            search_text="koondamine etteteatamine",
++            current_intents=["deadline"],
++            fine_context=False,
++        )
++        relevance = Mock()
++        relevance.verify_answer.return_value = SimpleNamespace(
++            relevant=True,
++            missing_concepts=[],
++            clarification="",
++        )
++        orchestrator = AnalysisOrchestrator(
++            legal_service=Mock(),
++            matter_store=None,
++            relevance_verifier=relevance,
++            run_guarded_work=immediate_work,
++        )
++        pipeline = AnalysisPipelineRun()
++        for stage in ("case_understanding", "document_evidence", "legal_retrieval"):
++            pipeline.complete(stage)
++        prepared = SimpleNamespace(
++            pipeline=pipeline,
++            current_turn="Mind koondatakse. Kui pikk etteteatamine on?",
++            answer_requirements=[],
++            obligation_plan=plan,
++            document_spans=[],
++            relevance_text="koondamine etteteatamine",
++            route_plan=SimpleNamespace(employment_form_question=False),
++            analysis_laws=laws,
++        )
++        request = SimpleNamespace(
++            case_description="Mind koondatakse. Kui pikk etteteatamine on?",
++            case_context="",
++            event_date="",
++        )
++        ai = _RepairingOfflineAI()
++        executed = asyncio.run(orchestrator.execute(
++            request,
++            prepared,
++            ai_service=ai,
++            source_verifier=SourceVerifier(),
++        ))
++        self.assertEqual(ai.calls, 2)
++        self.assertFalse(executed.fallback_used)
++        self.assertTrue(executed.coverage_repair_used)
++        self.assertTrue(executed.coverage_report["passed"])
++        self.assertEqual(set(executed.verified_sources), {"TLS_89", "TLS_97"})
++
++
++if __name__ == "__main__":
++    unittest.main()

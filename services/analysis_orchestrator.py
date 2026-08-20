@@ -15,6 +15,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from services.analysis_pipeline import AnalysisPipelineRun
 from services.case_intake import CaseIntakeService
+from services.coverage_verifier import CoverageVerifier
 from services.documents import LocalDocumentService
 from services.offline_ai import OfflineAIService
 from services.legal_search import HistoricalDataUnavailableError, LegalSearchService
@@ -66,6 +67,8 @@ class ExecutedAnalysis:
     is_mock: bool
     fallback_used: bool
     coverage_fallback_used: bool
+    coverage_repair_used: bool
+    coverage_report: Dict[str, Any]
     verified_sources: List[str]
 
 
@@ -357,6 +360,8 @@ class AnalysisOrchestrator:
 
         fallback_used = False
         coverage_fallback_used = False
+        coverage_repair_used = False
+        coverage_report: Dict[str, Any] = {}
         case_description = str(getattr(request, "case_description", "") or "")
         analysis_case = (
             CaseIntakeService._user_evidence_text(case_description)
@@ -472,7 +477,11 @@ class AnalysisOrchestrator:
             "kirjalikku taasesitamist võimaldavas vormis" in normalized_answer
             and "tühine" in normalized_answer
         )
-        if route_plan.employment_form_question and not form_answer_complete:
+        if (
+            route_plan.employment_form_question
+            and obligation_plan is None
+            and not form_answer_complete
+        ):
             form_law = next(
                 (
                     law for law in analysis_laws
@@ -554,6 +563,102 @@ class AnalysisOrchestrator:
                 500, "Kontrollitud allikate kuvamine ebaõnnestus."
             )
 
+        coverage_report = CoverageVerifier.verify(
+            obligation_plan,
+            analysis_laws,
+            verified_sources,
+        )
+        if (
+            coverage_report.get("needs_repair")
+            and not fallback_used
+            and isinstance(ai_service, OfflineAIService)
+        ):
+            repair_instructions = CoverageVerifier.repair_instructions(
+                coverage_report
+            )
+            if repair_instructions:
+                repair_case = (
+                    f"{analysis_case}\n\n{repair_instructions}"
+                )[:9000]
+                try:
+                    repair_text, repair_mock, repair_claims = await self.run_guarded_work(
+                        "analysis",
+                        ai_service.analyze_case_structured,
+                        repair_case,
+                        analysis_laws,
+                        str(getattr(request, "event_date", "") or ""),
+                        document_spans,
+                    )
+                    repair_valid, repair_sources = source_verifier.verify_sources(
+                        repair_text,
+                        analysis_laws,
+                    )
+                    repaired_coverage = CoverageVerifier.verify(
+                        obligation_plan,
+                        analysis_laws,
+                        repair_sources if repair_valid else [],
+                    )
+                    if repair_valid and repaired_coverage.get("passed"):
+                        analysis_text = repair_text
+                        structured_claims = repair_claims
+                        is_mock = repair_mock
+                        verified_sources = repair_sources
+                        is_valid = True
+                        coverage_report = repaired_coverage
+                        coverage_repair_used = True
+                        self.logger.info(
+                            "Coverage repair succeeded for obligations: %s",
+                            ", ".join(
+                                row.get("kind", "")
+                                for row in coverage_report.get("obligations", [])
+                                if row.get("enforced")
+                            ),
+                        )
+                except Exception as exc:
+                    self.logger.warning("Coverage repair attempt failed: %s", exc)
+
+        if coverage_report.get("enforced") and not coverage_report.get("passed"):
+            if coverage_report.get("missing_source"):
+                raise AnalysisOrchestrationError(
+                    422,
+                    "Kontrollitud õigusallikad ei kata veel kõiki tuvastatud "
+                    "küsimuse osi. Täpsusta dokumendi liiki või menetluskonteksti.",
+                )
+            coverage_digest = CoverageVerifier.build_source_digest(
+                coverage_report,
+                analysis_laws,
+            )
+            if not coverage_digest:
+                raise AnalysisOrchestrationError(
+                    500,
+                    "Kontrollitud allikate katvuse kuvamine ebaõnnestus.",
+                )
+            analysis_text = coverage_digest
+            if isinstance(ai_service, OfflineAIService):
+                structured_claims = ai_service.claims_from_verified_analysis(
+                    analysis_text,
+                    analysis_laws,
+                )
+            else:
+                structured_claims = []
+            is_valid, verified_sources = source_verifier.verify_sources(
+                analysis_text,
+                analysis_laws,
+            )
+            fallback_used = True
+            coverage_fallback_used = True
+            coverage_report = CoverageVerifier.verify(
+                obligation_plan,
+                analysis_laws,
+                verified_sources if is_valid else [],
+            )
+            if not is_valid or not coverage_report.get("passed"):
+                self.logger.error("Coverage source digest failed verification")
+                raise AnalysisOrchestrationError(
+                    500,
+                    "Kontrollitud allikate katvuse kuvamine ebaõnnestus.",
+                )
+
         cited_ids = set(verified_sources)
         cited_laws = [
             law for law in analysis_laws
@@ -567,7 +672,11 @@ class AnalysisOrchestrator:
                 "AI response failed semantic relevance check; "
                 "returning verified source digest"
             )
-            analysis_text = ai_service.build_source_only_fallback(
+            coverage_digest = CoverageVerifier.build_source_digest(
+                coverage_report,
+                analysis_laws,
+            )
+            analysis_text = coverage_digest or ai_service.build_source_only_fallback(
                 analysis_case, analysis_laws
             )
             if isinstance(ai_service, OfflineAIService):
@@ -578,6 +687,13 @@ class AnalysisOrchestrator:
                 analysis_text, analysis_laws
             )
             fallback_used = True
+            if coverage_digest:
+                coverage_fallback_used = True
+            coverage_report = CoverageVerifier.verify(
+                obligation_plan,
+                analysis_laws,
+                verified_sources if is_valid else [],
+            )
             cited_ids = set(verified_sources)
             cited_laws = [
                 law for law in analysis_laws
@@ -602,6 +718,10 @@ class AnalysisOrchestrator:
                 answer_relevance.clarification
                 or self.relevance_verifier.clarification_for(answer_relevance),
             )
+        if coverage_report.get("enforced") and not coverage_report.get("passed"):
+            raise AnalysisOrchestrationError(
+                500, "Lõppvastuse kohustuste katvuse kontroll ebaõnnestus."
+            )
 
         pipeline.complete(
             "model_analysis",
@@ -614,6 +734,9 @@ class AnalysisOrchestrator:
             citation_valid=is_valid,
             semantic_relevance=answer_relevance.relevant,
             verified_source_count=len(verified_sources),
+            coverage_passed=bool(coverage_report.get("passed", True)),
+            coverage_repair=coverage_repair_used,
+            missing_coverage=len(coverage_report.get("missing_answer") or []),
         )
 
         return ExecutedAnalysis(
@@ -625,6 +748,8 @@ class AnalysisOrchestrator:
             is_mock=bool(is_mock),
             fallback_used=fallback_used,
             coverage_fallback_used=coverage_fallback_used,
+            coverage_repair_used=coverage_repair_used,
+            coverage_report=dict(coverage_report),
             verified_sources=list(verified_sources),
         )
 
@@ -658,8 +783,9 @@ class AnalysisOrchestrator:
             warning = "TESTREŽIIM: Ollama vastus on näidisvastus. " + warning
         if executed.coverage_fallback_used:
             warning = (
-                "Vastus on piiritletud töölepingu ülesütlemise vorminõudega ja põhineb "
-                "kontrollitud TLS §-l 95. Tegemist on esmase selgituse, mitte õigusnõuga."
+                "Mudeli vastus ei katnud kõiki tuvastatud küsimuse osi. Lõppvastus "
+                "piirati auditeeritud kohustustega seotud kontrollitud "
+                "õigusallikakatkenditega. Tegemist on esmase selgituse, mitte õigusnõuga."
             )
         elif fallback_used:
             warning = (
@@ -758,4 +884,5 @@ class AnalysisOrchestrator:
             "verification_status": verification_status,
             "layered_answer": layered_answer,
             "pipeline": pipeline_result,
+            "coverage": dict(getattr(executed, "coverage_report", {}) or {}),
         }

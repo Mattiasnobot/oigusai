@@ -37,6 +37,7 @@ from services.legal_search import (
     QueryUnderstandingUnavailableError,
 )
 from services.offline_ai import OfflineAIService
+from services.ollama_runtime import OllamaRuntimeManager
 from services.matters import MatterNotFoundError, MatterStore
 from services.metrics import QualityMetricsStore
 from services.runtime_guard import (
@@ -150,6 +151,29 @@ async def lifespan(app: FastAPI):
             + ", ".join(missing_ai_config)
             + ". Asenda kogu services/ kaust v0.9.1 paketist."
         )
+
+    app.state.ollama_runtime = OllamaRuntimeManager(
+        host=settings.ollama_host,
+        model=settings.ollama_model,
+        keep_alive=settings.ollama_keep_alive,
+        preload_enabled=settings.ollama_preload_enabled,
+        preload_timeout=settings.ollama_preload_timeout,
+    )
+    warmup_status = await run_in_threadpool(app.state.ollama_runtime.preload)
+    if settings.ollama_preload_enabled:
+        if warmup_status.get("preload_succeeded"):
+            logger.info(
+                "Ollama analysis model warmup ready: model=%s loaded=%s duration=%.3fs",
+                settings.ollama_model,
+                warmup_status.get("analysis_model_loaded"),
+                float(warmup_status.get("preload_seconds") or 0.0),
+            )
+        else:
+            logger.warning(
+                "Ollama analysis model warmup failed; runtime remains available in degraded mode: %s",
+                warmup_status.get("preload_error") or warmup_status.get("ollama_runtime_error"),
+            )
+
     app.state.intake_service = CaseIntakeService(app.state.ai_service)
     app.state.verifier = SourceVerifier()
     app.state.document_service = LocalDocumentService(
@@ -561,6 +585,29 @@ async def health(request: Request):
         }
     )
     model_status = await run_in_threadpool(_ollama_readiness)
+    ollama_runtime = getattr(request.app.state, "ollama_runtime", None)
+    if ollama_runtime is not None:
+        runtime_status = await run_in_threadpool(ollama_runtime.snapshot)
+        model_status.update({
+            "analysis_model_loaded": runtime_status.get("analysis_model_loaded", False),
+            "analysis_model_size_vram": runtime_status.get("analysis_model_size_vram"),
+            "analysis_model_expires_at": runtime_status.get("analysis_model_expires_at"),
+            "preload_enabled": runtime_status.get("preload_enabled", False),
+            "preload_attempted": runtime_status.get("preload_attempted", False),
+            "preload_succeeded": runtime_status.get("preload_succeeded", False),
+            "preload_already_loaded": runtime_status.get("preload_already_loaded", False),
+            "preload_seconds": runtime_status.get("preload_seconds", 0.0),
+            "load_duration_ms": runtime_status.get("load_duration_ms"),
+            "preload_error": runtime_status.get("preload_error"),
+            "ollama_runtime_error": runtime_status.get("ollama_runtime_error"),
+        })
+    else:
+        model_status.update({
+            "analysis_model_loaded": False,
+            "preload_enabled": False,
+            "preload_attempted": False,
+            "preload_succeeded": False,
+        })
     runtime_guard = getattr(request.app.state, "runtime_guard", None)
     queue_status = runtime_guard.snapshot() if runtime_guard is not None else {
         "active": 0,

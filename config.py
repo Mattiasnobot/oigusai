@@ -13,7 +13,7 @@ from typing import Mapping, Optional
 
 from dotenv import load_dotenv
 
-CONFIG_SCHEMA_VERSION = 10
+CONFIG_SCHEMA_VERSION = 11
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 ENV_FILE = PROJECT_ROOT / ".env"
@@ -122,6 +122,8 @@ class Settings:
     ollama_num_predict: int
     ollama_think: bool
     ollama_keep_alive: str
+    ollama_preload_enabled: bool
+    ollama_preload_timeout: int
     ollama_citation_retries: int
     allow_mock_analysis: bool
     ollama_vision_model: str
@@ -244,6 +246,10 @@ def load_settings(environ: Optional[Mapping[str, str]] = None) -> Settings:
         ollama_num_predict=_int(env, "OLLAMA_NUM_PREDICT", 1536, minimum=64),
         ollama_think=_bool(env, "OLLAMA_THINK", False),
         ollama_keep_alive=_value(env, "OLLAMA_KEEP_ALIVE", "10m"),
+        ollama_preload_enabled=_bool(env, "OLLAMA_PRELOAD_ENABLED", True),
+        ollama_preload_timeout=_int(
+            env, "OLLAMA_PRELOAD_TIMEOUT", 180, minimum=1, maximum=1800
+        ),
         ollama_citation_retries=_int(env, "OLLAMA_CITATION_RETRIES", 2, minimum=0, maximum=3),
         allow_mock_analysis=_bool(env, "ALLOW_MOCK_ANALYSIS", False),
         ollama_vision_model=_value(env, "OLLAMA_VISION_MODEL", "llama3.2-vision"),

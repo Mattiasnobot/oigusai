@@ -1,0 +1,539 @@
+diff --git a/.env.example b/.env.example
+--- a/.env.example
++++ b/.env.example
+@@ -25,6 +25,12 @@ OLLAMA_NUM_CTX=8192
+ OLLAMA_NUM_PREDICT=1536
+ OLLAMA_THINK=false
+ OLLAMA_KEEP_ALIVE=10m
++
++# Laadi analysis-model rakenduse käivitamisel ette, et esimene päring ei maksaks cold-load aega.
++# Kui RAM/VRAM lubab, võib OLLAMA_KEEP_ALIVE väärtuseks kasutada näiteks 1h või -1.
++OLLAMA_PRELOAD_ENABLED=true
++# Maksimaalne aeg sekundites, mille startup warmup võib mudeli laadimist oodata.
++OLLAMA_PRELOAD_TIMEOUT=180
+ 
+ # Kui esimene vastus ei sisalda korrektseid viiteid, mitu paranduspäringut teha.
+ OLLAMA_CITATION_RETRIES=2
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -20,6 +20,7 @@ env:
+   ALLOW_LIVE_RT_FALLBACK: "false"
+   ALLOW_MOCK_ANALYSIS: "false"
+   APP_RELOAD: "false"
++  OLLAMA_PRELOAD_ENABLED: "false"
+   LOG_LEVEL: "WARNING"
+ 
+ jobs:
+diff --git a/config.py b/config.py
+--- a/config.py
++++ b/config.py
+@@ -10,5 +10,5 @@ from dotenv import load_dotenv
+ 
+-CONFIG_SCHEMA_VERSION = 10
++CONFIG_SCHEMA_VERSION = 11
+ 
+ PROJECT_ROOT = Path(__file__).resolve().parent
+ ENV_FILE = PROJECT_ROOT / ".env"
+@@ -100,6 +100,8 @@ class Settings:
+     ollama_num_predict: int
+     ollama_think: bool
+     ollama_keep_alive: str
++    ollama_preload_enabled: bool
++    ollama_preload_timeout: int
+     ollama_citation_retries: int
+     allow_mock_analysis: bool
+     ollama_vision_model: str
+@@ -190,6 +192,10 @@ def load_settings(environ: Optional[Mapping[str, str]] = None) -> Settings:
+         ollama_num_predict=_int(env, "OLLAMA_NUM_PREDICT", 1536, minimum=64),
+         ollama_think=_bool(env, "OLLAMA_THINK", False),
+         ollama_keep_alive=_value(env, "OLLAMA_KEEP_ALIVE", "10m"),
++        ollama_preload_enabled=_bool(env, "OLLAMA_PRELOAD_ENABLED", True),
++        ollama_preload_timeout=_int(
++            env, "OLLAMA_PRELOAD_TIMEOUT", 180, minimum=1, maximum=1800
++        ),
+         ollama_citation_retries=_int(env, "OLLAMA_CITATION_RETRIES", 2, minimum=0, maximum=3),
+         allow_mock_analysis=_bool(env, "ALLOW_MOCK_ANALYSIS", False),
+         ollama_vision_model=_value(env, "OLLAMA_VISION_MODEL", "llama3.2-vision"),
+diff --git a/main.py b/main.py
+--- a/main.py
++++ b/main.py
+@@ -32,6 +32,7 @@ from services.legal_search import (
+     QueryUnderstandingUnavailableError,
+ )
+ from services.offline_ai import OfflineAIService
++from services.ollama_runtime import OllamaRuntimeManager
+ from services.matters import MatterNotFoundError, MatterStore
+ from services.metrics import QualityMetricsStore
+ from services.runtime_guard import (
+@@ -129,5 +130,28 @@ async def lifespan(app: FastAPI):
+             + ". Asenda kogu services/ kaust v0.9.1 paketist."
+         )
++
++    app.state.ollama_runtime = OllamaRuntimeManager(
++        host=settings.ollama_host,
++        model=settings.ollama_model,
++        keep_alive=settings.ollama_keep_alive,
++        preload_enabled=settings.ollama_preload_enabled,
++        preload_timeout=settings.ollama_preload_timeout,
++    )
++    warmup_status = await run_in_threadpool(app.state.ollama_runtime.preload)
++    if settings.ollama_preload_enabled:
++        if warmup_status.get("preload_succeeded"):
++            logger.info(
++                "Ollama analysis model warmup ready: model=%s loaded=%s duration=%.3fs",
++                settings.ollama_model,
++                warmup_status.get("analysis_model_loaded"),
++                float(warmup_status.get("preload_seconds") or 0.0),
++            )
++        else:
++            logger.warning(
++                "Ollama analysis model warmup failed; runtime remains available in degraded mode: %s",
++                warmup_status.get("preload_error") or warmup_status.get("ollama_runtime_error"),
++            )
++
+     app.state.intake_service = CaseIntakeService(app.state.ai_service)
+     app.state.verifier = SourceVerifier()
+     app.state.document_service = LocalDocumentService(
+@@ -573,6 +596,29 @@ async def health(request: Request):
+         }
+     )
+     model_status = await run_in_threadpool(_ollama_readiness)
++    ollama_runtime = getattr(request.app.state, "ollama_runtime", None)
++    if ollama_runtime is not None:
++        runtime_status = await run_in_threadpool(ollama_runtime.snapshot)
++        model_status.update({
++            "analysis_model_loaded": runtime_status.get("analysis_model_loaded", False),
++            "analysis_model_size_vram": runtime_status.get("analysis_model_size_vram"),
++            "analysis_model_expires_at": runtime_status.get("analysis_model_expires_at"),
++            "preload_enabled": runtime_status.get("preload_enabled", False),
++            "preload_attempted": runtime_status.get("preload_attempted", False),
++            "preload_succeeded": runtime_status.get("preload_succeeded", False),
++            "preload_already_loaded": runtime_status.get("preload_already_loaded", False),
++            "preload_seconds": runtime_status.get("preload_seconds", 0.0),
++            "load_duration_ms": runtime_status.get("load_duration_ms"),
++            "preload_error": runtime_status.get("preload_error"),
++            "ollama_runtime_error": runtime_status.get("ollama_runtime_error"),
++        })
++    else:
++        model_status.update({
++            "analysis_model_loaded": False,
++            "preload_enabled": False,
++            "preload_attempted": False,
++            "preload_succeeded": False,
++        })
+     runtime_guard = getattr(request.app.state, "runtime_guard", None)
+     queue_status = runtime_guard.snapshot() if runtime_guard is not None else {
+         "active": 0,
+diff --git a/scripts/evaluate_model.py b/scripts/evaluate_model.py
+--- a/scripts/evaluate_model.py
++++ b/scripts/evaluate_model.py
+@@ -211,6 +211,7 @@ async def run_evaluation(
+     from services.case_workspace import UrgencyAnalyzer
+     from services.legal_search import LegalSearchService
+     from services.offline_ai import OfflineAIService
++    from services.ollama_runtime import OllamaRuntimeManager
+     from verifiers.evidence_verifier import EvidenceVerifier
+     from verifiers.relevance_verifier import RelevanceVerifier
+     from verifiers.source_verifier import SourceVerifier
+@@ -235,6 +236,23 @@ async def run_evaluation(
+     urgency_analyzer = UrgencyAnalyzer()
+     verified_answer_builder = VerifiedAnswerBuilder()
+ 
++    ollama_runtime = OllamaRuntimeManager(
++        host=settings.ollama_host,
++        model=settings.ollama_model,
++        keep_alive=settings.ollama_keep_alive,
++        preload_enabled=settings.ollama_preload_enabled,
++        preload_timeout=settings.ollama_preload_timeout,
++    )
++    warmup_status = await asyncio.to_thread(ollama_runtime.preload)
++    print(
++        "Ollama warmup: "
++        f"enabled={warmup_status.get('preload_enabled')} "
++        f"loaded={warmup_status.get('analysis_model_loaded')} "
++        f"preloaded={warmup_status.get('preload_succeeded')} "
++        f"duration={float(warmup_status.get('preload_seconds') or 0.0):.2f}s",
++        flush=True,
++    )
++
+     cases = list(suite["cases"])
+     if limit > 0:
+         cases = cases[:limit]
+@@ -261,12 +280,15 @@ async def run_evaluation(
+             flush=True,
+         )
+ 
+-    return build_report(
++    report = build_report(
+         suite,
+         results,
+         model_name=settings.ollama_model,
+         duration_seconds=time.perf_counter() - started,
+     )
++    report["ollama_warmup"] = warmup_status
++    report["ollama_runtime_after"] = await asyncio.to_thread(ollama_runtime.snapshot)
++    return report
+ 
+ 
+ def _write_report(path: Path, report: Dict[str, Any]) -> None:
+diff --git a/services/ollama_runtime.py b/services/ollama_runtime.py
+new file mode 100644
+--- /dev/null
++++ b/services/ollama_runtime.py
+@@ -0,0 +1,230 @@
++"""Bounded Ollama model lifecycle management for ÕigusAI V10.3.3.
++
++The analysis model can be preloaded at application startup so the first user
++request does not pay the full model cold-load cost.  This module never pulls or
++downloads models, and preload failures are diagnostic rather than fatal.
++"""
++from __future__ import annotations
++
++import time
++from typing import Any, Dict, List, Optional
++
++import requests
++
++
++class OllamaRuntimeManager:
++    """Inspect and optionally preload one configured local Ollama model."""
++
++    def __init__(
++        self,
++        *,
++        host: str,
++        model: str,
++        keep_alive: str = "10m",
++        preload_enabled: bool = True,
++        preload_timeout: int = 180,
++        status_timeout: float = 2.0,
++    ) -> None:
++        self.host = str(host or "http://localhost:11434").rstrip("/")
++        self.model = str(model or "").strip()
++        self.keep_alive = str(keep_alive or "10m").strip()
++        self.preload_enabled = bool(preload_enabled)
++        self.preload_timeout = max(1, int(preload_timeout))
++        self.status_timeout = max(0.2, float(status_timeout))
++        self._warmup: Dict[str, Any] = {
++            "preload_enabled": self.preload_enabled,
++            "preload_attempted": False,
++            "preload_succeeded": False,
++            "preload_already_loaded": False,
++            "preload_seconds": 0.0,
++            "load_duration_ms": None,
++            "preload_error": None,
++        }
++
++    @staticmethod
++    def _name(value: Any) -> str:
++        return str(value or "").strip().casefold()
++
++    @classmethod
++    def _matches_model(cls, configured: str, actual: str) -> bool:
++        wanted = cls._name(configured)
++        candidate = cls._name(actual)
++        if not wanted or not candidate:
++            return False
++        if wanted == candidate:
++            return True
++        if ":" not in wanted:
++            return candidate.split(":", 1)[0] == wanted
++        return False
++
++    @staticmethod
++    def _model_name(record: Dict[str, Any]) -> str:
++        return str(record.get("name") or record.get("model") or "").strip()
++
++    def _installed_models(self) -> List[Dict[str, Any]]:
++        response = requests.get(f"{self.host}/api/tags", timeout=self.status_timeout)
++        response.raise_for_status()
++        payload = response.json()
++        models = payload.get("models", []) if isinstance(payload, dict) else []
++        return [item for item in models if isinstance(item, dict)]
++
++    def loaded_models(self) -> List[Dict[str, Any]]:
++        """Return Ollama's current in-memory model records from ``/api/ps``."""
++        response = requests.get(f"{self.host}/api/ps", timeout=self.status_timeout)
++        response.raise_for_status()
++        payload = response.json()
++        models = payload.get("models", []) if isinstance(payload, dict) else []
++        return [item for item in models if isinstance(item, dict)]
++
++    def _find_model(
++        self,
++        records: List[Dict[str, Any]],
++    ) -> Optional[Dict[str, Any]]:
++        return next(
++            (
++                record
++                for record in records
++                if self._matches_model(self.model, self._model_name(record))
++            ),
++            None,
++        )
++
++    @staticmethod
++    def _load_duration_ms(payload: Any) -> Optional[float]:
++        if not isinstance(payload, dict):
++            return None
++        raw = payload.get("load_duration")
++        if raw is None:
++            return None
++        try:
++            # Ollama duration values are nanoseconds.
++            return round(float(raw) / 1_000_000.0, 3)
++        except (TypeError, ValueError):
++            return None
++
++    def snapshot(self) -> Dict[str, Any]:
++        """Return bounded runtime state without raising when Ollama is unavailable."""
++        installed: List[Dict[str, Any]] = []
++        loaded: List[Dict[str, Any]] = []
++        error: Optional[str] = None
++        ollama_ready = False
++
++        try:
++            installed = self._installed_models()
++            ollama_ready = True
++        except Exception as exc:  # readiness must stay fail-open
++            error = str(exc)[:240]
++
++        if ollama_ready:
++            try:
++                loaded = self.loaded_models()
++            except Exception as exc:
++                error = str(exc)[:240]
++
++        installed_record = self._find_model(installed)
++        loaded_record = self._find_model(loaded)
++        status = {
++            "ollama_ready": ollama_ready,
++            "analysis_model_ready": installed_record is not None,
++            "analysis_model_loaded": loaded_record is not None,
++            "analysis_model_size_vram": (
++                loaded_record.get("size_vram") if loaded_record else None
++            ),
++            "analysis_model_expires_at": (
++                loaded_record.get("expires_at") if loaded_record else None
++            ),
++            "ollama_runtime_error": error,
++        }
++        status.update(self._warmup)
++        return status
++
++    def preload(self) -> Dict[str, Any]:
++        """Preload the configured model with an empty generate request.
++
++        No model is pulled automatically.  Any failure is captured in the returned
++        state so application startup can continue in degraded mode.
++        """
++        if not self.preload_enabled:
++            self._warmup.update({
++                "preload_attempted": False,
++                "preload_succeeded": False,
++                "preload_already_loaded": False,
++                "preload_seconds": 0.0,
++                "load_duration_ms": None,
++                "preload_error": None,
++            })
++            status = {
++                "ollama_ready": False,
++                "analysis_model_ready": False,
++                "analysis_model_loaded": False,
++                "analysis_model_size_vram": None,
++                "analysis_model_expires_at": None,
++                "ollama_runtime_error": None,
++            }
++            status.update(self._warmup)
++            return status
++
++        self._warmup["preload_attempted"] = True
++        before = self.snapshot()
++        if not before.get("ollama_ready"):
++            self._warmup["preload_error"] = before.get("ollama_runtime_error")
++            before.update(self._warmup)
++            return before
++        if not before.get("analysis_model_ready"):
++            self._warmup["preload_error"] = (
++                f"Mudelit '{self.model}' ei leitud Ollamast."
++            )
++            before.update(self._warmup)
++            return before
++        if before.get("analysis_model_loaded"):
++            self._warmup.update({
++                "preload_succeeded": True,
++                "preload_already_loaded": True,
++                "preload_seconds": 0.0,
++                "load_duration_ms": 0.0,
++                "preload_error": None,
++            })
++            before.update(self._warmup)
++            return before
++
++        started = time.perf_counter()
++        try:
++            response = requests.post(
++                f"{self.host}/api/generate",
++                json={
++                    "model": self.model,
++                    "prompt": "",
++                    "stream": False,
++                    "keep_alive": self.keep_alive,
++                },
++                timeout=self.preload_timeout,
++            )
++            response.raise_for_status()
++            payload = response.json()
++            self._warmup.update({
++                "preload_seconds": round(time.perf_counter() - started, 3),
++                "load_duration_ms": self._load_duration_ms(payload),
++                "preload_error": None,
++            })
++        except Exception as exc:  # startup must not depend on Ollama warmup
++            self._warmup.update({
++                "preload_succeeded": False,
++                "preload_already_loaded": False,
++                "preload_seconds": round(time.perf_counter() - started, 3),
++                "load_duration_ms": None,
++                "preload_error": str(exc)[:240],
++            })
++            before.update(self._warmup)
++            return before
++
++        after = self.snapshot()
++        loaded = bool(after.get("analysis_model_loaded"))
++        self._warmup.update({
++            "preload_succeeded": loaded,
++            "preload_already_loaded": False,
++            "preload_error": (
++                None if loaded else "Ollama vastas warmupile, kuid mudelit /api/ps loendis ei ole."
++            ),
++        })
++        after.update(self._warmup)
++        return after
+diff --git a/tests/test_config.py b/tests/test_config.py
+--- a/tests/test_config.py
++++ b/tests/test_config.py
+@@ -22,6 +22,8 @@ class ConfigTests(unittest.TestCase):
+             "OLLAMA_NUM_PREDICT": "777",
+             "OLLAMA_THINK": "true",
+             "OLLAMA_KEEP_ALIVE": "20m",
++            "OLLAMA_PRELOAD_ENABLED": "false",
++            "OLLAMA_PRELOAD_TIMEOUT": "123",
+             "OLLAMA_CITATION_RETRIES": "2",
+             "OLLAMA_VISION_MODEL": "test-vision",
+             "OLLAMA_OCR_TIMEOUT": "222",
+@@ -74,6 +76,8 @@ class ConfigTests(unittest.TestCase):
+         self.assertEqual(settings.ollama_num_predict, 777)
+         self.assertTrue(settings.ollama_think)
+         self.assertEqual(settings.ollama_keep_alive, "20m")
++        self.assertFalse(settings.ollama_preload_enabled)
++        self.assertEqual(settings.ollama_preload_timeout, 123)
+         self.assertEqual(settings.ollama_citation_retries, 2)
+         self.assertEqual(settings.ollama_vision_model, "test-vision")
+         self.assertEqual(settings.ollama_ocr_timeout, 222)
+@@ -126,6 +130,8 @@ class ConfigTests(unittest.TestCase):
+             load_settings({"RERANKER_DEVICE": "internet"})
+         with self.assertRaises(ConfigurationError):
+             load_settings({"APP_ACCESS_CODE": "lühike"})
++        with self.assertRaises(ConfigurationError):
++            load_settings({"OLLAMA_PRELOAD_TIMEOUT": "0"})
+ 
+     def test_relative_paths_are_resolved_under_project(self):
+         settings = load_settings({"LEGAL_DATA_FILE": "data/custom.json"})
+diff --git a/tests/test_ollama_runtime.py b/tests/test_ollama_runtime.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_ollama_runtime.py
+@@ -0,0 +1,90 @@
++import unittest
++from unittest.mock import Mock, patch
++
++from services.ollama_runtime import OllamaRuntimeManager
++
++
++def response(payload):
++    result = Mock()
++    result.raise_for_status.return_value = None
++    result.json.return_value = payload
++    return result
++
++
++class OllamaRuntimeManagerTests(unittest.TestCase):
++    def manager(self):
++        return OllamaRuntimeManager(
++            host="http://ollama.test",
++            model="qwen3.5:9b-q4_K_M",
++            keep_alive="20m",
++            preload_enabled=True,
++            preload_timeout=33,
++        )
++
++    @patch("services.ollama_runtime.requests.post")
++    @patch("services.ollama_runtime.requests.get")
++    def test_preload_skips_generate_when_model_is_already_loaded(self, get, post):
++        get.side_effect = [
++            response({"models": [{"name": "qwen3.5:9b-q4_K_M"}]}),
++            response({"models": [{"name": "qwen3.5:9b-q4_K_M", "size_vram": 123}]}),
++        ]
++        status = self.manager().preload()
++        post.assert_not_called()
++        self.assertTrue(status["preload_succeeded"])
++        self.assertTrue(status["preload_already_loaded"])
++        self.assertTrue(status["analysis_model_loaded"])
++        self.assertEqual(status["analysis_model_size_vram"], 123)
++
++    @patch("services.ollama_runtime.requests.post")
++    @patch("services.ollama_runtime.requests.get")
++    def test_preload_uses_empty_generate_request_and_confirms_loaded_state(self, get, post):
++        get.side_effect = [
++            response({"models": [{"name": "qwen3.5:9b-q4_K_M"}]}),
++            response({"models": []}),
++            response({"models": [{"name": "qwen3.5:9b-q4_K_M"}]}),
++            response({"models": [{"name": "qwen3.5:9b-q4_K_M", "expires_at": "later"}]}),
++        ]
++        post.return_value = response({"load_duration": 2_500_000_000})
++        status = self.manager().preload()
++        post.assert_called_once_with(
++            "http://ollama.test/api/generate",
++            json={
++                "model": "qwen3.5:9b-q4_K_M",
++                "prompt": "",
++                "stream": False,
++                "keep_alive": "20m",
++            },
++            timeout=33,
++        )
++        self.assertTrue(status["preload_succeeded"])
++        self.assertFalse(status["preload_already_loaded"])
++        self.assertEqual(status["load_duration_ms"], 2500.0)
++        self.assertEqual(status["analysis_model_expires_at"], "later")
++
++    @patch("services.ollama_runtime.requests.get")
++    def test_unavailable_ollama_is_reported_without_raising(self, get):
++        get.side_effect = ConnectionError("offline")
++        status = self.manager().preload()
++        self.assertFalse(status["ollama_ready"])
++        self.assertFalse(status["preload_succeeded"])
++        self.assertIn("offline", status["preload_error"])
++
++    @patch("services.ollama_runtime.requests.get")
++    def test_disabled_preload_does_not_probe_ollama(self, get):
++        manager = OllamaRuntimeManager(
++            host="http://ollama.test",
++            model="qwen3.5:9b-q4_K_M",
++            preload_enabled=False,
++        )
++        status = manager.preload()
++        self.assertFalse(status["preload_attempted"])
++        self.assertFalse(status["preload_enabled"])
++        get.assert_not_called()
++
++    def test_model_matching_accepts_default_tag_only_when_config_has_no_tag(self):
++        self.assertTrue(OllamaRuntimeManager._matches_model("qwen3.5", "qwen3.5:latest"))
++        self.assertFalse(OllamaRuntimeManager._matches_model("qwen3.5:9b", "qwen3.5:latest"))
++
++
++if __name__ == "__main__":
++    unittest.main()

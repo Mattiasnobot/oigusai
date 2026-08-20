@@ -21,6 +21,7 @@ env:
   ALLOW_LIVE_RT_FALLBACK: "false"
   ALLOW_MOCK_ANALYSIS: "false"
   APP_RELOAD: "false"
+  OLLAMA_PRELOAD_ENABLED: "false"
   LOG_LEVEL: "WARNING"
 
 jobs:

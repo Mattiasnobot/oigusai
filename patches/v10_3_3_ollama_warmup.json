@@ -1,0 +1,46 @@
+{
+  "name": "V10.3.3 — Ollama analysis-model warmup and runtime visibility",
+  "base_commit": "65242292f315a210e761770d81e6b3df6ac646cb",
+  "base_files": [
+    {
+      "path": ".env.example",
+      "git_blob_sha": "44a5edbf4d167cda59a92b59ae67ddddf2c3b16b"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "git_blob_sha": "3b97df5f1dad7802d6792db3b78b4342e2a71b2c"
+    },
+    {
+      "path": "config.py",
+      "git_blob_sha": "b27150b471639244d8caf604896e1e91b054ce98"
+    },
+    {
+      "path": "main.py",
+      "git_blob_sha": "4a3342f67d6fab3ca18719eea40988d96f103148"
+    },
+    {
+      "path": "scripts/evaluate_model.py",
+      "git_blob_sha": "ff6431dd006d9872739e9102aa4ab5bd1c6fc65a"
+    },
+    {
+      "path": "tests/test_config.py",
+      "git_blob_sha": "5a99f0db9a5530828a9f4dd229df22cfedaf64f0"
+    }
+  ],
+  "new_files": [
+    {
+      "path": "services/ollama_runtime.py",
+      "sha256": "6f32d3162aa308291a9e592c9c5e976f397882e5f261b3b3c2ed71894838deb0"
+    },
+    {
+      "path": "tests/test_ollama_runtime.py",
+      "sha256": "063a347bd049b07757dcf861d36984abe13d2d61b7aac88d77a0bc52a0d4c410"
+    }
+  ],
+  "tests": [
+    ["{python}", "-m", "unittest", "tests.test_ollama_runtime"],
+    ["{python}", "-m", "unittest", "tests.test_config"],
+    ["{python}", "-m", "unittest", "tests.test_evaluate_model"],
+    ["{python}", "-m", "unittest", "tests.test_main"]
+  ]
+}

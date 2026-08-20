@@ -21,6 +21,8 @@ class ConfigTests(unittest.TestCase):
             "OLLAMA_NUM_PREDICT": "777",
             "OLLAMA_THINK": "true",
             "OLLAMA_KEEP_ALIVE": "20m",
+            "OLLAMA_PRELOAD_ENABLED": "false",
+            "OLLAMA_PRELOAD_TIMEOUT": "123",
             "OLLAMA_CITATION_RETRIES": "2",
             "OLLAMA_VISION_MODEL": "test-vision",
             "OLLAMA_OCR_TIMEOUT": "222",
@@ -74,6 +76,8 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(settings.ollama_num_predict, 777)
         self.assertTrue(settings.ollama_think)
         self.assertEqual(settings.ollama_keep_alive, "20m")
+        self.assertFalse(settings.ollama_preload_enabled)
+        self.assertEqual(settings.ollama_preload_timeout, 123)
         self.assertEqual(settings.ollama_citation_retries, 2)
         self.assertEqual(settings.ollama_vision_model, "test-vision")
         self.assertEqual(settings.ollama_ocr_timeout, 222)
@@ -127,6 +131,8 @@ class ConfigTests(unittest.TestCase):
             load_settings({"RERANKER_DEVICE": "internet"})
         with self.assertRaises(ConfigurationError):
             load_settings({"APP_ACCESS_CODE": "lühike"})
+        with self.assertRaises(ConfigurationError):
+            load_settings({"OLLAMA_PRELOAD_TIMEOUT": "0"})
 
     def test_relative_paths_are_resolved_under_project(self):
         settings = load_settings({"LEGAL_DATA_FILE": "data/custom.json"})

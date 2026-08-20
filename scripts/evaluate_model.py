@@ -276,6 +276,7 @@ async def run_evaluation(
     from services.case_workspace import UrgencyAnalyzer
     from services.legal_search import LegalSearchService
     from services.offline_ai import OfflineAIService
+    from services.ollama_runtime import OllamaRuntimeManager
     from verifiers.evidence_verifier import EvidenceVerifier
     from verifiers.relevance_verifier import RelevanceVerifier
     from verifiers.source_verifier import SourceVerifier
@@ -300,6 +301,23 @@ async def run_evaluation(
     evidence_verifier = EvidenceVerifier()
     urgency_analyzer = UrgencyAnalyzer()
     verified_answer_builder = VerifiedAnswerBuilder()
+
+    ollama_runtime = OllamaRuntimeManager(
+        host=settings.ollama_host,
+        model=settings.ollama_model,
+        keep_alive=settings.ollama_keep_alive,
+        preload_enabled=settings.ollama_preload_enabled,
+        preload_timeout=settings.ollama_preload_timeout,
+    )
+    warmup_status = await asyncio.to_thread(ollama_runtime.preload)
+    print(
+        "Ollama warmup: "
+        f"enabled={warmup_status.get('preload_enabled')} "
+        f"loaded={warmup_status.get('analysis_model_loaded')} "
+        f"preloaded={warmup_status.get('preload_succeeded')} "
+        f"duration={float(warmup_status.get('preload_seconds') or 0.0):.2f}s",
+        flush=True,
+    )
 
     cases = list(suite["cases"])
     if limit > 0:
@@ -326,12 +344,15 @@ async def run_evaluation(
             flush=True,
         )
 
-    return build_report(
+    report = build_report(
         suite,
         results,
         model_name=settings.ollama_model,
         duration_seconds=time.perf_counter() - started,
     )
+    report["ollama_warmup"] = warmup_status
+    report["ollama_runtime_after"] = await asyncio.to_thread(ollama_runtime.snapshot)
+    return report
 
 
 def _write_report(path: Path, report: Dict[str, Any]) -> None:

@@ -479,6 +479,7 @@ class AnalysisOrchestrator:
         )
         if (
             route_plan.employment_form_question
+            and not getattr(obligation_plan, "obligations", ())
             and not form_answer_complete
         ):
             form_law = next(
@@ -566,6 +567,7 @@ class AnalysisOrchestrator:
             obligation_plan,
             analysis_laws,
             verified_sources,
+            answer_text=analysis_text,
         )
         if (
             coverage_report.get("needs_repair")
@@ -575,7 +577,11 @@ class AnalysisOrchestrator:
             repair_instructions = CoverageVerifier.repair_instructions(
                 coverage_report
             )
-            if repair_instructions:
+            repair_laws = CoverageVerifier.repair_laws(
+                coverage_report,
+                analysis_laws,
+            )
+            if repair_instructions and repair_laws:
                 repair_case = (
                     f"{analysis_case}\n\n{repair_instructions}"
                 )[:9000]
@@ -584,18 +590,19 @@ class AnalysisOrchestrator:
                         "analysis",
                         ai_service.analyze_case_structured,
                         repair_case,
-                        analysis_laws,
+                        repair_laws,
                         str(getattr(request, "event_date", "") or ""),
-                        document_spans,
+                        [],
                     )
                     repair_valid, repair_sources = source_verifier.verify_sources(
                         repair_text,
-                        analysis_laws,
+                        repair_laws,
                     )
                     repaired_coverage = CoverageVerifier.verify(
                         obligation_plan,
                         analysis_laws,
                         repair_sources if repair_valid else [],
+                        answer_text=repair_text,
                     )
                     if repair_valid and repaired_coverage.get("passed"):
                         analysis_text = repair_text

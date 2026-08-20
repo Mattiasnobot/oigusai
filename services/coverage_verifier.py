@@ -22,6 +22,7 @@ class CoverageRule:
 
     source_groups: Tuple[Tuple[str, ...], ...]
     rationale: str
+    required_answer_terms: Tuple[Tuple[str, ...], ...] = ()
 
 
 class CoverageVerifier:
@@ -44,6 +45,10 @@ class CoverageVerifier:
         "employment_context:termination_form": CoverageRule(
             source_groups=(("TLS_95",),),
             rationale="Töölepingu ülesütlemise vorminõude auditeeritud routing kasutab TLS § 95.",
+            required_answer_terms=(
+                ("kirjalikku taasesitamist võimaldavas vormis",),
+                ("tühine",),
+            ),
         ),
         "fine_context:missed_deadline": CoverageRule(
             source_groups=(("VTMS_118",),),
@@ -63,12 +68,18 @@ class CoverageVerifier:
     def _normalize_id(value: Any) -> str:
         return re.sub(r"[^A-ZÕÄÖÜ0-9_]", "", str(value or "").strip().upper())
 
+    @staticmethod
+    def _normalize_text(value: Any) -> str:
+        return re.sub(r"\s+", " ", str(value or "")).strip().casefold()
+
     @classmethod
     def verify(
         cls,
         obligation_plan: Any,
         available_laws: Iterable[Dict[str, Any]],
         verified_sources: Iterable[str],
+        *,
+        answer_text: Any = None,
     ) -> Dict[str, Any]:
         """Return an inspectable coverage report for the current answer."""
         obligations = list(getattr(obligation_plan, "obligations", ()) or ())
@@ -82,6 +93,9 @@ class CoverageVerifier:
             for value in (verified_sources or [])
             if cls._normalize_id(value)
         }
+        normalized_answer = (
+            cls._normalize_text(answer_text) if answer_text is not None else ""
+        )
 
         rows: List[Dict[str, Any]] = []
         missing_answer: List[str] = []
@@ -108,6 +122,8 @@ class CoverageVerifier:
                     "expected_source_groups": [],
                     "candidate_sources": [],
                     "cited_sources": [],
+                    "required_answer_terms": [],
+                    "missing_answer_terms": [],
                     "rationale": "V10.3-l puudub sellele kohustusele veel auditeeritud coverage-reegel.",
                 })
                 continue
@@ -126,6 +142,21 @@ class CoverageVerifier:
                 if available_ids.intersection(group)
                 and not cited_ids.intersection(group)
             ]
+            normalized_answer_terms = tuple(
+                tuple(
+                    cls._normalize_text(value)
+                    for value in group
+                    if cls._normalize_text(value)
+                )
+                for group in rule.required_answer_terms
+            )
+            missing_answer_term_groups: List[Tuple[str, ...]] = []
+            if answer_text is not None:
+                missing_answer_term_groups = [
+                    group
+                    for group in normalized_answer_terms
+                    if group and not any(term in normalized_answer for term in group)
+                ]
             candidate_sources = sorted({
                 source_id
                 for group in normalized_groups
@@ -137,9 +168,10 @@ class CoverageVerifier:
             if source_missing_groups:
                 status = cls.STATUS_SOURCE_MISSING
                 missing_source.append(kind)
-            elif answer_missing_groups:
+            elif answer_missing_groups or missing_answer_term_groups:
                 status = cls.STATUS_ANSWER_MISSING
-                missing_answer.append(kind)
+                if kind not in missing_answer:
+                    missing_answer.append(kind)
             else:
                 status = cls.STATUS_COVERED
                 covered_count += 1
@@ -153,6 +185,12 @@ class CoverageVerifier:
                 "expected_source_groups": [list(group) for group in normalized_groups],
                 "candidate_sources": candidate_sources,
                 "cited_sources": cited_sources,
+                "required_answer_terms": [
+                    list(group) for group in normalized_answer_terms
+                ],
+                "missing_answer_terms": [
+                    list(group) for group in missing_answer_term_groups
+                ],
                 "rationale": rule.rationale,
             })
 
@@ -170,6 +208,36 @@ class CoverageVerifier:
         }
 
     @classmethod
+    def repair_laws(
+        cls,
+        report: Mapping[str, Any],
+        laws: Sequence[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Return only audited laws needed by the model coverage-repair pass."""
+        if report.get("missing_source"):
+            return []
+        law_map = {
+            cls._normalize_id(law.get("id")): law
+            for law in (laws or [])
+            if cls._normalize_id(law.get("id"))
+        }
+        ordered_ids: List[str] = []
+        for row in report.get("obligations") or []:
+            if not isinstance(row, dict) or not row.get("enforced"):
+                continue
+            chosen = next(
+                (
+                    cls._normalize_id(value)
+                    for value in (row.get("candidate_sources") or [])
+                    if cls._normalize_id(value) in law_map
+                ),
+                "",
+            )
+            if chosen and chosen not in ordered_ids:
+                ordered_ids.append(chosen)
+        return [law_map[source_id] for source_id in ordered_ids]
+
+    @classmethod
     def repair_instructions(cls, report: Mapping[str, Any]) -> str:
         """Build deterministic instructions for one model coverage-repair attempt."""
         rows = [
@@ -179,7 +247,7 @@ class CoverageVerifier:
         if not rows or not report.get("needs_repair"):
             return ""
 
-        targets: List[Tuple[str, str, str]] = []
+        targets: List[Tuple[str, str, str, List[List[str]]]] = []
         for row in rows:
             candidate_sources = [
                 cls._normalize_id(value)
@@ -192,6 +260,11 @@ class CoverageVerifier:
                 str(row.get("kind") or ""),
                 str(row.get("answer_requirement") or row.get("kind") or ""),
                 candidate_sources[0],
+                [
+                    list(group)
+                    for group in (row.get("missing_answer_terms") or [])
+                    if isinstance(group, (list, tuple))
+                ],
             ))
 
         if not targets:
@@ -204,12 +277,19 @@ class CoverageVerifier:
             "Iga claim peab kasutama just talle määratud source_id väärtust ning evidence peab olema sellest samast allikast täpselt kopeeritud katkematu katkend.",
             "Ära kuluta ühtegi claims elementi kõrvalteemale, soovitusele ega muule source_id-le.",
         ]
-        for index, (kind, requirement, source_id) in enumerate(targets, start=1):
+        for index, (kind, requirement, source_id, missing_terms) in enumerate(targets, start=1):
             lines.extend([
                 f"KOHUSTUS {index}/{len(targets)} [{kind}]",
                 f"- küsimus: {requirement}",
                 f"- source_id: {source_id}",
             ])
+            for group in missing_terms:
+                terms = [str(value).strip() for value in group if str(value).strip()]
+                if terms:
+                    lines.append(
+                        "- coverage_check: kasuta allika sõnastust nii, et vastuses "
+                        "esineks fraas " + " / ".join(f'\"{term}\"' for term in terms)
+                    )
         lines.extend([
             "Kui allikatekst ei võimalda laiemat järeldust, tee väide evidence teksti kitsaks ümberütluseks.",
             "Ära lisa ühtegi normi, tähtaega, arvu ega järeldust, mida määratud allikatekst ei toeta.",

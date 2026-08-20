@@ -1,0 +1,26 @@
+{
+  "name": "V10.3.4 — focused coverage repair context",
+  "base_commit": "d52f30d3eefb5f7abfd9944f1cc23a39084c0602",
+  "base_files": [
+    {
+      "path": "services/analysis_orchestrator.py",
+      "git_blob_sha": "404ca8074265cac2e1339961cdc64c0b612261d3"
+    },
+    {
+      "path": "services/coverage_verifier.py",
+      "git_blob_sha": "876ba1053f209583dd8062f62c490acfb0c07729"
+    },
+    {
+      "path": "tests/test_coverage_verifier.py",
+      "git_blob_sha": "3ed733210e40b2e9e9f068b2a7cd8259525f6db5"
+    }
+  ],
+  "new_files": [],
+  "tests": [
+    ["{python}", "-m", "unittest", "tests.test_coverage_verifier"],
+    ["{python}", "-m", "unittest", "tests.test_analysis_orchestrator"],
+    ["{python}", "-m", "unittest", "tests.test_offline_ai"],
+    ["{python}", "-m", "unittest", "tests.test_main"],
+    ["{python}", "-m", "unittest", "tests.test_evaluate_model"]
+  ]
+}

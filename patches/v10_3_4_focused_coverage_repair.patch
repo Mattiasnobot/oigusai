@@ -1,0 +1,434 @@
+diff --git a/services/analysis_orchestrator.py b/services/analysis_orchestrator.py
+--- a/services/analysis_orchestrator.py
++++ b/services/analysis_orchestrator.py
+@@ -481,6 +481,7 @@
+         )
+         if (
+             route_plan.employment_form_question
++            and not getattr(obligation_plan, "obligations", ())
+             and not form_answer_complete
+         ):
+             form_law = next(
+@@ -566,6 +567,7 @@
+             obligation_plan,
+             analysis_laws,
+             verified_sources,
++            answer_text=analysis_text,
+         )
+         if (
+             coverage_report.get("needs_repair")
+@@ -575,7 +577,11 @@
+             repair_instructions = CoverageVerifier.repair_instructions(
+                 coverage_report
+             )
+-            if repair_instructions:
++            repair_laws = CoverageVerifier.repair_laws(
++                coverage_report,
++                analysis_laws,
++            )
++            if repair_instructions and repair_laws:
+                 repair_case = (
+                     f"{analysis_case}\n\n{repair_instructions}"
+                 )[:9000]
+@@ -584,18 +590,19 @@
+                         "analysis",
+                         ai_service.analyze_case_structured,
+                         repair_case,
+-                        analysis_laws,
++                        repair_laws,
+                         str(getattr(request, "event_date", "") or ""),
+-                        document_spans,
++                        [],
+                     )
+                     repair_valid, repair_sources = source_verifier.verify_sources(
+                         repair_text,
+-                        analysis_laws,
++                        repair_laws,
+                     )
+                     repaired_coverage = CoverageVerifier.verify(
+                         obligation_plan,
+                         analysis_laws,
+                         repair_sources if repair_valid else [],
++                        answer_text=repair_text,
+                     )
+                     if repair_valid and repaired_coverage.get("passed"):
+                         analysis_text = repair_text
+diff --git a/services/coverage_verifier.py b/services/coverage_verifier.py
+--- a/services/coverage_verifier.py
++++ b/services/coverage_verifier.py
+@@ -22,6 +22,7 @@
+ 
+     source_groups: Tuple[Tuple[str, ...], ...]
+     rationale: str
++    required_answer_terms: Tuple[Tuple[str, ...], ...] = ()
+ 
+ 
+ class CoverageVerifier:
+@@ -44,6 +45,10 @@
+         "employment_context:termination_form": CoverageRule(
+             source_groups=(("TLS_95",),),
+             rationale="Töölepingu ülesütlemise vorminõude auditeeritud routing kasutab TLS § 95.",
++            required_answer_terms=(
++                ("kirjalikku taasesitamist võimaldavas vormis",),
++                ("tühine",),
++            ),
+         ),
+         "fine_context:missed_deadline": CoverageRule(
+             source_groups=(("VTMS_118",),),
+@@ -62,6 +67,10 @@
+     @staticmethod
+     def _normalize_id(value: Any) -> str:
+         return re.sub(r"[^A-ZÕÄÖÜ0-9_]", "", str(value or "").strip().upper())
++
++    @staticmethod
++    def _normalize_text(value: Any) -> str:
++        return re.sub(r"\s+", " ", str(value or "")).strip().casefold()
+ 
+     @classmethod
+     def verify(
+@@ -69,6 +78,8 @@
+         obligation_plan: Any,
+         available_laws: Iterable[Dict[str, Any]],
+         verified_sources: Iterable[str],
++        *,
++        answer_text: Any = None,
+     ) -> Dict[str, Any]:
+         """Return an inspectable coverage report for the current answer."""
+         obligations = list(getattr(obligation_plan, "obligations", ()) or ())
+@@ -82,6 +93,9 @@
+             for value in (verified_sources or [])
+             if cls._normalize_id(value)
+         }
++        normalized_answer = (
++            cls._normalize_text(answer_text) if answer_text is not None else ""
++        )
+ 
+         rows: List[Dict[str, Any]] = []
+         missing_answer: List[str] = []
+@@ -108,6 +122,8 @@
+                     "expected_source_groups": [],
+                     "candidate_sources": [],
+                     "cited_sources": [],
++                    "required_answer_terms": [],
++                    "missing_answer_terms": [],
+                     "rationale": "V10.3-l puudub sellele kohustusele veel auditeeritud coverage-reegel.",
+                 })
+                 continue
+@@ -126,6 +142,21 @@
+                 if available_ids.intersection(group)
+                 and not cited_ids.intersection(group)
+             ]
++            normalized_answer_terms = tuple(
++                tuple(
++                    cls._normalize_text(value)
++                    for value in group
++                    if cls._normalize_text(value)
++                )
++                for group in rule.required_answer_terms
++            )
++            missing_answer_term_groups: List[Tuple[str, ...]] = []
++            if answer_text is not None:
++                missing_answer_term_groups = [
++                    group
++                    for group in normalized_answer_terms
++                    if group and not any(term in normalized_answer for term in group)
++                ]
+             candidate_sources = sorted({
+                 source_id
+                 for group in normalized_groups
+@@ -137,9 +168,10 @@
+             if source_missing_groups:
+                 status = cls.STATUS_SOURCE_MISSING
+                 missing_source.append(kind)
+-            elif answer_missing_groups:
++            elif answer_missing_groups or missing_answer_term_groups:
+                 status = cls.STATUS_ANSWER_MISSING
+-                missing_answer.append(kind)
++                if kind not in missing_answer:
++                    missing_answer.append(kind)
+             else:
+                 status = cls.STATUS_COVERED
+                 covered_count += 1
+@@ -153,6 +185,12 @@
+                 "expected_source_groups": [list(group) for group in normalized_groups],
+                 "candidate_sources": candidate_sources,
+                 "cited_sources": cited_sources,
++                "required_answer_terms": [
++                    list(group) for group in normalized_answer_terms
++                ],
++                "missing_answer_terms": [
++                    list(group) for group in missing_answer_term_groups
++                ],
+                 "rationale": rule.rationale,
+             })
+ 
+@@ -170,6 +208,36 @@
+         }
+ 
+     @classmethod
++    def repair_laws(
++        cls,
++        report: Mapping[str, Any],
++        laws: Sequence[Dict[str, Any]],
++    ) -> List[Dict[str, Any]]:
++        """Return only audited laws needed by the model coverage-repair pass."""
++        if report.get("missing_source"):
++            return []
++        law_map = {
++            cls._normalize_id(law.get("id")): law
++            for law in (laws or [])
++            if cls._normalize_id(law.get("id"))
++        }
++        ordered_ids: List[str] = []
++        for row in report.get("obligations") or []:
++            if not isinstance(row, dict) or not row.get("enforced"):
++                continue
++            chosen = next(
++                (
++                    cls._normalize_id(value)
++                    for value in (row.get("candidate_sources") or [])
++                    if cls._normalize_id(value) in law_map
++                ),
++                "",
++            )
++            if chosen and chosen not in ordered_ids:
++                ordered_ids.append(chosen)
++        return [law_map[source_id] for source_id in ordered_ids]
++
++    @classmethod
+     def repair_instructions(cls, report: Mapping[str, Any]) -> str:
+         """Build deterministic instructions for one model coverage-repair attempt."""
+         rows = [
+@@ -179,7 +247,7 @@
+         if not rows or not report.get("needs_repair"):
+             return ""
+ 
+-        targets: List[Tuple[str, str, str]] = []
++        targets: List[Tuple[str, str, str, List[List[str]]]] = []
+         for row in rows:
+             candidate_sources = [
+                 cls._normalize_id(value)
+@@ -192,6 +260,11 @@
+                 str(row.get("kind") or ""),
+                 str(row.get("answer_requirement") or row.get("kind") or ""),
+                 candidate_sources[0],
++                [
++                    list(group)
++                    for group in (row.get("missing_answer_terms") or [])
++                    if isinstance(group, (list, tuple))
++                ],
+             ))
+ 
+         if not targets:
+@@ -204,12 +277,19 @@
+             "Iga claim peab kasutama just talle määratud source_id väärtust ning evidence peab olema sellest samast allikast täpselt kopeeritud katkematu katkend.",
+             "Ära kuluta ühtegi claims elementi kõrvalteemale, soovitusele ega muule source_id-le.",
+         ]
+-        for index, (kind, requirement, source_id) in enumerate(targets, start=1):
++        for index, (kind, requirement, source_id, missing_terms) in enumerate(targets, start=1):
+             lines.extend([
+                 f"KOHUSTUS {index}/{len(targets)} [{kind}]",
+                 f"- küsimus: {requirement}",
+                 f"- source_id: {source_id}",
+             ])
++            for group in missing_terms:
++                terms = [str(value).strip() for value in group if str(value).strip()]
++                if terms:
++                    lines.append(
++                        "- coverage_check: kasuta allika sõnastust nii, et vastuses "
++                        "esineks fraas " + " / ".join(f'\"{term}\"' for term in terms)
++                    )
+         lines.extend([
+             "Kui allikatekst ei võimalda laiemat järeldust, tee väide evidence teksti kitsaks ümberütluseks.",
+             "Ära lisa ühtegi normi, tähtaega, arvu ega järeldust, mida määratud allikatekst ei toeta.",
+diff --git a/tests/test_coverage_verifier.py b/tests/test_coverage_verifier.py
+--- a/tests/test_coverage_verifier.py
++++ b/tests/test_coverage_verifier.py
+@@ -18,9 +18,12 @@
+ class _RepairingOfflineAI(OfflineAIService):
+     def __init__(self):
+         self.calls = 0
++        self.law_ids = []
+ 
+     def analyze_case_structured(self, *_args, **_kwargs):
+         self.calls += 1
++        laws = list(_args[1] if len(_args) > 1 else _kwargs.get("laws") or [])
++        self.law_ids.append([str(law.get("id") or "") for law in laws])
+         if self.calls == 1:
+             return (
+                 "ÕIGUSLIK KOHALDAMINE:\nKoondamise alus on kirjeldatud sättes [TLS_89].\n\n"
+@@ -43,6 +46,36 @@
+         raise AssertionError("Coverage repair should succeed before fallback")
+ 
+ 
++class _FormRepairingOfflineAI(OfflineAIService):
++    def __init__(self):
++        self.calls = 0
++
++    def analyze_case_structured(self, *_args, **_kwargs):
++        self.calls += 1
++        if self.calls == 1:
++            return (
++                "ÕIGUSLIK KOHALDAMINE:\n"
++                "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas vormis [TLS_95].\n\n"
++                "SOOVITUSED:\nSäilita dokumendid.\n\nKASUTATUD ALLIKAD: [TLS_95]",
++                False,
++                [],
++            )
++        return (
++            "ÕIGUSLIK KOHALDAMINE:\n"
++            "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas vormis [TLS_95].\n"
++            "Vorminõuet rikkudes tehtud ülesütlemisavaldus on tühine [TLS_95].\n\n"
++            "SOOVITUSED:\nSäilita dokumendid.\n\nKASUTATUD ALLIKAD: [TLS_95]",
++            False,
++            [],
++        )
++
++    def claims_from_verified_analysis(self, *_args, **_kwargs):
++        return []
++
++    def build_source_only_fallback(self, *_args, **_kwargs):
++        raise AssertionError("Focused form repair should succeed before fallback")
++
++
+ class CoverageVerifierTests(unittest.TestCase):
+     def test_redundancy_deadline_is_reported_missing_from_answer(self):
+         plan = MultiIssueRetrievalPlanner.plan(
+@@ -63,6 +96,56 @@
+         self.assertTrue(report["needs_repair"])
+         self.assertIn("deadline", report["missing_answer"])
+ 
++    def test_form_answer_terms_trigger_repair_even_when_tls95_is_cited(self):
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description="Kas tööandja võib töölepingu ainult suuliselt üles öelda?",
++            search_text="töölepingu suuline ülesütlemine",
++            current_intents=[],
++            fine_context=False,
++        )
++        laws = [{
++            "id": "TLS_95",
++            "text": (
++                "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas vormis. "
++                "Vorminõuet rikkudes tehtud ülesütlemisavaldus on tühine."
++            ),
++        }]
++        report = CoverageVerifier.verify(
++            plan,
++            laws,
++            ["TLS_95"],
++            answer_text=(
++                "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist "
++                "võimaldavas vormis [TLS_95]."
++            ),
++        )
++        self.assertFalse(report["passed"])
++        self.assertTrue(report["needs_repair"])
++        self.assertIn("form_requirement", report["missing_answer"])
++        self.assertEqual(
++            report["obligations"][0]["missing_answer_terms"],
++            [["tühine"]],
++        )
++
++    def test_repair_laws_keep_only_audited_coverage_sources(self):
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description="Mind koondatakse. Kui pikk etteteatamine on?",
++            search_text="koondamine etteteatamine",
++            current_intents=["deadline"],
++            fine_context=False,
++        )
++        laws = [
++            {"id": "TLS_89", "text": "Koondamine."},
++            {"id": "TLS_97", "text": "Etteteatamine."},
++            {"id": "TLS_100", "text": "Kõrvaline säte."},
++        ]
++        report = CoverageVerifier.verify(plan, laws, ["TLS_89"])
++        repair_laws = CoverageVerifier.repair_laws(report, laws)
++        self.assertEqual(
++            [law["id"] for law in repair_laws],
++            ["TLS_89", "TLS_97"],
++        )
++
+     def test_multi_fine_requires_deadline_remedy_and_payment_sources(self):
+         plan = MultiIssueRetrievalPlanner.plan(
+             case_description=(
+@@ -171,6 +254,7 @@
+         laws = [
+             {"id": "TLS_89", "title": "TLS § 89", "text": "Koondamise alus on kirjeldatud sättes.", "source": "RT"},
+             {"id": "TLS_97", "title": "TLS § 97", "text": "Etteteatamise tähtaeg on kirjeldatud sättes.", "source": "RT"},
++            {"id": "TLS_100", "title": "TLS § 100", "text": "Kõrvaline säte.", "source": "RT"},
+         ]
+         plan = MultiIssueRetrievalPlanner.plan(
+             case_description="Mind koondatakse. Kui pikk etteteatamine on?",
+@@ -216,11 +300,72 @@
+             source_verifier=SourceVerifier(),
+         ))
+         self.assertEqual(ai.calls, 2)
++        self.assertEqual(ai.law_ids[1], ["TLS_89", "TLS_97"])
+         self.assertFalse(executed.fallback_used)
+         self.assertTrue(executed.coverage_repair_used)
+         self.assertTrue(executed.coverage_report["passed"])
+         self.assertEqual(set(executed.verified_sources), {"TLS_89", "TLS_97"})
+ 
+ 
++    def test_orchestrator_repairs_form_semantics_before_source_fallback(self):
++        laws = [{
++            "id": "TLS_95",
++            "title": "TLS § 95",
++            "text": (
++                "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas vormis. "
++                "Vorminõuet rikkudes tehtud ülesütlemisavaldus on tühine."
++            ),
++            "source": "RT",
++        }]
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description="Kas tööandja võib töölepingu ainult suuliselt üles öelda?",
++            search_text="töölepingu suuline ülesütlemine",
++            current_intents=[],
++            fine_context=False,
++        )
++        relevance = Mock()
++        relevance.verify_answer.return_value = SimpleNamespace(
++            relevant=True,
++            missing_concepts=[],
++            clarification="",
++        )
++        orchestrator = AnalysisOrchestrator(
++            legal_service=Mock(),
++            matter_store=None,
++            relevance_verifier=relevance,
++            run_guarded_work=immediate_work,
++        )
++        pipeline = AnalysisPipelineRun()
++        for stage in ("case_understanding", "document_evidence", "legal_retrieval"):
++            pipeline.complete(stage)
++        prepared = SimpleNamespace(
++            pipeline=pipeline,
++            current_turn="Kas tööandja võib töölepingu ainult suuliselt üles öelda?",
++            answer_requirements=[],
++            obligation_plan=plan,
++            document_spans=[],
++            relevance_text="töölepingu suuline ülesütlemine",
++            route_plan=SimpleNamespace(employment_form_question=True),
++            analysis_laws=laws,
++        )
++        request = SimpleNamespace(
++            case_description="Kas tööandja võib töölepingu ainult suuliselt üles öelda?",
++            case_context="",
++            event_date="",
++        )
++        ai = _FormRepairingOfflineAI()
++        executed = asyncio.run(orchestrator.execute(
++            request,
++            prepared,
++            ai_service=ai,
++            source_verifier=SourceVerifier(),
++        ))
++        self.assertEqual(ai.calls, 2)
++        self.assertFalse(executed.fallback_used)
++        self.assertTrue(executed.coverage_repair_used)
++        self.assertTrue(executed.coverage_report["passed"])
++        self.assertIn("tühine", executed.analysis_text.casefold())
++
++
+ if __name__ == "__main__":
+     unittest.main()

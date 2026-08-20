@@ -18,9 +18,12 @@ async def immediate_work(_label, func, *args):
 class _RepairingOfflineAI(OfflineAIService):
     def __init__(self):
         self.calls = 0
+        self.law_ids = []
 
     def analyze_case_structured(self, *_args, **_kwargs):
         self.calls += 1
+        laws = list(_args[1] if len(_args) > 1 else _kwargs.get("laws") or [])
+        self.law_ids.append([str(law.get("id") or "") for law in laws])
         if self.calls == 1:
             return (
                 "ÕIGUSLIK KOHALDAMINE:\nKoondamise alus on kirjeldatud sättes [TLS_89].\n\n"
@@ -43,6 +46,36 @@ class _RepairingOfflineAI(OfflineAIService):
         raise AssertionError("Coverage repair should succeed before fallback")
 
 
+class _FormRepairingOfflineAI(OfflineAIService):
+    def __init__(self):
+        self.calls = 0
+
+    def analyze_case_structured(self, *_args, **_kwargs):
+        self.calls += 1
+        if self.calls == 1:
+            return (
+                "ÕIGUSLIK KOHALDAMINE:\n"
+                "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas vormis [TLS_95].\n\n"
+                "SOOVITUSED:\nSäilita dokumendid.\n\nKASUTATUD ALLIKAD: [TLS_95]",
+                False,
+                [],
+            )
+        return (
+            "ÕIGUSLIK KOHALDAMINE:\n"
+            "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas vormis [TLS_95].\n"
+            "Vorminõuet rikkudes tehtud ülesütlemisavaldus on tühine [TLS_95].\n\n"
+            "SOOVITUSED:\nSäilita dokumendid.\n\nKASUTATUD ALLIKAD: [TLS_95]",
+            False,
+            [],
+        )
+
+    def claims_from_verified_analysis(self, *_args, **_kwargs):
+        return []
+
+    def build_source_only_fallback(self, *_args, **_kwargs):
+        raise AssertionError("Focused form repair should succeed before fallback")
+
+
 class CoverageVerifierTests(unittest.TestCase):
     def test_redundancy_deadline_is_reported_missing_from_answer(self):
         plan = MultiIssueRetrievalPlanner.plan(
@@ -62,6 +95,56 @@ class CoverageVerifierTests(unittest.TestCase):
         self.assertFalse(report["passed"])
         self.assertTrue(report["needs_repair"])
         self.assertIn("deadline", report["missing_answer"])
+
+    def test_form_answer_terms_trigger_repair_even_when_tls95_is_cited(self):
+        plan = MultiIssueRetrievalPlanner.plan(
+            case_description="Kas tööandja võib töölepingu ainult suuliselt üles öelda?",
+            search_text="töölepingu suuline ülesütlemine",
+            current_intents=[],
+            fine_context=False,
+        )
+        laws = [{
+            "id": "TLS_95",
+            "text": (
+                "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas vormis. "
+                "Vorminõuet rikkudes tehtud ülesütlemisavaldus on tühine."
+            ),
+        }]
+        report = CoverageVerifier.verify(
+            plan,
+            laws,
+            ["TLS_95"],
+            answer_text=(
+                "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist "
+                "võimaldavas vormis [TLS_95]."
+            ),
+        )
+        self.assertFalse(report["passed"])
+        self.assertTrue(report["needs_repair"])
+        self.assertIn("form_requirement", report["missing_answer"])
+        self.assertEqual(
+            report["obligations"][0]["missing_answer_terms"],
+            [["tühine"]],
+        )
+
+    def test_repair_laws_keep_only_audited_coverage_sources(self):
+        plan = MultiIssueRetrievalPlanner.plan(
+            case_description="Mind koondatakse. Kui pikk etteteatamine on?",
+            search_text="koondamine etteteatamine",
+            current_intents=["deadline"],
+            fine_context=False,
+        )
+        laws = [
+            {"id": "TLS_89", "text": "Koondamine."},
+            {"id": "TLS_97", "text": "Etteteatamine."},
+            {"id": "TLS_100", "text": "Kõrvaline säte."},
+        ]
+        report = CoverageVerifier.verify(plan, laws, ["TLS_89"])
+        repair_laws = CoverageVerifier.repair_laws(report, laws)
+        self.assertEqual(
+            [law["id"] for law in repair_laws],
+            ["TLS_89", "TLS_97"],
+        )
 
     def test_multi_fine_requires_deadline_remedy_and_payment_sources(self):
         plan = MultiIssueRetrievalPlanner.plan(
@@ -171,6 +254,7 @@ class CoverageVerifierTests(unittest.TestCase):
         laws = [
             {"id": "TLS_89", "title": "TLS § 89", "text": "Koondamise alus on kirjeldatud sättes.", "source": "RT"},
             {"id": "TLS_97", "title": "TLS § 97", "text": "Etteteatamise tähtaeg on kirjeldatud sättes.", "source": "RT"},
+            {"id": "TLS_100", "title": "TLS § 100", "text": "Kõrvaline säte.", "source": "RT"},
         ]
         plan = MultiIssueRetrievalPlanner.plan(
             case_description="Mind koondatakse. Kui pikk etteteatamine on?",
@@ -216,10 +300,71 @@ class CoverageVerifierTests(unittest.TestCase):
             source_verifier=SourceVerifier(),
         ))
         self.assertEqual(ai.calls, 2)
+        self.assertEqual(ai.law_ids[1], ["TLS_89", "TLS_97"])
         self.assertFalse(executed.fallback_used)
         self.assertTrue(executed.coverage_repair_used)
         self.assertTrue(executed.coverage_report["passed"])
         self.assertEqual(set(executed.verified_sources), {"TLS_89", "TLS_97"})
+
+
+    def test_orchestrator_repairs_form_semantics_before_source_fallback(self):
+        laws = [{
+            "id": "TLS_95",
+            "title": "TLS § 95",
+            "text": (
+                "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas vormis. "
+                "Vorminõuet rikkudes tehtud ülesütlemisavaldus on tühine."
+            ),
+            "source": "RT",
+        }]
+        plan = MultiIssueRetrievalPlanner.plan(
+            case_description="Kas tööandja võib töölepingu ainult suuliselt üles öelda?",
+            search_text="töölepingu suuline ülesütlemine",
+            current_intents=[],
+            fine_context=False,
+        )
+        relevance = Mock()
+        relevance.verify_answer.return_value = SimpleNamespace(
+            relevant=True,
+            missing_concepts=[],
+            clarification="",
+        )
+        orchestrator = AnalysisOrchestrator(
+            legal_service=Mock(),
+            matter_store=None,
+            relevance_verifier=relevance,
+            run_guarded_work=immediate_work,
+        )
+        pipeline = AnalysisPipelineRun()
+        for stage in ("case_understanding", "document_evidence", "legal_retrieval"):
+            pipeline.complete(stage)
+        prepared = SimpleNamespace(
+            pipeline=pipeline,
+            current_turn="Kas tööandja võib töölepingu ainult suuliselt üles öelda?",
+            answer_requirements=[],
+            obligation_plan=plan,
+            document_spans=[],
+            relevance_text="töölepingu suuline ülesütlemine",
+            route_plan=SimpleNamespace(employment_form_question=True),
+            analysis_laws=laws,
+        )
+        request = SimpleNamespace(
+            case_description="Kas tööandja võib töölepingu ainult suuliselt üles öelda?",
+            case_context="",
+            event_date="",
+        )
+        ai = _FormRepairingOfflineAI()
+        executed = asyncio.run(orchestrator.execute(
+            request,
+            prepared,
+            ai_service=ai,
+            source_verifier=SourceVerifier(),
+        ))
+        self.assertEqual(ai.calls, 2)
+        self.assertFalse(executed.fallback_used)
+        self.assertTrue(executed.coverage_repair_used)
+        self.assertTrue(executed.coverage_report["passed"])
+        self.assertIn("tühine", executed.analysis_text.casefold())
 
 
 if __name__ == "__main__":

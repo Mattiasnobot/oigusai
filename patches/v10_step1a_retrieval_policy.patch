@@ -1,0 +1,309 @@
+diff --git a/main.py b/main.py
+index 17cb65c..e4b7cca 100644
+--- a/main.py
++++ b/main.py
+@@ -33,6 +33,7 @@ from services.runtime_guard import (
+     WorkQueueFullError,
+     WorkQueueTimeoutError,
+ )
++from services.retrieval_policy import RetrievalPolicy
+ from services.turn_planner import ConversationTurnPlanner
+ from verifiers.relevance_verifier import RelevanceVerifier
+ from verifiers.evidence_verifier import EvidenceVerifier
+@@ -800,59 +801,15 @@ from verifiers.source_verifier import SourceVerifier
+         if hinted_laws:
+             analysis_laws = hinted_laws
+ 
+-    # A trahviteade, a lühimenetluse decision and a kiirmenetluse decision
+-    # have different contents and challenge routes. Once the user names the
+-    # document, keep only that document type's audited VTMS sections together
+-    # with the actor/rights sections; never blend their deadlines.
+-    normalized_route_context = (
+-        f"{request.case_description}\n{search_text}"
+-    ).casefold()
+-    document_routes = []
+-    is_explicit_warning_notice = (
+-        "hoiatustrahv" in normalized_route_context
+-        or "kirjalik hoiatamismenetlus" in normalized_route_context
+-        or (
+-            "mootorsõiduk" in normalized_route_context
+-            and "trahvitea" in normalized_route_context
+-        )
++    # Auditable routing policy only proposes section IDs. Every ID is still
++    # resolved below from the trusted corpus before it can reach the model.
++    route_plan = RetrievalPolicy.plan(
++        case_description=request.case_description,
++        search_text=search_text,
++        current_intents=current_intents,
++        fine_context=fine_context,
+     )
+-    if is_explicit_warning_notice:
+-        document_routes = [
+-            "ABIPOLS_3", "ABIPOLS_16", "VTMS_19", "VTMS_54B2", "VTMS_54B5"
+-        ]
+-    elif "lühimenetluse otsus" in normalized_route_context or "mõjutustrahv" in normalized_route_context:
+-        document_routes = [
+-            "ABIPOLS_3", "ABIPOLS_16", "VTMS_19", "VTMS_54B9", "VTMS_54B11"
+-        ]
+-    elif "kiirmenetluse otsus" in normalized_route_context:
+-        document_routes = [
+-            "ABIPOLS_3", "ABIPOLS_16", "VTMS_19", "VTMS_57", "VTMS_114"
+-        ]
+-
+-    # V6.3 routes the latest request independently from the historical document
+-    # wording.  One turn may require several source groups; never let a generic
+-    # old word such as "trahviteade" suppress deadline or payment-plan sources.
+-    intent_routes = []
+-    if fine_context and "missed_deadline" in current_intents:
+-        intent_routes.extend(["VTMS_114", "VTMS_118"])
+-    elif fine_context and "challenge_decision" in current_intents:
+-        intent_routes.extend(["VTMS_19", "VTMS_114"])
+-    if fine_context and "payment_plan" in current_intents:
+-        intent_routes.extend(["KARS_66", "VTMS_57", "VTMS_74", "VTMS_204"])
+-    employment_context = any(
+-        term in normalized_route_context
+-        for term in ("valland", "töölepingu üles", "tööleping üles", "koond")
+-    ) or (
+-        "töölep" in normalized_route_context
+-        and "üles" in normalized_route_context
+-    )
+-    if employment_context:
+-        if "koond" in normalized_route_context:
+-            intent_routes.extend(["TLS_89", "TLS_97"])
+-        else:
+-            intent_routes.extend(["TLS_88", "TLS_95", "TLS_104"])
+-
+-    routed_ids = list(dict.fromkeys([*document_routes, *intent_routes]))
++    routed_ids = list(route_plan.routed_ids)
+     if routed_ids:
+         routed_by_id = {
+             str(law.get("id", "")).upper(): law for law in analysis_laws
+@@ -983,10 +940,7 @@ from verifiers.source_verifier import SourceVerifier
+     # form and the consequence of violating that form requirement.  If the
+     # model omitted either one, answer deterministically from that single
+     # audited section instead of returning a broadly related employment rule.
+-    employment_form_question = employment_context and any(
+-        term in normalized_route_context
+-        for term in ("suulis", "kirjal", "vorminõ", "vormis", "vormi")
+-    )
++    employment_form_question = route_plan.employment_form_question
+     normalized_answer = " ".join(analysis_text.casefold().split())
+     form_answer_complete = (
+         "kirjalikku taasesitamist võimaldavas vormis" in normalized_answer
+diff --git a/services/retrieval_policy.py b/services/retrieval_policy.py
+new file mode 100644
+index 0000000..4cb6b07
+--- /dev/null
++++ b/services/retrieval_policy.py
+@@ -0,0 +1,119 @@
++"""Deterministic legal retrieval routing policy.
++
++This module contains only auditable routing decisions.  It does not search the
++corpus, resolve section identifiers or decide whether a source is authoritative.
++Every routed section still has to be resolved from the trusted legal corpus by
++the analysis orchestration layer.
++"""
++
++from __future__ import annotations
++
++from dataclasses import dataclass
++from typing import Sequence
++
++
++@dataclass(frozen=True)
++class RetrievalPlan:
++    """Inspectible routing result for one analysis request."""
++
++    normalized_route_context: str
++    document_route_ids: tuple[str, ...]
++    intent_route_ids: tuple[str, ...]
++    routed_ids: tuple[str, ...]
++    employment_context: bool
++    employment_form_question: bool
++
++
++class RetrievalPolicy:
++    """Build deterministic, auditable section-routing hints.
++
++    The policy can suggest trusted-corpus IDs, but it never manufactures source
++    content.  Callers must resolve every ID against the verified legal corpus.
++    """
++
++    @classmethod
++    def plan(
++        cls,
++        *,
++        case_description: str,
++        search_text: str,
++        current_intents: Sequence[str],
++        fine_context: bool,
++    ) -> RetrievalPlan:
++        normalized_route_context = (
++            f"{case_description}\n{search_text}"
++        ).casefold()
++
++        document_routes: list[str] = []
++        is_explicit_warning_notice = (
++            "hoiatustrahv" in normalized_route_context
++            or "kirjalik hoiatamismenetlus" in normalized_route_context
++            or (
++                "mootorsõiduk" in normalized_route_context
++                and "trahvitea" in normalized_route_context
++            )
++        )
++        if is_explicit_warning_notice:
++            document_routes = [
++                "ABIPOLS_3",
++                "ABIPOLS_16",
++                "VTMS_19",
++                "VTMS_54B2",
++                "VTMS_54B5",
++            ]
++        elif (
++            "lühimenetluse otsus" in normalized_route_context
++            or "mõjutustrahv" in normalized_route_context
++        ):
++            document_routes = [
++                "ABIPOLS_3",
++                "ABIPOLS_16",
++                "VTMS_19",
++                "VTMS_54B9",
++                "VTMS_54B11",
++            ]
++        elif "kiirmenetluse otsus" in normalized_route_context:
++            document_routes = [
++                "ABIPOLS_3",
++                "ABIPOLS_16",
++                "VTMS_19",
++                "VTMS_57",
++                "VTMS_114",
++            ]
++
++        intent_routes: list[str] = []
++        intent_set = set(current_intents)
++        if fine_context and "missed_deadline" in intent_set:
++            intent_routes.extend(["VTMS_114", "VTMS_118"])
++        elif fine_context and "challenge_decision" in intent_set:
++            intent_routes.extend(["VTMS_19", "VTMS_114"])
++        if fine_context and "payment_plan" in intent_set:
++            intent_routes.extend(["KARS_66", "VTMS_57", "VTMS_74", "VTMS_204"])
++
++        employment_context = any(
++            term in normalized_route_context
++            for term in ("valland", "töölepingu üles", "tööleping üles", "koond")
++        ) or (
++            "töölep" in normalized_route_context
++            and "üles" in normalized_route_context
++        )
++        if employment_context:
++            if "koond" in normalized_route_context:
++                intent_routes.extend(["TLS_89", "TLS_97"])
++            else:
++                intent_routes.extend(["TLS_88", "TLS_95", "TLS_104"])
++
++        routed_ids = tuple(dict.fromkeys([*document_routes, *intent_routes]))
++        employment_form_question = employment_context and any(
++            term in normalized_route_context
++            for term in ("suulis", "kirjal", "vorminõ", "vormis", "vormi")
++        )
++
++        return RetrievalPlan(
++            normalized_route_context=normalized_route_context,
++            document_route_ids=tuple(document_routes),
++            intent_route_ids=tuple(intent_routes),
++            routed_ids=routed_ids,
++            employment_context=employment_context,
++            employment_form_question=employment_form_question,
++        )
+diff --git a/tests/test_retrieval_policy.py b/tests/test_retrieval_policy.py
+new file mode 100644
+index 0000000..99a2e1f
+--- /dev/null
++++ b/tests/test_retrieval_policy.py
+@@ -0,0 +1,86 @@
++import unittest
++
++from services.retrieval_policy import RetrievalPolicy
++
++
++class RetrievalPolicyTests(unittest.TestCase):
++    def test_generic_trahviteade_does_not_force_warning_notice_route(self):
++        plan = RetrievalPolicy.plan(
++            case_description="Abipolitsei trahvis mind ja sain trahviteate.",
++            search_text="Abipolitsei trahvis mind. Sain trahviteate.",
++            current_intents=(),
++            fine_context=True,
++        )
++
++        self.assertNotIn("VTMS_54B2", plan.routed_ids)
++        self.assertNotIn("VTMS_54B5", plan.routed_ids)
++
++    def test_explicit_warning_notice_uses_warning_notice_sections(self):
++        plan = RetrievalPolicy.plan(
++            case_description=(
++                "Dokument ütleb, et see on mootorsõiduki eest vastutava isiku "
++                "hoiatustrahvi trahviteade."
++            ),
++            search_text="hoiatustrahvi trahviteade",
++            current_intents=(),
++            fine_context=True,
++        )
++
++        self.assertEqual(
++            plan.document_route_ids,
++            ("ABIPOLS_3", "ABIPOLS_16", "VTMS_19", "VTMS_54B2", "VTMS_54B5"),
++        )
++
++    def test_short_procedure_decision_uses_its_own_sections(self):
++        plan = RetrievalPolicy.plan(
++            case_description="Sain lühimenetluse otsuse.",
++            search_text="lühimenetluse otsus mõjutustrahv",
++            current_intents=("challenge_decision",),
++            fine_context=True,
++        )
++
++        self.assertEqual(
++            plan.document_route_ids,
++            ("ABIPOLS_3", "ABIPOLS_16", "VTMS_19", "VTMS_54B9", "VTMS_54B11"),
++        )
++
++    def test_missed_deadline_and_payment_plan_are_both_preserved(self):
++        plan = RetrievalPolicy.plan(
++            case_description="Sain rahatrahvi.",
++            search_text="rahatrahv väärteomenetlus",
++            current_intents=("missed_deadline", "challenge_decision", "payment_plan"),
++            fine_context=True,
++        )
++
++        self.assertEqual(
++            plan.intent_route_ids,
++            ("VTMS_114", "VTMS_118", "KARS_66", "VTMS_57", "VTMS_74", "VTMS_204"),
++        )
++
++    def test_oral_employment_termination_marks_form_coverage(self):
++        plan = RetrievalPolicy.plan(
++            case_description="Kas tööandja võib töölepingu suuliselt üles öelda?",
++            search_text="töölepingu ülesütlemine suuline",
++            current_intents=("rights_explanation",),
++            fine_context=False,
++        )
++
++        self.assertTrue(plan.employment_context)
++        self.assertTrue(plan.employment_form_question)
++        self.assertEqual(plan.intent_route_ids, ("TLS_88", "TLS_95", "TLS_104"))
++
++    def test_redundancy_termination_uses_redundancy_sections(self):
++        plan = RetrievalPolicy.plan(
++            case_description="Mind koondati.",
++            search_text="koondamine tööleping",
++            current_intents=("rights_explanation",),
++            fine_context=False,
++        )
++
++        self.assertTrue(plan.employment_context)
++        self.assertFalse(plan.employment_form_question)
++        self.assertEqual(plan.intent_route_ids, ("TLS_89", "TLS_97"))
++
++
++if __name__ == "__main__":
++    unittest.main()

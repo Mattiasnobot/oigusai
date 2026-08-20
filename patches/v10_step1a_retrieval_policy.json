@@ -1,0 +1,34 @@
+{
+  "name": "V10 Step 1A — extract deterministic retrieval policy from main.py",
+  "base_commit": "bc995f32e929e929be39b2f974bb61a16ef14d63",
+  "base_files": [
+    {
+      "path": "main.py",
+      "git_blob_sha": "61bec1c485a6f047d795f861df480700659788d7"
+    }
+  ],
+  "new_files": [
+    {
+      "path": "services/retrieval_policy.py",
+      "sha256": "c26c2d123d34842aa8c8459e63fbf1bcf2d78388b99d534df50697c0c6746e40"
+    },
+    {
+      "path": "tests/test_retrieval_policy.py",
+      "sha256": "7acaeccf4eb9f4f4ae91fe0a03991b1a8257cb765f91c67bab49919616182d58"
+    }
+  ],
+  "tests": [
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_retrieval_policy"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_main"
+    ]
+  ]
+}

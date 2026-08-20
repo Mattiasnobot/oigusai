@@ -41,6 +41,7 @@ from services.runtime_guard import (
     WorkQueueFullError,
     WorkQueueTimeoutError,
 )
+from services.retrieval_policy import RetrievalPolicy
 from services.turn_planner import ConversationTurnPlanner
 from verifiers.relevance_verifier import RelevanceVerifier
 from verifiers.evidence_verifier import EvidenceVerifier
@@ -881,59 +882,15 @@ async def analyze_case(
         if hinted_laws:
             analysis_laws = hinted_laws
 
-    # A trahviteade, a lühimenetluse decision and a kiirmenetluse decision
-    # have different contents and challenge routes. Once the user names the
-    # document, keep only that document type's audited VTMS sections together
-    # with the actor/rights sections; never blend their deadlines.
-    normalized_route_context = (
-        f"{request.case_description}\n{search_text}"
-    ).casefold()
-    document_routes = []
-    is_explicit_warning_notice = (
-        "hoiatustrahv" in normalized_route_context
-        or "kirjalik hoiatamismenetlus" in normalized_route_context
-        or (
-            "mootorsõiduk" in normalized_route_context
-            and "trahvitea" in normalized_route_context
-        )
+    # Auditable routing policy only proposes section IDs. Every ID is still
+    # resolved below from the trusted corpus before it can reach the model.
+    route_plan = RetrievalPolicy.plan(
+        case_description=request.case_description,
+        search_text=search_text,
+        current_intents=current_intents,
+        fine_context=fine_context,
     )
-    if is_explicit_warning_notice:
-        document_routes = [
-            "ABIPOLS_3", "ABIPOLS_16", "VTMS_19", "VTMS_54B2", "VTMS_54B5"
-        ]
-    elif "lühimenetluse otsus" in normalized_route_context or "mõjutustrahv" in normalized_route_context:
-        document_routes = [
-            "ABIPOLS_3", "ABIPOLS_16", "VTMS_19", "VTMS_54B9", "VTMS_54B11"
-        ]
-    elif "kiirmenetluse otsus" in normalized_route_context:
-        document_routes = [
-            "ABIPOLS_3", "ABIPOLS_16", "VTMS_19", "VTMS_57", "VTMS_114"
-        ]
-
-    # V6.3 routes the latest request independently from the historical document
-    # wording.  One turn may require several source groups; never let a generic
-    # old word such as "trahviteade" suppress deadline or payment-plan sources.
-    intent_routes = []
-    if fine_context and "missed_deadline" in current_intents:
-        intent_routes.extend(["VTMS_114", "VTMS_118"])
-    elif fine_context and "challenge_decision" in current_intents:
-        intent_routes.extend(["VTMS_19", "VTMS_114"])
-    if fine_context and "payment_plan" in current_intents:
-        intent_routes.extend(["KARS_66", "VTMS_57", "VTMS_74", "VTMS_204"])
-    employment_context = any(
-        term in normalized_route_context
-        for term in ("valland", "töölepingu üles", "tööleping üles", "koond")
-    ) or (
-        "töölep" in normalized_route_context
-        and "üles" in normalized_route_context
-    )
-    if employment_context:
-        if "koond" in normalized_route_context:
-            intent_routes.extend(["TLS_89", "TLS_97"])
-        else:
-            intent_routes.extend(["TLS_88", "TLS_95", "TLS_104"])
-
-    routed_ids = list(dict.fromkeys([*document_routes, *intent_routes]))
+    routed_ids = list(route_plan.routed_ids)
     if routed_ids:
         routed_by_id = {
             str(law.get("id", "")).upper(): law for law in analysis_laws
@@ -1083,10 +1040,7 @@ async def analyze_case(
     # form and the consequence of violating that form requirement.  If the
     # model omitted either one, answer deterministically from that single
     # audited section instead of returning a broadly related employment rule.
-    employment_form_question = employment_context and any(
-        term in normalized_route_context
-        for term in ("suulis", "kirjal", "vorminõ", "vormis", "vormi")
-    )
+    employment_form_question = route_plan.employment_form_question
     normalized_answer = " ".join(analysis_text.casefold().split())
     form_answer_complete = (
         "kirjalikku taasesitamist võimaldavas vormis" in normalized_answer

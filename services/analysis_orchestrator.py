@@ -19,6 +19,7 @@ from services.documents import LocalDocumentService
 from services.offline_ai import OfflineAIService
 from services.legal_search import HistoricalDataUnavailableError, LegalSearchService
 from services.matters import MatterNotFoundError
+from services.retrieval_planner import MultiIssueRetrievalPlan, MultiIssueRetrievalPlanner
 from services.retrieval_policy import RetrievalPlan, RetrievalPolicy
 from services.turn_planner import ConversationTurnPlanner
 
@@ -49,6 +50,7 @@ class PreparedAnalysis:
     query_context: Dict[str, Any]
     analysis_laws: List[Dict[str, Any]]
     relevance_text: str
+    obligation_plan: MultiIssueRetrievalPlan
     route_plan: RetrievalPlan
 
 
@@ -85,6 +87,37 @@ class AnalysisOrchestrator:
         self.run_guarded_work = run_guarded_work
         self.logger = logger or logging.getLogger(__name__)
 
+    def _multi_issue_limit(self) -> int:
+        configured = getattr(self.legal_service, "max_results", 5)
+        if not isinstance(configured, int):
+            configured = 5
+        return min(12, max(6, configured * 2))
+
+    @staticmethod
+    def _fuse_law_batches(
+        batches: List[List[Dict[str, Any]]],
+        *,
+        limit: int,
+    ) -> List[Dict[str, Any]]:
+        """Round-robin verified law batches so one issue cannot crowd out another."""
+        clean_batches = [list(batch or []) for batch in batches]
+        max_depth = max((len(batch) for batch in clean_batches), default=0)
+        fused: List[Dict[str, Any]] = []
+        seen: set[str] = set()
+        for rank in range(max_depth):
+            for batch in clean_batches:
+                if rank >= len(batch):
+                    continue
+                law = batch[rank]
+                law_id = str(law.get("id", "")).strip().upper()
+                if not law_id or law_id in seen:
+                    continue
+                seen.add(law_id)
+                fused.append(law)
+                if len(fused) >= limit:
+                    return fused
+        return fused
+
     async def prepare(self, request: Any) -> PreparedAnalysis:
         analysis_started = time.perf_counter()
         pipeline = AnalysisPipelineRun()
@@ -101,7 +134,10 @@ class AnalysisOrchestrator:
             for value in (getattr(request, "answer_requirements", None) or [])
             if str(value).strip()
         ][:5]
-        intent_focus = "\n".join([current_turn, *answer_requirements]).strip()
+        intent_focus = (
+            "\n".join([current_turn, *answer_requirements]).strip()
+            or case_description.strip()
+        )
         current_intents = ConversationTurnPlanner.detect_intents(intent_focus)
         fine_context = ConversationTurnPlanner.is_fine_context(case_description)
         pipeline.complete(
@@ -138,22 +174,45 @@ class AnalysisOrchestrator:
             matter_attached=bool(matter_id),
         )
 
+        search_text = str(
+            getattr(request, "search_query", None) or case_description
+        ).strip()
+        if document_spans:
+            document_search = " ".join(
+                str(span.get("text") or "")[:350]
+                for span in document_spans[:4]
+            )
+            search_text = f"{search_text} {document_search}"[:2000].strip()
+        obligation_plan = MultiIssueRetrievalPlanner.plan(
+            case_description=case_description,
+            search_text=search_text,
+            current_intents=current_intents,
+            answer_requirements=answer_requirements,
+            fine_context=fine_context,
+        )
+        event_date = str(getattr(request, "event_date", "") or "")
+
         try:
-            search_text = str(
-                getattr(request, "search_query", None) or case_description
-            ).strip()
-            if document_spans:
-                document_search = " ".join(
-                    str(span.get("text") or "")[:350]
-                    for span in document_spans[:4]
-                )
-                search_text = f"{search_text} {document_search}"[:2000].strip()
             laws, query_interpretation = await self.run_guarded_work(
                 "retrieval",
                 self.legal_service.search_laws_with_context,
                 search_text,
-                str(getattr(request, "event_date", "") or ""),
+                event_date,
             )
+            if obligation_plan.multi_issue:
+                obligation_batches: List[List[Dict[str, Any]]] = []
+                for obligation in obligation_plan.obligations:
+                    obligation_laws, _ = await self.run_guarded_work(
+                        "retrieval",
+                        self.legal_service.search_laws_with_context,
+                        obligation.query,
+                        event_date,
+                    )
+                    obligation_batches.append(obligation_laws)
+                laws = self._fuse_law_batches(
+                    [laws, *obligation_batches],
+                    limit=self._multi_issue_limit(),
+                )
         except HistoricalDataUnavailableError as exc:
             raise AnalysisOrchestrationError(422, str(exc)) from exc
         except ValueError as exc:
@@ -188,7 +247,13 @@ class AnalysisOrchestrator:
                 if law is not None:
                     hinted_laws.append(law)
             if hinted_laws:
-                analysis_laws = hinted_laws
+                if obligation_plan.multi_issue:
+                    analysis_laws = self._fuse_law_batches(
+                        [hinted_laws, analysis_laws],
+                        limit=self._multi_issue_limit(),
+                    )
+                else:
+                    analysis_laws = hinted_laws
 
         route_plan = RetrievalPolicy.plan(
             case_description=case_description,
@@ -212,7 +277,13 @@ class AnalysisOrchestrator:
                 if law is not None:
                     routed_laws.append(law)
             if routed_laws:
-                analysis_laws = routed_laws
+                if obligation_plan.multi_issue:
+                    analysis_laws = self._fuse_law_batches(
+                        [routed_laws, analysis_laws],
+                        limit=self._multi_issue_limit(),
+                    )
+                else:
+                    analysis_laws = routed_laws
 
         relevance_text = intent_focus or search_text
         if fine_context and not ConversationTurnPlanner.is_fine_context(relevance_text):
@@ -235,6 +306,13 @@ class AnalysisOrchestrator:
             result_count=len(analysis_laws),
             semantic_relevance=True,
             hybrid_used=bool(getattr(self.legal_service, "hybrid_ready", False)),
+            obligation_count=len(obligation_plan.obligations),
+            multi_issue=obligation_plan.multi_issue,
+            retrieval_query_count=(
+                1 + len(obligation_plan.obligations)
+                if obligation_plan.multi_issue
+                else 1
+            ),
         )
 
         return PreparedAnalysis(
@@ -251,6 +329,7 @@ class AnalysisOrchestrator:
             query_context=query_context,
             analysis_laws=analysis_laws,
             relevance_text=relevance_text,
+            obligation_plan=obligation_plan,
             route_plan=route_plan,
         )
 
@@ -265,7 +344,12 @@ class AnalysisOrchestrator:
         """Run model analysis and return only source-verified output."""
         pipeline = prepared.pipeline
         current_turn = prepared.current_turn
-        answer_requirements = prepared.answer_requirements
+        answer_requirements = list(prepared.answer_requirements)
+        obligation_plan = getattr(prepared, "obligation_plan", None)
+        if obligation_plan is not None and getattr(obligation_plan, "multi_issue", False):
+            for requirement in obligation_plan.answer_requirements:
+                if requirement not in answer_requirements:
+                    answer_requirements.append(requirement)
         document_spans = prepared.document_spans
         relevance_text = prepared.relevance_text
         route_plan = prepared.route_plan
@@ -296,18 +380,17 @@ class AnalysisOrchestrator:
         repeat_current_turn = bool(
             normalized_current and normalized_current != normalized_analysis_case
         )
-        if current_turn and (repeat_current_turn or answer_requirements):
+        if current_turn and repeat_current_turn:
+            analysis_case += (
+                f"\n\nKASUTAJA VIIMANE SÕNUM:\n{current_turn[:3000]}\n\n"
+                "Kasuta viimast sõnumit koos alltoodud vastusekohustustega. "
+                "Varasem tekst on ainult taust."
+            )
+        if answer_requirements:
             requirement_text = "\n".join(
                 f"- {value}" for value in answer_requirements
             )
-            if repeat_current_turn:
-                analysis_case += (
-                    f"\n\nKASUTAJA VIIMANE SÕNUM:\n{current_turn[:3000]}\n\n"
-                    "Kasuta viimast sõnumit koos alltoodud vastusekohustustega. "
-                    "Varasem tekst on ainult taust."
-                )
-            if requirement_text:
-                analysis_case += f"\nVASTUS PEAB KÄSITLEMA:\n{requirement_text}"
+            analysis_case += f"\nVASTUS PEAB KÄSITLEMA:\n{requirement_text}"
 
         model_case = analysis_case
         if document_spans and not isinstance(ai_service, OfflineAIService):

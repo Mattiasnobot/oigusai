@@ -1,0 +1,27 @@
+{
+  "name": "V10.2 — deterministic multi-issue retrieval planner",
+  "base_commit": "5b874f22159d8614caeaac79c8463323b22299f4",
+  "base_files": [
+    {
+      "path": "services/analysis_orchestrator.py",
+      "git_blob_sha": "f7df9626ebe6f5dd6693efcb130829de25e879b3"
+    }
+  ],
+  "new_files": [
+    {
+      "path": "services/retrieval_planner.py",
+      "sha256": "3dccbcd9416bceb0c06926d4b8c33333cc56195b1f655471de4128e0c154f8cf"
+    },
+    {
+      "path": "tests/test_retrieval_planner.py",
+      "sha256": "42e6a7afd28f9ed1c616039e6f37db2302330a4d8e1efc2c389df3c37c27a786"
+    }
+  ],
+  "tests": [
+    ["{python}", "-m", "unittest", "tests.test_retrieval_planner"],
+    ["{python}", "-m", "unittest", "tests.test_analysis_orchestrator"],
+    ["{python}", "-m", "unittest", "tests.test_retrieval_policy"],
+    ["{python}", "-m", "unittest", "tests.test_turn_planner"],
+    ["{python}", "-m", "unittest", "tests.test_main"]
+  ]
+}

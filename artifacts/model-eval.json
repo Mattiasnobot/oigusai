@@ -13,7 +13,7 @@
     "min_model_pass_rate": 0.75
   },
   "acceptance_passed": false,
-  "duration_seconds": 87.37,
+  "duration_seconds": 125.03,
   "failures": [
     "MODEL-TLS-FORM-01",
     "MODEL-TLS-REDUNDANCY-01",
@@ -36,7 +36,7 @@
       "phrases_all_ok": true,
       "phrases_any_ok": true,
       "analysis_preview": "OLUKORD:\nKüsimus puudutab, kas töölepingu saab üles öelda ainult suuliselt.\n\nLÜHIVASTUS:\nTöölepingu ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas vormis. Vorminõuet rikkudes tehtud ülesütlemisavaldus on tühine [TLS_95].\n\nÕIGUSLIK KOHALDAMINE:\nTööandja peab ülesütlemist põhjendama [TLS_95]. Põhjendus peab samuti olema kirjalikku taasesitamist võimaldavas vormis [TLS_95].\n\nSOOVITUSED:\n1. Säilita tööandjaga peetud kirjavahetus ja pane suulise vestluse aeg ning sisu enda jaoks kirja.\n2. Küsi tööandjalt ülesütlemisavaldus ja selle põhjendus kirjalikku taasesitamist võimaldavas vormis.\n\nKASUTATUD ALLIKAD:\n[TLS_95]",
-      "duration_seconds": 22.43
+      "duration_seconds": 46.36
     },
     {
       "id": "MODEL-TLS-REDUNDANCY-01",
@@ -53,8 +53,8 @@
       "source_groups_ok": false,
       "phrases_all_ok": true,
       "phrases_any_ok": true,
-      "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nTööandja võib töölepingu erakorraliselt üles öelda, kui töösuhte jätkamine kokkulepitud tingimustel muutub võimatuks töömahu vähenemise või töö ümberkorraldamise tõttu [TLS_89].\nTööandja peab enne töölepingu ülesütlemist koondamise tõttu pakkuma töötajale võimaluse korral teist tööd [TLS_89].\nTööandja peab töölepingu ülesütlemisel koondamise tõttu arvestama võrdse kohtlemise põhimõtet [TLS_89].\n\nSOOVITUSED:\nSäilita tööleping, tööandja teated ja töösuhtega seotud kirjavahetus.\nPane kirja teate saamise ning töösuhte muutumise või lõppemise kuupäevad.\n\nKASUTATUD ALLIKAD: [TLS_89]",
-      "duration_seconds": 10.13
+      "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nTööandja võib töölepingu erakorraliselt üles öelda koondamise korral, kui töösuhte jätkamine muutub võimatuks töömahu vähenemise või töö ümberkorraldamise tõttu või muul töö lõppemise juhul [TLS_89].\nTööandja peab enne koondamise põhjusel tehtavat töölepingu ülesütlemist pakkuma töötajale võimaluse korral teist tööd [TLS_89].\nTöölepingu ülesütlemisel koondamise tõttu on tööle jäämise eelisõigus töötajate esindajal ja töötajal, kes kasvatab alla kolmeaastast last [TLS_89].\n\nSOOVITUSED:\nSäilita tööleping, tööandja teated ja töösuhtega seotud kirjavahetus.\nPane kirja teate saamise ning töösuhte muutumise või lõppemise kuupäevad.\n\nKASUTATUD ALLIKAD: [TLS_89]",
+      "duration_seconds": 17.45
     },
     {
       "id": "MODEL-VOS-DEPOSIT-01",
@@ -72,7 +72,7 @@
       "phrases_all_ok": true,
       "phrases_any_ok": true,
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nEluruumi üürilepinguga võib ette näha, et üürnik maksab lepingust tulenevate nõuete tagamiseks üürileandjale tagatisraha kuni kolme kuu üüri ulatuses [VOS_308].\nÜürnik võib tagatisraha maksta kolme kuu jooksul võrdsetes osades [VOS_308].\nKui üürileandja on rahuldanud tagatisraha arvelt oma nõude üürniku vastu, võib ta üürnikult nõuda tagatisraha taastamist eluruumi üürilepingus kokkulepitud ulatuses [VOS_308].\n\nSOOVITUSED:\nSäilita üürileping, maksekinnitused ning üürileandjaga peetud kirjavahetus.\nPane kirja nõutud summa, nõude kuupäev ja üürileandja põhjendus.\n\nKASUTATUD ALLIKAD: [VOS_308]",
-      "duration_seconds": 9.65
+      "duration_seconds": 9.27
     },
     {
       "id": "MODEL-HMS-SERVICE-01",
@@ -90,7 +90,7 @@
       "phrases_all_ok": true,
       "phrases_any_ok": true,
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nHaldusakt, kutse, teade või muu dokument toimetatakse menetlusosalisele kätte postiga, dokumendi väljastanud haldusorgani poolt või elektrooniliselt [HMS_25].\nSeaduses sätestatud juhtudel antakse dokument allkirja vastu kätte väljakutsutud menetlusosalisele või avaldatakse ajalehes [HMS_25].\nKui menetlusosalisel on esindaja või menetlusosaline on määranud dokumentide vastuvõtmiseks isiku, võib dokumendi kätte toimetada üksnes esindajale või dokumentide vastuvõtmiseks määratud isikule ning dokument loetakse ka menetlusosalisele kättetoimetatuks [HMS_25].\n\nSOOVITUSED:\nSäilita olukorraga seotud otsused, teated ja kirjavahetus.\nPane kirja olulised kuupäevad ning täpsusta puuduv asjaolu, kui see võib vastust muuta.\n\nKASUTATUD ALLIKAD: [HMS_25]",
-      "duration_seconds": 10.55
+      "duration_seconds": 10.4
     },
     {
       "id": "MODEL-TYPO-ABIPOL-01",
@@ -107,8 +107,8 @@
       "source_groups_ok": true,
       "phrases_all_ok": true,
       "phrases_any_ok": true,
-      "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nAbipolitseinik võib rakendada korrakaitseseaduse §-des 28 ja 30, § 32 lõigetes 1–4, §-des 34, 38, 41, 42 ja 44, § 45 lõigetes 1 ja 5 ning §-des 46–52 sätestatud meetmeid, kui ta on kaasatud meedet kohaldama politseiametniku korraldusel [ABIPOLS_16].\nAbipolitseinik ei ole pädev kohaldama vahetut sundi [ABIPOLS_16].\n\nSOOVITUSED:\nSäilita trahviotsus, trahviteade või muu saadud dokument muutmata kujul.\nPane kirja dokumendi kättesaamise aeg ning kontrolli sellelt menetlejat, rikkumise kirjeldust, tõendeid ja vaidlustamise tähtaega.\n\nKASUTATUD ALLIKAD: [ABIPOLS_16]",
-      "duration_seconds": 21.08
+      "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nAbipolitseinik võib rakendada korrakaitseseaduse §-des 28 ja 30, § 32 lõigetes 1–4, §-des 34, 38, 41, 42 ja 44, § 45 lõigetes 1 ja 5 ning §-des 46–52 sätestatud meetmeid, kui ta on kaasatud meedet kohaldama politseiametniku korraldusel [ABIPOLS_16].\nAbipolitseinik ei ole pädev kohaldada vahetut sundi [ABIPOLS_16].\n\nSOOVITUSED:\nSäilita trahviotsus, trahviteade või muu saadud dokument muutmata kujul.\nPane kirja dokumendi kättesaamise aeg ning kontrolli sellelt menetlejat, rikkumise kirjeldust, tõendeid ja vaidlustamise tähtaega.\n\nKASUTATUD ALLIKAD: [ABIPOLS_16]",
+      "duration_seconds": 15.93
     },
     {
       "id": "MODEL-MULTI-FINE-01",
@@ -124,7 +124,7 @@
       "phrases_all_ok": false,
       "phrases_any_ok": false,
       "error": "AnalysisOrchestrationError: Leitud sätted või vastus ei käsitle veel trahvi vaidlustamise võimalust. Vaidlustamise korra valimiseks on vaja dokumendi täpset liiki, menetlejat ja kättesaamise aega.",
-      "duration_seconds": 13.55
+      "duration_seconds": 25.63
     }
   ],
   "method": "real_ollama_analysis_orchestrator_smoke_eval"

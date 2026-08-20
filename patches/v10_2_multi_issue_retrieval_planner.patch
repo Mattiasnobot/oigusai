@@ -1,0 +1,627 @@
+diff --git a/services/analysis_orchestrator.py b/services/analysis_orchestrator.py
+index f7df962..0000000 100644
+--- a/services/analysis_orchestrator.py
++++ b/services/analysis_orchestrator.py
+@@ -18,5 +18,6 @@
+ from services.legal_search import HistoricalDataUnavailableError, LegalSearchService
+ from services.matters import MatterNotFoundError
++from services.retrieval_planner import MultiIssueRetrievalPlan, MultiIssueRetrievalPlanner
+ from services.retrieval_policy import RetrievalPlan, RetrievalPolicy
+ from services.turn_planner import ConversationTurnPlanner
+ 
+@@ -45,6 +45,7 @@
+     query_context: Dict[str, Any]
+     analysis_laws: List[Dict[str, Any]]
+     relevance_text: str
++    obligation_plan: MultiIssueRetrievalPlan
+     route_plan: RetrievalPlan
+ 
+ 
+@@ -76,6 +76,37 @@
+         self.run_guarded_work = run_guarded_work
+         self.logger = logger or logging.getLogger(__name__)
+ 
++    def _multi_issue_limit(self) -> int:
++        configured = getattr(self.legal_service, "max_results", 5)
++        if not isinstance(configured, int):
++            configured = 5
++        return min(12, max(6, configured * 2))
++
++    @staticmethod
++    def _fuse_law_batches(
++        batches: List[List[Dict[str, Any]]],
++        *,
++        limit: int,
++    ) -> List[Dict[str, Any]]:
++        """Round-robin verified law batches so one issue cannot crowd out another."""
++        clean_batches = [list(batch or []) for batch in batches]
++        max_depth = max((len(batch) for batch in clean_batches), default=0)
++        fused: List[Dict[str, Any]] = []
++        seen: set[str] = set()
++        for rank in range(max_depth):
++            for batch in clean_batches:
++                if rank >= len(batch):
++                    continue
++                law = batch[rank]
++                law_id = str(law.get("id", "")).strip().upper()
++                if not law_id or law_id in seen:
++                    continue
++                seen.add(law_id)
++                fused.append(law)
++                if len(fused) >= limit:
++                    return fused
++        return fused
++
+     async def prepare(self, request: Any) -> PreparedAnalysis:
+         analysis_started = time.perf_counter()
+         pipeline = AnalysisPipelineRun()
+@@ -103,7 +103,10 @@
+             for value in (getattr(request, "answer_requirements", None) or [])
+             if str(value).strip()
+         ][:5]
+-        intent_focus = "\n".join([current_turn, *answer_requirements]).strip()
++        intent_focus = (
++            "\n".join([current_turn, *answer_requirements]).strip()
++            or case_description.strip()
++        )
+         current_intents = ConversationTurnPlanner.detect_intents(intent_focus)
+         fine_context = ConversationTurnPlanner.is_fine_context(case_description)
+         pipeline.complete(
+@@ -145,19 +145,42 @@
++        search_text = str(
++            getattr(request, "search_query", None) or case_description
++        ).strip()
++        if document_spans:
++            document_search = " ".join(
++                str(span.get("text") or "")[:350]
++                for span in document_spans[:4]
++            )
++            search_text = f"{search_text} {document_search}"[:2000].strip()
++        obligation_plan = MultiIssueRetrievalPlanner.plan(
++            case_description=case_description,
++            search_text=search_text,
++            current_intents=current_intents,
++            answer_requirements=answer_requirements,
++            fine_context=fine_context,
++        )
++        event_date = str(getattr(request, "event_date", "") or "")
++
+         try:
+-            search_text = str(
+-                getattr(request, "search_query", None) or case_description
+-            ).strip()
+-            if document_spans:
+-                document_search = " ".join(
+-                    str(span.get("text") or "")[:350]
+-                    for span in document_spans[:4]
+-                )
+-                search_text = f"{search_text} {document_search}"[:2000].strip()
+             laws, query_interpretation = await self.run_guarded_work(
+                 "retrieval",
+                 self.legal_service.search_laws_with_context,
+                 search_text,
+-                str(getattr(request, "event_date", "") or ""),
++                event_date,
+             )
++            if obligation_plan.multi_issue:
++                obligation_batches: List[List[Dict[str, Any]]] = []
++                for obligation in obligation_plan.obligations:
++                    obligation_laws, _ = await self.run_guarded_work(
++                        "retrieval",
++                        self.legal_service.search_laws_with_context,
++                        obligation.query,
++                        event_date,
++                    )
++                    obligation_batches.append(obligation_laws)
++                laws = self._fuse_law_batches(
++                    [laws, *obligation_batches],
++                    limit=self._multi_issue_limit(),
++                )
+         except HistoricalDataUnavailableError as exc:
+             raise AnalysisOrchestrationError(422, str(exc)) from exc
+         except ValueError as exc:
+@@ -190,5 +190,11 @@
+             if hinted_laws:
+-                analysis_laws = hinted_laws
++                if obligation_plan.multi_issue:
++                    analysis_laws = self._fuse_law_batches(
++                        [hinted_laws, analysis_laws],
++                        limit=self._multi_issue_limit(),
++                    )
++                else:
++                    analysis_laws = hinted_laws
+ 
+         route_plan = RetrievalPolicy.plan(
+             case_description=case_description,
+@@ -216,5 +216,11 @@
+             if routed_laws:
+-                analysis_laws = routed_laws
++                if obligation_plan.multi_issue:
++                    analysis_laws = self._fuse_law_batches(
++                        [routed_laws, analysis_laws],
++                        limit=self._multi_issue_limit(),
++                    )
++                else:
++                    analysis_laws = routed_laws
+ 
+         relevance_text = intent_focus or search_text
+         if fine_context and not ConversationTurnPlanner.is_fine_context(relevance_text):
+@@ -234,6 +234,13 @@
+             result_count=len(analysis_laws),
+             semantic_relevance=True,
+             hybrid_used=bool(getattr(self.legal_service, "hybrid_ready", False)),
++            obligation_count=len(obligation_plan.obligations),
++            multi_issue=obligation_plan.multi_issue,
++            retrieval_query_count=(
++                1 + len(obligation_plan.obligations)
++                if obligation_plan.multi_issue
++                else 1
++            ),
+         )
+ 
+         return PreparedAnalysis(
+@@ -250,6 +250,7 @@
+             query_context=query_context,
+             analysis_laws=analysis_laws,
+             relevance_text=relevance_text,
++            obligation_plan=obligation_plan,
+             route_plan=route_plan,
+         )
+ 
+@@ -268,7 +268,12 @@
+         """Run model analysis and return only source-verified output."""
+         pipeline = prepared.pipeline
+         current_turn = prepared.current_turn
+-        answer_requirements = prepared.answer_requirements
++        answer_requirements = list(prepared.answer_requirements)
++        obligation_plan = getattr(prepared, "obligation_plan", None)
++        if obligation_plan is not None and getattr(obligation_plan, "multi_issue", False):
++            for requirement in obligation_plan.answer_requirements:
++                if requirement not in answer_requirements:
++                    answer_requirements.append(requirement)
+         document_spans = prepared.document_spans
+         relevance_text = prepared.relevance_text
+         route_plan = prepared.route_plan
+@@ -305,17 +305,16 @@
+         repeat_current_turn = bool(
+             normalized_current and normalized_current != normalized_analysis_case
+         )
+-        if current_turn and (repeat_current_turn or answer_requirements):
++        if current_turn and repeat_current_turn:
++            analysis_case += (
++                f"\n\nKASUTAJA VIIMANE SÕNUM:\n{current_turn[:3000]}\n\n"
++                "Kasuta viimast sõnumit koos alltoodud vastusekohustustega. "
++                "Varasem tekst on ainult taust."
++            )
++        if answer_requirements:
+             requirement_text = "\n".join(
+                 f"- {value}" for value in answer_requirements
+             )
+-            if repeat_current_turn:
+-                analysis_case += (
+-                    f"\n\nKASUTAJA VIIMANE SÕNUM:\n{current_turn[:3000]}\n\n"
+-                    "Kasuta viimast sõnumit koos alltoodud vastusekohustustega. "
+-                    "Varasem tekst on ainult taust."
+-                )
+-            if requirement_text:
+-                analysis_case += f"\nVASTUS PEAB KÄSITLEMA:\n{requirement_text}"
++            analysis_case += f"\nVASTUS PEAB KÄSITLEMA:\n{requirement_text}"
+ 
+         model_case = analysis_case
+diff --git a/services/retrieval_planner.py b/services/retrieval_planner.py
+new file mode 100644
+index 0000000..0000000
+--- /dev/null
++++ b/services/retrieval_planner.py
+@@ -0,0 +1,217 @@
++"""Deterministic multi-issue retrieval planning for ÕigusAI V10.2.
++
++The planner decomposes one user request into inspectable retrieval obligations.
++It does not choose legal authorities and it never creates source content.  Each
++query must still be resolved through LegalSearchService and the trusted corpus.
++"""
++from __future__ import annotations
++
++from dataclasses import dataclass
++from typing import Sequence
++
++
++@dataclass(frozen=True)
++class RetrievalObligation:
++    """One auditable legal question that deserves its own retrieval pass."""
++
++    kind: str
++    query: str
++    answer_requirement: str
++    reason: str
++
++    def to_dict(self) -> dict[str, str]:
++        return {
++            "kind": self.kind,
++            "query": self.query,
++            "answer_requirement": self.answer_requirement,
++            "reason": self.reason,
++        }
++
++
++@dataclass(frozen=True)
++class MultiIssueRetrievalPlan:
++    """Ordered obligation plan for one analysis request."""
++
++    obligations: tuple[RetrievalObligation, ...]
++
++    @property
++    def multi_issue(self) -> bool:
++        return len(self.obligations) > 1
++
++    @property
++    def answer_requirements(self) -> tuple[str, ...]:
++        return tuple(item.answer_requirement for item in self.obligations)
++
++    def to_dict(self) -> dict[str, object]:
++        return {
++            "multi_issue": self.multi_issue,
++            "obligations": [item.to_dict() for item in self.obligations],
++        }
++
++
++class MultiIssueRetrievalPlanner:
++    """Decompose natural-language requests into deterministic retrieval queries."""
++
++    _ORDER = (
++        "authority",
++        "procedure",
++        "deadline",
++        "remedy",
++        "payment",
++        "form_requirement",
++    )
++
++    _REQUIREMENTS = {
++        "authority": "milline asutus või kohus on pädev ja kellele tuleb pöörduda",
++        "procedure": "milline menetlus või õiguslik alus kirjeldatud olukorrale kohaldub",
++        "deadline": "milline tähtaeg kohaldub või kas möödunud tähtaega saab ennistada",
++        "remedy": "milline vaidlustamise või muu õiguskaitsevahend on kasutajal olemas",
++        "payment": "kas rahatrahvi saab tasuda ositi ja millised täitmise tagajärjed võivad järgneda",
++        "form_requirement": "milline vorminõue kehtib ja mis on vorminõude rikkumise tagajärg",
++    }
++
++    @classmethod
++    def plan(
++        cls,
++        *,
++        case_description: str,
++        search_text: str,
++        current_intents: Sequence[str],
++        answer_requirements: Sequence[str] = (),
++        fine_context: bool = False,
++    ) -> MultiIssueRetrievalPlan:
++        context = f"{case_description}\n{search_text}\n{' '.join(answer_requirements)}".casefold()
++        intents = set(current_intents)
++        employment_context = cls._employment_context(context)
++        planned: dict[str, RetrievalObligation] = {}
++
++        def add(kind: str, query: str, reason: str, *, replace: bool = False) -> None:
++            if kind in planned and not replace:
++                return
++            cleaned = " ".join(str(query or "").split())[:1200].strip()
++            if not cleaned:
++                return
++            planned[kind] = RetrievalObligation(
++                kind=kind,
++                query=cleaned,
++                answer_requirement=cls._REQUIREMENTS[kind],
++                reason=reason,
++            )
++
++        generic_scope = cls._scope_prefix(
++            context=context,
++            search_text=search_text,
++            fine_context=fine_context,
++            employment_context=employment_context,
++        )
++
++        if "find_authority" in intents:
++            add(
++                "authority",
++                f"{generic_scope} pädev asutus kohus kellele esitada kuhu pöörduda",
++                "latest_turn_intent:find_authority",
++            )
++        if intents.intersection({"document_help", "next_steps"}):
++            add(
++                "procedure",
++                f"{generic_scope} kohaldatav menetlus avaldus taotlus järgmised sammud",
++                "latest_turn_intent:procedure",
++            )
++        if "deadline" in intents:
++            add(
++                "deadline",
++                f"{generic_scope} kohaldatav tähtaeg tähtaja arvestamine",
++                "latest_turn_intent:deadline",
++            )
++        if "challenge_decision" in intents:
++            add(
++                "remedy",
++                f"{generic_scope} otsuse vaidlustamine kaebus vaie õiguskaitsevahend",
++                "latest_turn_intent:challenge_decision",
++            )
++        if "payment_plan" in intents:
++            add(
++                "payment",
++                f"{generic_scope} tasumine ositi osamaksed maksegraafik täitmisele pööramine",
++                "latest_turn_intent:payment_plan",
++            )
++
++        if fine_context:
++            if "missed_deadline" in intents or cls._missed_deadline_context(context):
++                add(
++                    "deadline",
++                    "rahatrahv väärteomenetlus kaebuse tähtaja ennistamine tähtaja möödumine läbi vaatamata",
++                    "fine_context:missed_deadline",
++                    replace=True,
++                )
++            if "challenge_decision" in intents:
++                add(
++                    "remedy",
++                    "rahatrahv väärteomenetluse otsuse vaidlustamine kaebus maakohtule menetlusaluse isiku õigused",
++                    "fine_context:challenge_decision",
++                    replace=True,
++                )
++            if "payment_plan" in intents:
++                add(
++                    "payment",
++                    "rahatrahvi tasumine ositi mõjuv põhjus osamaksed kohtuväline menetleja täitmisele pööramine",
++                    "fine_context:payment_plan",
++                    replace=True,
++                )
++
++        if employment_context and "koond" in context:
++            add(
++                "procedure",
++                "töölepingu ülesütlemine koondamise tõttu töömahu vähenemine töö ümberkorraldamine teise töö pakkumine",
++                "employment_context:redundancy_basis",
++                replace=True,
++            )
++            if "deadline" in intents or "etteteat" in context or "kui pikk" in context:
++                add(
++                    "deadline",
++                    "töölepingu ülesütlemise etteteatamise tähtaeg koondamine töötaja",
++                    "employment_context:notice_period",
++                    replace=True,
++                )
++
++        if employment_context and any(
++            term in context for term in ("suulis", "kirjal", "vorminõ", "vormis", "vormi")
++        ):
++            add(
++                "form_requirement",
++                "töölepingu ülesütlemisavaldus kirjalikku taasesitamist võimaldav vorm tühine",
++                "employment_context:termination_form",
++                replace=True,
++            )
++
++        ordered = tuple(planned[kind] for kind in cls._ORDER if kind in planned)
++        return MultiIssueRetrievalPlan(obligations=ordered)
++
++    @staticmethod
++    def _missed_deadline_context(context: str) -> bool:
++        has_deadline = "tähta" in context or "tahta" in context
++        return has_deadline and any(
++            marker in context
++            for marker in ("mööda", "moodas", "ület", "ulet", "hiljaks", "ennist")
++        )
++
++    @staticmethod
++    def _employment_context(context: str) -> bool:
++        return any(
++            term in context
++            for term in ("töölep", "töötaja", "tööandja", "valland", "koond")
++        )
++
++    @staticmethod
++    def _scope_prefix(
++        *,
++        context: str,
++        search_text: str,
++        fine_context: bool,
++        employment_context: bool,
++    ) -> str:
++        if fine_context:
++            return "rahatrahv väärteomenetlus"
++        if employment_context:
++            return "tööleping töötaja tööandja"
++        return " ".join(str(search_text or context).split())[:500]
+diff --git a/tests/test_retrieval_planner.py b/tests/test_retrieval_planner.py
+new file mode 100644
+index 0000000..0000000
+--- /dev/null
++++ b/tests/test_retrieval_planner.py
+@@ -0,0 +1,188 @@
++import asyncio
++import unittest
++from types import SimpleNamespace
++from unittest.mock import Mock
++
++from services.analysis_orchestrator import AnalysisOrchestrator
++from services.retrieval_planner import MultiIssueRetrievalPlanner
++
++
++async def immediate_work(_label, func, *args):
++    return func(*args)
++
++
++def interpretation():
++    return SimpleNamespace(to_dict=lambda: {
++        "expanded_tokens": [],
++        "domain_hints": [],
++        "section_hints": [],
++        "matches": [],
++        "notes": [],
++    })
++
++
++class MultiIssueRetrievalPlannerTests(unittest.TestCase):
++    def test_fine_question_is_decomposed_into_deadline_remedy_and_payment(self):
++        query = (
++            "Sain rahatrahvi. Kaebetähtaeg läks mööda. Kas tähtaega saab ennistada "
++            "ja kas trahvi saab ositi maksta?"
++        )
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description=query,
++            search_text=query,
++            current_intents=["missed_deadline", "challenge_decision", "payment_plan"],
++            fine_context=True,
++        )
++
++        self.assertTrue(plan.multi_issue)
++        self.assertEqual(
++            [item.kind for item in plan.obligations],
++            ["deadline", "remedy", "payment"],
++        )
++        self.assertIn("ennistamine", plan.obligations[0].query)
++        self.assertIn("maakohtule", plan.obligations[1].query)
++        self.assertIn("ositi", plan.obligations[2].query)
++
++    def test_redundancy_question_separates_basis_and_notice_period(self):
++        query = (
++            "Mind koondatakse. Millistel alustel võib tööandja koondada ja kui pikk "
++            "etteteatamine on?"
++        )
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description=query,
++            search_text=query,
++            current_intents=["deadline"],
++        )
++
++        self.assertTrue(plan.multi_issue)
++        self.assertEqual(
++            [item.kind for item in plan.obligations],
++            ["procedure", "deadline"],
++        )
++        self.assertIn("koondamise tõttu", plan.obligations[0].query)
++        self.assertIn("etteteatamise tähtaeg", plan.obligations[1].query)
++
++    def test_employment_form_question_creates_single_form_obligation(self):
++        query = "Kas tööandja võib töölepingu ainult suuliselt üles öelda?"
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description=query,
++            search_text=query,
++            current_intents=["rights_explanation"],
++        )
++
++        self.assertFalse(plan.multi_issue)
++        self.assertEqual([item.kind for item in plan.obligations], ["form_requirement"])
++        self.assertIn("kirjalikku taasesitamist", plan.obligations[0].query)
++
++    def test_prepare_runs_each_multi_issue_query_and_execute_exposes_requirements(self):
++        base_law = {
++            "id": "VTMS_114",
++            "title": "VTMS § 114",
++            "text": "Otsuse peale võib esitada maakohtule kaebuse.",
++            "source": "RT",
++        }
++        deadline_law = {
++            "id": "VTMS_118",
++            "title": "VTMS § 118",
++            "text": "Tähtaja möödumisel võib tähtaja ennistamise taotlus olla vajalik.",
++            "source": "RT",
++        }
++        payment_law = {
++            "id": "KARS_66",
++            "title": "KarS § 66",
++            "text": "Rahatrahvi võib mõjuvatel põhjustel tasuda ositi.",
++            "source": "RT",
++        }
++        enforcement_law = {
++            "id": "VTMS_204",
++            "title": "VTMS § 204",
++            "text": "Tähtajaks tasumata rahatrahv saadetakse täitmiseks.",
++            "source": "RT",
++        }
++
++        def search(query, _event_date):
++            normalized = query.casefold()
++            if "ennistamine" in normalized:
++                return [deadline_law], interpretation()
++            if "maakohtule" in normalized:
++                return [base_law], interpretation()
++            if "ositi" in normalized:
++                return [payment_law, enforcement_law], interpretation()
++            return [base_law], interpretation()
++
++        legal_service = Mock()
++        legal_service.max_results = 5
++        legal_service.search_laws_with_context.side_effect = search
++        relevance = Mock()
++        relevance.verify_laws.return_value = SimpleNamespace(
++            relevant=True,
++            missing_concepts=[],
++            clarification="",
++        )
++        relevance.verify_answer.return_value = SimpleNamespace(
++            relevant=True,
++            missing_concepts=[],
++            clarification="",
++        )
++        query = (
++            "Sain rahatrahvi. Kaebetähtaeg läks mööda. Kas tähtaega saab ennistada "
++            "ja kas trahvi saab ositi maksta?"
++        )
++        request = SimpleNamespace(
++            case_description=query,
++            current_message="",
++            answer_requirements=[],
++            matter_id=None,
++            document_ids=[],
++            search_query=None,
++            event_date=None,
++            case_context=None,
++        )
++        orchestrator = AnalysisOrchestrator(
++            legal_service=legal_service,
++            matter_store=None,
++            relevance_verifier=relevance,
++            run_guarded_work=immediate_work,
++        )
++
++        prepared = asyncio.run(orchestrator.prepare(request))
++
++        self.assertTrue(prepared.obligation_plan.multi_issue)
++        self.assertEqual(legal_service.search_laws_with_context.call_count, 4)
++        self.assertEqual(
++            {law["id"] for law in prepared.analysis_laws},
++            {"VTMS_114", "VTMS_118", "KARS_66", "VTMS_204"},
++        )
++        self.assertIn("challenge_decision", prepared.current_intents)
++        self.assertIn("payment_plan", prepared.current_intents)
++
++        ai_service = Mock()
++        ai_service.analyze_case.return_value = (
++            "ÕIGUSLIK KOHALDAMINE:\n"
++            "Otsuse peale võib esitada kaebuse [VTMS_114]. "
++            "Tähtaja ennistamist tuleb eraldi hinnata [VTMS_118]. "
++            "Rahatrahvi võib tasuda ositi [KARS_66].",
++            False,
++        )
++        source_verifier = Mock()
++        source_verifier.verify_sources.return_value = (
++            True,
++            ["VTMS_114", "VTMS_118", "KARS_66"],
++        )
++
++        asyncio.run(orchestrator.execute(
++            request,
++            prepared,
++            ai_service=ai_service,
++            source_verifier=source_verifier,
++        ))
++
++        model_case = ai_service.analyze_case.call_args.args[0]
++        self.assertIn("VASTUS PEAB KÄSITLEMA", model_case)
++        self.assertIn("möödunud tähtaega saab ennistada", model_case)
++        self.assertIn("õiguskaitsevahend", model_case)
++        self.assertIn("rahatrahvi saab tasuda ositi", model_case)
++
++
++if __name__ == "__main__":
++    unittest.main()

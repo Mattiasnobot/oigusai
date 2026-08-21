@@ -1,0 +1,40 @@
+{
+  "name": "V10.4.1 — deterministic real-model evaluation",
+  "base_commit": "2efffe02c4069d4e1c4af0c05169f853359ebaf9",
+  "base_files": [
+    {
+      "path": "services/offline_ai.py",
+      "git_blob_sha": "5697c19bd3925e28cdb6def145b6173d2b113804"
+    },
+    {
+      "path": "scripts/evaluate_model.py",
+      "git_blob_sha": "bd90b6cb47d646be9dd62bc58aaccb19b9d1c69a"
+    }
+  ],
+  "new_files": [
+    {
+      "path": "tests/test_model_eval_determinism.py",
+      "sha256": "0b8280e578b5a6be25f6cc7b15ee3cb5515b636b342c68d9ad3ab2a8551fee41"
+    }
+  ],
+  "tests": [
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_model_eval_determinism"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_offline_ai"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_evaluate_model"
+    ]
+  ]
+}

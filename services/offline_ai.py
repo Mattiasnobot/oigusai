@@ -90,6 +90,7 @@ class OfflineAIService:
         timeout: int = None,
         allow_mock: bool = None,
         settings: Settings = None,
+        generation_seed: int = None,
     ):
         cfg = settings or load_settings()
         self.ollama_url = (ollama_url or cfg.ollama_host).rstrip("/")
@@ -104,6 +105,9 @@ class OfflineAIService:
         self.think = cfg.ollama_think
         self.keep_alive = cfg.ollama_keep_alive
         self.citation_retries = cfg.ollama_citation_retries
+        self.generation_seed = (
+            None if generation_seed is None else int(generation_seed)
+        )
         # Paranduspäring ja API lõppkontroll peavad kasutama täpselt sama reeglistikku.
         self.source_verifier = SourceVerifier()
 
@@ -779,6 +783,15 @@ class OfflineAIService:
         return best
 
     def _call_ollama(self, prompt: str, response_schema: Dict = None) -> str:
+        options = {
+            "temperature": self.temperature,
+            "top_p": self.top_p,
+            "num_ctx": self.num_ctx,
+            "num_predict": self.num_predict,
+        }
+        if self.generation_seed is not None:
+            options["seed"] = self.generation_seed
+
         response = requests.post(
             f"{self.ollama_url}/api/generate",
             json={
@@ -790,12 +803,7 @@ class OfflineAIService:
                 "format": response_schema or AI_RESPONSE_SCHEMA,
                 "think": self.think,
                 "keep_alive": self.keep_alive,
-                "options": {
-                    "temperature": self.temperature,
-                    "top_p": self.top_p,
-                    "num_ctx": self.num_ctx,
-                    "num_predict": self.num_predict,
-                },
+                "options": options,
             },
             timeout=self.timeout,
         )

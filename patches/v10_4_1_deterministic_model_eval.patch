@@ -1,0 +1,143 @@
+diff --git a/services/offline_ai.py b/services/offline_ai.py
+--- a/services/offline_ai.py
++++ b/services/offline_ai.py
+@@ -86,6 +86,7 @@
+         timeout: int = None,
+         allow_mock: bool = None,
+         settings: Settings = None,
++        generation_seed: int = None,
+     ):
+         cfg = settings or load_settings()
+         self.ollama_url = (ollama_url or cfg.ollama_host).rstrip("/")
+@@ -100,5 +101,8 @@
+         self.think = cfg.ollama_think
+         self.keep_alive = cfg.ollama_keep_alive
+         self.citation_retries = cfg.ollama_citation_retries
++        self.generation_seed = (
++            None if generation_seed is None else int(generation_seed)
++        )
+         # Paranduspäring ja API lõppkontroll peavad kasutama täpselt sama reeglistikku.
+         self.source_verifier = SourceVerifier()
+@@ -779,4 +779,13 @@
+     def _call_ollama(self, prompt: str, response_schema: Dict = None) -> str:
++        options = {
++            "temperature": self.temperature,
++            "top_p": self.top_p,
++            "num_ctx": self.num_ctx,
++            "num_predict": self.num_predict,
++        }
++        if self.generation_seed is not None:
++            options["seed"] = self.generation_seed
++
+         response = requests.post(
+             f"{self.ollama_url}/api/generate",
+             json={
+@@ -788,12 +797,7 @@
+                 "format": response_schema or AI_RESPONSE_SCHEMA,
+                 "think": self.think,
+                 "keep_alive": self.keep_alive,
+-                "options": {
+-                    "temperature": self.temperature,
+-                    "top_p": self.top_p,
+-                    "num_ctx": self.num_ctx,
+-                    "num_predict": self.num_predict,
+-                },
++                "options": options,
+             },
+             timeout=self.timeout,
+         )
+diff --git a/scripts/evaluate_model.py b/scripts/evaluate_model.py
+--- a/scripts/evaluate_model.py
++++ b/scripts/evaluate_model.py
+@@ -23,5 +23,7 @@
+ PROJECT_ROOT = Path(__file__).resolve().parent.parent
+ DEFAULT_CASES = PROJECT_ROOT / "eval" / "model_cases.json"
++MODEL_EVAL_SEED = 42
++MODEL_EVAL_TEMPERATURE = 0.0
+ 
+ 
+ class ModelEvalError(RuntimeError):
+@@ -172,6 +172,7 @@
+         "ALLOW_MOCK_ANALYSIS": "false",
+         "ALLOW_LIVE_RT_FALLBACK": "false",
+         "APP_RELOAD": "false",
++        "OLLAMA_TEMPERATURE": str(MODEL_EVAL_TEMPERATURE),
+     })
+     if lexical_only:
+         env.update({
+@@ -304,5 +304,9 @@
+         relevance_verifier=relevance_verifier,
+         run_guarded_work=_run_guarded_work,
+     )
+-    ai_service = OfflineAIService(settings=settings, allow_mock=False)
++    ai_service = OfflineAIService(
++        settings=settings,
++        allow_mock=False,
++        generation_seed=MODEL_EVAL_SEED,
++    )
+     source_verifier = SourceVerifier()
+@@ -359,6 +359,10 @@
+         model_name=settings.ollama_model,
+         duration_seconds=time.perf_counter() - started,
+     )
++    report["model_generation"] = {
++        "seed": MODEL_EVAL_SEED,
++        "temperature": settings.ollama_temperature,
++    }
+     report["ollama_warmup"] = warmup_status
+     report["ollama_runtime_after"] = await asyncio.to_thread(ollama_runtime.snapshot)
+     return report
+diff --git a/tests/test_model_eval_determinism.py b/tests/test_model_eval_determinism.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_model_eval_determinism.py
+@@ -0,0 +1,49 @@
++import unittest
++from unittest.mock import Mock, patch
++
++from config import load_settings
++from scripts.evaluate_model import MODEL_EVAL_SEED, MODEL_EVAL_TEMPERATURE, _runtime_environment
++from services.offline_ai import OfflineAIService
++
++
++class ModelEvalDeterminismTests(unittest.TestCase):
++    def _payload(self, *, generation_seed=None):
++        settings = load_settings({
++            "OLLAMA_HOST": "http://example.test:11434",
++            "OLLAMA_MODEL": "unit-model",
++            "OLLAMA_TIMEOUT": "30",
++            "OLLAMA_TEMPERATURE": "0.1",
++            "OLLAMA_TOP_P": "0.9",
++            "OLLAMA_NUM_CTX": "2048",
++            "OLLAMA_NUM_PREDICT": "256",
++            "OLLAMA_THINK": "false",
++            "OLLAMA_KEEP_ALIVE": "5m",
++        })
++        ai = OfflineAIService(
++            settings=settings,
++            allow_mock=False,
++            generation_seed=generation_seed,
++        )
++        response = Mock(status_code=200)
++        response.json.return_value = {"response": "OK"}
++        with patch("services.offline_ai.requests.post", return_value=response) as post:
++            self.assertEqual(ai._call_ollama("test prompt"), "OK")
++        return post.call_args.kwargs["json"]
++
++    def test_normal_runtime_omits_generation_seed(self):
++        payload = self._payload()
++        self.assertNotIn("seed", payload["options"])
++
++    def test_explicit_generation_seed_is_forwarded_to_ollama(self):
++        payload = self._payload(generation_seed=MODEL_EVAL_SEED)
++        self.assertEqual(payload["options"]["seed"], MODEL_EVAL_SEED)
++
++    def test_model_eval_pins_temperature_and_seed(self):
++        env = _runtime_environment(lexical_only=False)
++        self.assertEqual(float(env["OLLAMA_TEMPERATURE"]), MODEL_EVAL_TEMPERATURE)
++        self.assertEqual(MODEL_EVAL_SEED, 42)
++        self.assertEqual(MODEL_EVAL_TEMPERATURE, 0.0)
++
++
++if __name__ == "__main__":
++    unittest.main()

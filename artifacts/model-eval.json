@@ -3,19 +3,18 @@
   "model": "qwen3.5:9b-q4_K_M",
   "cases": 6,
   "safe_passed": 6,
-  "model_passed": 4,
-  "fallback_count": 2,
+  "model_passed": 5,
+  "fallback_count": 1,
   "mock_count": 0,
-  "fallback_rate": 0.3333,
-  "model_pass_rate": 0.6667,
+  "fallback_rate": 0.1667,
+  "model_pass_rate": 0.8333,
   "acceptance": {
     "max_fallback_rate": 0.25,
     "min_model_pass_rate": 0.75
   },
-  "acceptance_passed": false,
-  "duration_seconds": 154.87,
+  "acceptance_passed": true,
+  "duration_seconds": 147.54,
   "failures": [
-    "MODEL-TLS-FORM-01",
     "MODEL-TLS-REDUNDANCY-01"
   ],
   "results": [
@@ -23,11 +22,11 @@
       "id": "MODEL-TLS-FORM-01",
       "query": "Kas tööandja võib töölepingu ainult suuliselt üles öelda?",
       "safe_pass": true,
-      "model_pass": false,
-      "real_model_used": false,
-      "fallback_used": true,
+      "model_pass": true,
+      "real_model_used": true,
+      "fallback_used": false,
       "is_mock": false,
-      "verification_status": "SOURCE_ONLY_FALLBACK",
+      "verification_status": "EVIDENCE_VERIFIED",
       "verified_sources": [
         "TLS_95"
       ],
@@ -82,31 +81,29 @@
         "target_sources": [
           "TLS_95"
         ],
-        "returned_sources": [],
-        "citation_valid": false,
-        "coverage_passed": false,
+        "returned_sources": [
+          "TLS_95"
+        ],
+        "citation_valid": true,
+        "coverage_passed": true,
         "semantic_relevance": true,
         "missing_concepts": [],
-        "accepted": false,
-        "failure_reason": "citation_verification",
+        "accepted": true,
+        "failure_reason": "",
         "parse_valid": true,
         "raw_claim_count": 1,
         "raw_source_ids": [
           "TLS_95"
         ],
-        "accepted_claim_count": 0,
-        "accepted_source_ids": [],
+        "accepted_claim_count": 1,
+        "accepted_source_ids": [
+          "TLS_95"
+        ],
         "evidence_recovered_count": 0,
-        "dropped_claims": [
-          {
-            "index": 1,
-            "source_id": "TLS_95",
-            "reason": "claim_not_supported_by_evidence"
-          }
-        ]
+        "dropped_claims": []
       },
-      "analysis_preview": "OLUKORD:\nMudeli vastus ei katnud kõiki tuvastatud küsimuse osi. Allpool kuvatakse ainult auditeeritud kohustustega seotud kontrollitud allikakatkendid.\n\nÕIGUSLIK KOHALDAMINE:\nÜlesütlemisavaldus 1 (1) Töölepingu võib üles öelda kirjalikku taasesitamist võimaldavas vormis ülesütlemisavaldusega [TLS_95].\nVorminõuet rikkudes tehtud või tingimuslik ülesütlemisavaldus on tühine [TLS_95].\n\nSOOVITUSED:\nKontrolli otsuse või dokumendi täpset liiki, kuupäevi ja menetlejat, kui need võivad kohaldatavat menetlusteed muuta.\n\nKASUTATUD ALLIKAD: [TLS_95]",
-      "duration_seconds": 26.41
+      "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nTöölepingu ülesütlemine peab olema kirjalikku taasesitamist võimaldavas vormis tehtud, vastasel juhul on ülesütlemisavaldus tühine [TLS_95].\n\nSOOVITUSED:\nSäilita tööleping, tööandja teated ja töösuhtega seotud kirjavahetus.\nPane kirja teate saamise ning töösuhte muutumise või lõppemise kuupäevad.\n\nKASUTATUD ALLIKAD: [TLS_95]",
+      "duration_seconds": 26.48
     },
     {
       "id": "MODEL-TLS-REDUNDANCY-01",
@@ -207,7 +204,7 @@
         "accepted_source_ids": [
           "TLS_89"
         ],
-        "evidence_recovered_count": 0,
+        "evidence_recovered_count": 1,
         "dropped_claims": [
           {
             "index": 2,
@@ -217,7 +214,7 @@
         ]
       },
       "analysis_preview": "OLUKORD:\nMudeli vastus ei katnud kõiki tuvastatud küsimuse osi. Allpool kuvatakse ainult auditeeritud kohustustega seotud kontrollitud allikakatkendid.\n\nÕIGUSLIK KOHALDAMINE:\nTöölepingu erakorraline ülesütlemine tööandja poolt majanduslikel põhjustel 1 (1) Tööandja võib töölepingu erakorraliselt üles öelda, kui töösuhte jätkamine kokkulepitud tingimustel muutub võimatuks töömahu vähenemise või töö ümberkorraldamise tõttu või muul töö lõppemise juhul (koondamine) [TLS_89].\n2 (2) Koondamine on ka töölepingu erakorraline ülesütlemine: 1 1) tööandja tegevuse lõppemisel; 2 2) tööandja pankroti väljakuulutamisel või pankrotimenetluse lõpetamisel, pankrotti välja kuulutamata, raugemise tõttu [TLS_89].\nTööandja ülesütlemise etteteatamise tähtajad 1 (1) Tööandja võib töölepingu erakorraliselt üles öelda käesoleva paragrahvi lõikes 2 sätestatud etteteatamistähtaegu järgides [TLS_97].\n2 (2) Erakorralisest ülesütlemisest peab tööandja töötajale ette teatama, kui töötaja töösuhe tööandja juures on kestnud: 1 1) alla ühe tööaasta – vähemalt 15 kalendripäeva; 2 2) üks kuni viis tööaastat – vähemalt 30 kalendripäeva; 3 3) viis kuni kümme tööaastat – vähemalt 60 kalendripäeva; 4 4) kümme ja enam tö",
-      "duration_seconds": 36.97
+      "duration_seconds": 34.13
     },
     {
       "id": "MODEL-VOS-DEPOSIT-01",
@@ -259,7 +256,7 @@
         "failure_reason": ""
       },
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nEluruumi üürilepinguga võib ette näha, et üürnik maksab lepingust tulenevate nõuete tagamiseks üürileandjale tagatisraha kuni kolme kuu üüri ulatuses [VOS_308].\nÜürnik võib tagatisraha maksta kolme kuu jooksul võrdsetes osades [VOS_308].\nKui üürileandja on rahuldanud tagatisraha arvelt oma nõude üürniku vastu, võib ta üürnikult nõuda tagatisraha taastamist eluruumi üürilepingus kokkulepitud ulatuses [VOS_308].\n\nSOOVITUSED:\nSäilita üürileping, maksekinnitused ning üürileandjaga peetud kirjavahetus.\nPane kirja nõutud summa, nõude kuupäev ja üürileandja põhjendus.\n\nKASUTATUD ALLIKAD: [VOS_308]",
-      "duration_seconds": 11.79
+      "duration_seconds": 11.84
     },
     {
       "id": "MODEL-HMS-SERVICE-01",
@@ -301,7 +298,7 @@
         "failure_reason": ""
       },
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nHaldusakt, kutse, teade või muu dokument toimetatakse menetlusosalisele kätte postiga, dokumendi väljastanud haldusorgani poolt või elektrooniliselt [HMS_25].\nSeaduses sätestatud juhtudel antakse dokument allkirja vastu kätte väljakutsutud menetlusosalisele või avaldatakse ajalehes [HMS_25].\nKui menetlusosalisel on esindaja või menetlusosaline on määranud dokumentide vastuvõtmiseks isiku, võib dokumendi kätte toimetada üksnes esindajale või dokumentide vastuvõtmiseks määratud isikule ning dokument loetakse ka menetlusosalisele kättetoimetatuks [HMS_25].\n\nSOOVITUSED:\nSäilita olukorraga seotud otsused, teated ja kirjavahetus.\nPane kirja olulised kuupäevad ning täpsusta puuduv asjaolu, kui see võib vastust muuta.\n\nKASUTATUD ALLIKAD: [HMS_25]",
-      "duration_seconds": 13.46
+      "duration_seconds": 13.47
     },
     {
       "id": "MODEL-TYPO-ABIPOL-01",
@@ -343,7 +340,7 @@
         "failure_reason": ""
       },
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nAbipolitseinik võib rakendada korrakaitseseaduse §-des 28 ja 30, § 32 lõigetes 1–4, §-des 34, 38, 41, 42 ja 44, § 45 lõigetes 1 ja 5 ning §-des 46–52 sätestatud meetmeid, kui ta on kaasatud meedet kohaldama politseiametniku korraldusel [ABIPOLS_16].\nAbipolitseinik ei ole pädev kohaldama vahetut sundi, kui ta osaleb politsei tegevuses [ABIPOLS_16].\n\nSOOVITUSED:\nSäilita trahviotsus, trahviteade või muu saadud dokument muutmata kujul.\nPane kirja dokumendi kättesaamise aeg ning kontrolli sellelt menetlejat, rikkumise kirjeldust, tõendeid ja vaidlustamise tähtaega.\n\nKASUTATUD ALLIKAD: [ABIPOLS_16]",
-      "duration_seconds": 17.42
+      "duration_seconds": 17.39
     },
     {
       "id": "MODEL-MULTI-FINE-01",
@@ -486,16 +483,20 @@
         "dropped_claims": []
       },
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nMaakohtunik teeb kaebuse läbi vaatamata jätmise kohta määruse ja saadab määruse koopia ning tagastab kaebuse selle esitanud isikule, kui kaebus on esitatud pärast tähtaja möödumist ja tähtaja ennistamise taotlust ei ole esitatud või maakohtunik on jätnud tähtaja ennistamata [VTMS_118].\nMenetlusosalisel on õigus esitada maakohtule kaebus kohtuvälise menetleja järgmiste otsuste peale, sealhulgas üldmenetluses tehtud otsuse peale [VTMS_114].\nKohus või väärtegu menetlev kohtuväline menetleja võib mõjuvatel põhjustel määrata rahatrahvi tasumise ositi [KARS_66].\n\nSOOVITUSED:\nSäilita trahviotsus, trahviteade või muu saadud dokument muutmata kujul.\nPane kirja dokumendi kättesaamise aeg ning kontrolli sellelt menetlejat, rikkumise kirjeldust, tõendeid ja vaidlustamise tähtaega.\n\nKASUTATUD ALLIKAD: [VTMS_118] [VTMS_114] [KARS_66]",
-      "duration_seconds": 48.83
+      "duration_seconds": 44.24
     }
   ],
   "method": "real_ollama_analysis_orchestrator_smoke_eval",
+  "model_generation": {
+    "seed": 42,
+    "temperature": 0.0
+  },
   "ollama_warmup": {
     "ollama_ready": true,
     "analysis_model_ready": true,
     "analysis_model_loaded": true,
     "analysis_model_size_vram": 5729167604,
-    "analysis_model_expires_at": "2026-08-21T13:49:40.0155723+03:00",
+    "analysis_model_expires_at": "2026-08-21T15:20:30.2920303+03:00",
     "ollama_runtime_error": null,
     "preload_enabled": true,
     "preload_attempted": true,
@@ -510,7 +511,7 @@
     "analysis_model_ready": true,
     "analysis_model_loaded": true,
     "analysis_model_size_vram": 5729167604,
-    "analysis_model_expires_at": "2026-08-21T14:51:29.0610197+03:00",
+    "analysis_model_expires_at": "2026-08-21T15:23:18.9546261+03:00",
     "ollama_runtime_error": null,
     "preload_enabled": true,
     "preload_attempted": true,

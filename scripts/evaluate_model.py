@@ -22,6 +22,8 @@ from typing import Any, Dict, Iterable, List, Sequence
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CASES = PROJECT_ROOT / "eval" / "model_cases.json"
+MODEL_EVAL_SEED = 42
+MODEL_EVAL_TEMPERATURE = 0.0
 
 
 class ModelEvalError(RuntimeError):
@@ -178,6 +180,7 @@ def _runtime_environment(*, lexical_only: bool) -> Dict[str, str]:
         "ALLOW_MOCK_ANALYSIS": "false",
         "ALLOW_LIVE_RT_FALLBACK": "false",
         "APP_RELOAD": "false",
+        "OLLAMA_TEMPERATURE": str(MODEL_EVAL_TEMPERATURE),
     })
     if lexical_only:
         env.update({
@@ -299,7 +302,11 @@ async def run_evaluation(
         relevance_verifier=relevance_verifier,
         run_guarded_work=_run_guarded_work,
     )
-    ai_service = OfflineAIService(settings=settings, allow_mock=False)
+    ai_service = OfflineAIService(
+        settings=settings,
+        allow_mock=False,
+        generation_seed=MODEL_EVAL_SEED,
+    )
     source_verifier = SourceVerifier()
     evidence_verifier = EvidenceVerifier()
     urgency_analyzer = UrgencyAnalyzer()
@@ -362,6 +369,10 @@ async def run_evaluation(
         model_name=settings.ollama_model,
         duration_seconds=time.perf_counter() - started,
     )
+    report["model_generation"] = {
+        "seed": MODEL_EVAL_SEED,
+        "temperature": settings.ollama_temperature,
+    }
     report["ollama_warmup"] = warmup_status
     report["ollama_runtime_after"] = await asyncio.to_thread(ollama_runtime.snapshot)
     return report

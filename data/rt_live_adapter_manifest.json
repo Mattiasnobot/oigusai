@@ -1,0 +1,18 @@
+{
+  "version": "V11.2.1-rt-live-adapter-1",
+  "source_registry_version": "V11.2-official-source-registry-1",
+  "registry_source_candidates": [
+    "RT_NATIONAL_LAW",
+    "RT_LOCAL_LAW"
+  ],
+  "official_xml_endpoint_template": "https://www.riigiteataja.ee/public-api/api/v1/akt/{act_id}/xml",
+  "official_api_change_date": "2026-06-01",
+  "live_adapter_available": true,
+  "network_on_demand_only": true,
+  "authority_classification_enabled": false,
+  "current_revision_resolution_enabled": false,
+  "writes_legal_corpus": false,
+  "writes_case_law_corpus": false,
+  "retrieval_integration_enabled": false,
+  "model_context_integration_enabled": false
+}

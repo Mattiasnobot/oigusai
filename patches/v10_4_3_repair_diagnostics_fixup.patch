@@ -1,0 +1,21 @@
+diff --git a/services/offline_ai.py b/services/offline_ai.py
+--- a/services/offline_ai.py
++++ b/services/offline_ai.py
+@@ -634,7 +634,7 @@
+             "evidence_recovered_count": 0,
+             "dropped_claims": [],
+         }
+-        if self.repair_debug:
++        if getattr(self, "repair_debug", False):
+             diagnostics["claim_diagnostics"] = []
+         payload = self._extract_json_payload(
+             self._strip_code_fences(raw_response or "")
+@@ -684,7 +684,7 @@
+                 continue
+ 
+             claim_debug = None
+-            if self.repair_debug:
++            if getattr(self, "repair_debug", False):
+                 claim_debug = {
+                     "index": index,
+                     "source_id": source_id,

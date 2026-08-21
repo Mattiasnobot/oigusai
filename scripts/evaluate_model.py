@@ -306,6 +306,7 @@ async def run_evaluation(
         settings=settings,
         allow_mock=False,
         generation_seed=MODEL_EVAL_SEED,
+        repair_debug=True,
     )
     source_verifier = SourceVerifier()
     evidence_verifier = EvidenceVerifier()

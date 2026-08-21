@@ -1,0 +1,40 @@
+{
+  "name": "V10.4.3 — opt-in focused-repair diagnostics",
+  "base_commit": "fcf1f1c9d4811a4d44b8750bf45898dc6cde980b",
+  "base_files": [
+    {
+      "path": "services/offline_ai.py",
+      "git_blob_sha": "6915760ccbd7509c55e5a392f949bd716f1b8d8c"
+    },
+    {
+      "path": "scripts/evaluate_model.py",
+      "git_blob_sha": "b8edd7b1938ab86ccd2f763c88635dedd8dd1235"
+    }
+  ],
+  "new_files": [
+    {
+      "path": "tests/test_repair_diagnostics.py",
+      "sha256": "31b27a86be80f2f5f4a1c84ca49b5a610dad92528160dea20724bf20a450fdbd"
+    }
+  ],
+  "tests": [
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_repair_diagnostics"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_evaluate_model"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_repair_evidence_recovery"
+    ]
+  ]
+}

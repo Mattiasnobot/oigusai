@@ -91,6 +91,7 @@ class OfflineAIService:
         allow_mock: bool = None,
         settings: Settings = None,
         generation_seed: int = None,
+        repair_debug: bool = False,
     ):
         cfg = settings or load_settings()
         self.ollama_url = (ollama_url or cfg.ollama_host).rstrip("/")
@@ -108,6 +109,7 @@ class OfflineAIService:
         self.generation_seed = (
             None if generation_seed is None else int(generation_seed)
         )
+        self.repair_debug = bool(repair_debug)
         # Paranduspäring ja API lõppkontroll peavad kasutama täpselt sama reeglistikku.
         self.source_verifier = SourceVerifier()
 
@@ -637,6 +639,8 @@ class OfflineAIService:
             "evidence_recovered_count": 0,
             "dropped_claims": [],
         }
+        if getattr(self, "repair_debug", False):
+            diagnostics["claim_diagnostics"] = []
         payload = self._extract_json_payload(
             self._strip_code_fences(raw_response or "")
         )
@@ -688,10 +692,28 @@ class OfflineAIService:
                 })
                 continue
 
+            claim_debug = None
+            if getattr(self, "repair_debug", False):
+                claim_debug = {
+                    "index": index,
+                    "source_id": source_id,
+                    "claim_text": claim_text[:600],
+                    "model_evidence": evidence[:600],
+                    "model_evidence_is_exact": self._evidence_is_valid(evidence, law),
+                    "model_support": self._claim_support_debug(claim_text, evidence),
+                    "candidate_attempts": [],
+                    "outcome": "",
+                }
+                diagnostics["claim_diagnostics"].append(claim_debug)
+
             recovered = False
             if not self._evidence_is_valid(evidence, law):
-                evidence = self._recover_source_evidence(claim_text, evidence, law)
+                evidence = self._recover_source_evidence(
+                    claim_text, evidence, law, debug=claim_debug
+                )
                 if not evidence:
+                    if claim_debug is not None:
+                        claim_debug["outcome"] = "evidence_not_recoverable"
                     diagnostics["dropped_claims"].append({
                         "index": index,
                         "source_id": source_id,
@@ -700,20 +722,34 @@ class OfflineAIService:
                     continue
                 recovered = True
 
-            if not self._claim_is_supported_by_evidence(claim_text, evidence):
+            support_passed = self._claim_is_supported_by_evidence(claim_text, evidence)
+            if claim_debug is not None:
+                claim_debug["final_evidence"] = evidence[:600]
+                claim_debug["final_evidence_is_exact"] = self._evidence_is_valid(
+                    evidence, law
+                )
+                claim_debug["final_support"] = self._claim_support_debug(
+                    claim_text, evidence
+                )
+            if not support_passed:
+                reason = (
+                    "claim_not_supported_by_recovered_evidence"
+                    if recovered
+                    else "claim_not_supported_by_evidence"
+                )
+                if claim_debug is not None:
+                    claim_debug["outcome"] = reason
                 diagnostics["dropped_claims"].append({
                     "index": index,
                     "source_id": source_id,
-                    "reason": (
-                        "claim_not_supported_by_recovered_evidence"
-                        if recovered
-                        else "claim_not_supported_by_evidence"
-                    ),
+                    "reason": reason,
                 })
                 continue
 
             if recovered:
                 diagnostics["evidence_recovered_count"] += 1
+            if claim_debug is not None:
+                claim_debug["outcome"] = "accepted"
             normalized_claims.append({
                 "text": claim_text,
                 "source_id": source_id,
@@ -741,6 +777,7 @@ class OfflineAIService:
         claim_text: str,
         model_evidence: str,
         law: Dict,
+        debug: Dict = None,
     ) -> str:
         """Choose a close exact source sentence without creating legal text."""
         source_text = str(law.get("text", "") or "")
@@ -777,16 +814,77 @@ class OfflineAIService:
 
         ranked = sorted(candidates, key=score, reverse=True)
         required_overlap = 1 if len(query_tokens) < 3 else 2
-        for candidate in ranked:
-            overlap, _ratio, _length = score(candidate)
-            if overlap < required_overlap:
-                continue
-            # Recovery may repair only an inexact quotation. It must not
-            # bypass the same support gate that validates the final claim.
-            if not self._claim_is_supported_by_evidence(claim_text, candidate):
+        for rank, candidate in enumerate(ranked, start=1):
+            overlap, ratio, _length = score(candidate)
+            meets_overlap = overlap >= required_overlap
+            support_passed = (
+                self._claim_is_supported_by_evidence(claim_text, candidate)
+                if meets_overlap
+                else False
+            )
+            if debug is not None:
+                debug["candidate_attempts"].append({
+                    "rank": rank,
+                    "excerpt": candidate[:600],
+                    "lexical_overlap": overlap,
+                    "lexical_ratio": round(ratio, 4),
+                    "required_overlap": required_overlap,
+                    "meets_overlap": meets_overlap,
+                    "support_passed": support_passed,
+                    "support": self._claim_support_debug(claim_text, candidate),
+                })
+            if not meets_overlap or not support_passed:
                 continue
             return candidate
         return ""
+
+    def _claim_support_debug(self, claim: str, evidence: str) -> Dict:
+        """Explain the existing lexical support gate without changing its result."""
+        claim_norm = self._normalize_evidence_text(claim)
+        evidence_norm = self._normalize_evidence_text(evidence)
+        inference_markers = (
+            "mis tähendab",
+            "seega",
+            "järelikult",
+            "mistõttu",
+            "sellest tuleneb",
+        )
+        missing_inference_markers = [
+            marker
+            for marker in inference_markers
+            if marker in claim_norm and marker not in evidence_norm
+        ]
+        quantity_pattern = re.compile(
+            r"(?<!\w)(?:\d+(?:[.,]\d+)?%?|üks|ühe|üht|kaks|kahe|kahte|"
+            r"kolm|kolme|nelja|neli|viis|viie|kuus|kuue|seitse|seitsme|"
+            r"kaheksa|üheksa|kümme|kümne|sada|saja|tuhat|tuhande)(?!\w)",
+            re.IGNORECASE,
+        )
+        claim_quantities = set(quantity_pattern.findall(claim_norm))
+        evidence_quantities = set(quantity_pattern.findall(evidence_norm))
+        ignored = {"selle", "ning", "kuid", "vaid", "tuleb", "saab", "peab"}
+        claim_tokens = {
+            token
+            for token in re.findall(r"[a-zõäöü]{4,}", claim_norm)
+            if token not in ignored
+        }
+        evidence_tokens = set(re.findall(r"[a-zõäöü]{4,}", evidence_norm))
+        overlap_tokens = claim_tokens.intersection(evidence_tokens)
+        overlap_ratio = (
+            len(overlap_tokens) / len(claim_tokens) if claim_tokens else 0.0
+        )
+        return {
+            "passed": self._claim_is_supported_by_evidence(claim, evidence),
+            "missing_inference_markers": missing_inference_markers,
+            "claim_quantities": sorted(claim_quantities),
+            "evidence_quantities": sorted(evidence_quantities),
+            "missing_quantities": sorted(claim_quantities - evidence_quantities),
+            "claim_token_count": len(claim_tokens),
+            "overlap_token_count": len(overlap_tokens),
+            "token_overlap_ratio": round(overlap_ratio, 4),
+            "overlap_tokens": sorted(overlap_tokens)[:40],
+            "missing_claim_tokens": sorted(claim_tokens - evidence_tokens)[:40],
+        }
 
     def _call_ollama(self, prompt: str, response_schema: Dict = None) -> str:
         options = {

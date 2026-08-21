@@ -24,6 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _BINDING_CLAIM_CLASS = "binding_rule"
 _OPEN_END_MARKERS = frozenset({"", "hetkel kehtiv", "currently valid", "open"})
 _SERIES_RE = re.compile(r"^RT\s+(I|II|III|IV)\b", re.IGNORECASE)
+_BARE_SERIES_RE = re.compile(r"^(?:RT\s+)?(I|II|III|IV)$", re.IGNORECASE)
 
 _METADATA_ALIASES: Mapping[str, frozenset[str]] = {
     "issuer": frozenset({
@@ -47,6 +48,15 @@ _METADATA_ALIASES: Mapping[str, frozenset[str]] = {
     "publication_marker": frozenset({
         "avaldamismarge", "avaldamismarke", "publicationmarker",
         "publicationreference", "publicationref",
+    }),
+    "publication_series": frozenset({
+        "rtosa", "publicationseries",
+    }),
+    "publication_date": frozenset({
+        "avaldaminekuupaev", "publicationdate",
+    }),
+    "publication_article": frozenset({
+        "rtartikkel", "publicationarticle",
     }),
 }
 _ALIAS_TO_FIELD = {
@@ -138,15 +148,28 @@ def _publication_series(value: str) -> str:
     return f"RT {match.group(1).upper()}"
 
 
+def _publication_series_from_metadata(metadata: Mapping[str, str]) -> str:
+    explicit = _clean_text(metadata.get("publication_series", ""))
+    if explicit:
+        match = _BARE_SERIES_RE.fullmatch(explicit)
+        if not match:
+            raise RTAuthorityError(f"RTosa does not expose an audited RT series: {explicit!r}.")
+        return f"RT {match.group(1).upper()}"
+    marker = metadata.get("publication_marker")
+    if marker is not None:
+        return _publication_series(marker)
+    raise RTAuthorityError("RT revision is missing explicit publication series metadata.")
+
+
 def classify_rt_binding_source(metadata: Mapping[str, str]) -> Tuple[str, str, str]:
     """Return (registry source id, authority class, canonical act type)."""
-    required = ("issuer", "act_type", "valid_from", "valid_to", "publication_marker")
+    required = ("issuer", "act_type", "valid_from", "valid_to")
     missing = [field for field in required if field not in metadata]
     if missing:
         raise RTAuthorityError("RT revision is missing explicit metadata: " + ", ".join(missing))
 
     act_type = _canonical_act_type(metadata["act_type"])
-    series = _publication_series(metadata["publication_marker"])
+    series = _publication_series_from_metadata(metadata)
     if series == "RT I" and act_type in {"seadus", "määrus"}:
         return "RT_NATIONAL_LAW", "binding_national_law", act_type
     if series == "RT IV" and act_type == "määrus":
@@ -212,6 +235,7 @@ def verify_live_rt_binding_authority(
     source_id, expected_authority, act_type = classify_rt_binding_source(metadata)
     check_date = as_of or date.today()
     valid_from, valid_to = verify_revision_currentness(metadata, as_of=check_date)
+    publication_series = _publication_series_from_metadata(metadata)
 
     source_registry = registry or LegalSourceRegistry.load(PROJECT_ROOT)
     if not source_registry.supports_claim(source_id, _BINDING_CLAIM_CLASS):
@@ -233,7 +257,10 @@ def verify_live_rt_binding_authority(
         "text_type": metadata.get("text_type", ""),
         "valid_from": valid_from.isoformat(),
         "valid_to_exclusive": valid_to.isoformat() if valid_to else None,
-        "publication_marker": metadata["publication_marker"],
+        "publication_series": publication_series,
+        "publication_marker": metadata.get("publication_marker", ""),
+        "publication_date": metadata.get("publication_date", ""),
+        "publication_article": metadata.get("publication_article", ""),
         "xml_sha256": exact["xml_sha256"],
         "text_sha256": exact["text_sha256"],
     }
@@ -250,7 +277,10 @@ def verify_live_rt_binding_authority(
         "issuer": metadata["issuer"],
         "act_type": act_type,
         "text_type": metadata.get("text_type", ""),
-        "publication_marker": metadata["publication_marker"],
+        "publication_series": publication_series,
+        "publication_marker": metadata.get("publication_marker", ""),
+        "publication_date": metadata.get("publication_date", ""),
+        "publication_article": metadata.get("publication_article", ""),
         "valid_from": valid_from.isoformat(),
         "valid_to_exclusive": valid_to.isoformat() if valid_to else None,
         "revision_provenance_sha256": compute_revision_provenance_sha256(provenance_payload),

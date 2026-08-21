@@ -1,0 +1,413 @@
+diff --git a/verifiers/evidence_verifier.py b/verifiers/evidence_verifier.py
+index 5ea2835..ae4036c 100644
+--- a/verifiers/evidence_verifier.py
++++ b/verifiers/evidence_verifier.py
+@@ -11,6 +11,8 @@ from __future__ import annotations
+ import re
+ from typing import Dict, Iterable, List, Tuple
+ 
++from services.case_law_provenance import CaseLawProvenanceVerifier
++
+ 
+ class EvidenceVerifier:
+     @staticmethod
+@@ -26,6 +28,7 @@ class EvidenceVerifier:
+         claims: Iterable[Dict],
+         laws: Iterable[Dict],
+         document_spans: Iterable[Dict] = (),
++        case_law_records: Iterable[Dict] = (),
+     ) -> Tuple[bool, List[Dict]]:
+         law_map = {
+             self._normalize_id(law.get("id")): law
+@@ -37,6 +40,11 @@ class EvidenceVerifier:
+             for span in document_spans
+             if span.get("span_id")
+         }
++        case_law_valid, case_law_map = CaseLawProvenanceVerifier().build_map(
++            case_law_records
++        )
++        if not case_law_valid:
++            return False, []
+         verified: List[Dict] = []
+         for claim in claims or []:
+             if not isinstance(claim, dict) or not str(claim.get("text", "")).strip():
+@@ -67,6 +75,34 @@ class EvidenceVerifier:
+                         "source": str(law.get("source", "")),
+                         "evidence": str(source.get("evidence", "")).strip(),
+                     })
++                elif kind == "case_law":
++                    record = case_law_map.get(source_id)
++                    raw_evidence = str(source.get("evidence", "")).strip()
++                    if (
++                        record is None
++                        or len(raw_evidence) < 24
++                        or raw_evidence not in str(record.get("text", ""))
++                    ):
++                        return False, []
++                    clean_sources.append({
++                        "kind": "case_law",
++                        "id": record["id"],
++                        "title": (
++                            f"{record['court_name']}, {record['case_number']}, "
++                            f"{record['decision_date']}"
++                        ),
++                        "source": record["court_name"],
++                        "court_name": record["court_name"],
++                        "case_number": record["case_number"],
++                        "decision_date": record["decision_date"],
++                        "decision_type": record["decision_type"],
++                        "court_level": record["court_level"],
++                        "canonical_url": record["canonical_url"],
++                        "record_sha256": record["record_sha256"],
++                        "authority_status": record["authority_status"],
++                        "provenance_version": record["provenance_version"],
++                        "evidence": raw_evidence,
++                    })
+                 elif kind == "document":
+                     span = span_map.get(source_id)
+                     if span is None or evidence not in self._normalize(span.get("text")):
+@@ -100,13 +136,25 @@ class EvidenceVerifier:
+                     return False, []
+                 source_kinds.add(kind)
+             if claim_kind == "inference":
+-                if status != "INPUTS_VERIFIED" or not {
++                if status != "INPUTS_VERIFIED" or source_kinds != {
+                     "law", "document"
+-                }.issubset(source_kinds):
++                }:
+                     return False, []
+             elif claim_kind == "law":
+                 if status not in {"EVIDENCE_VERIFIED", "CITATION_VERIFIED"} or source_kinds != {"law"}:
+                     return False, []
++            elif claim_kind == "case_law":
++                binding_precedent = re.compile(
++                    r"(?:siduv|kohustuslik)\s+(?:kohtu)?pretsedent|"
++                    r"pretsedent\s+on\s+(?:õiguslikult\s+)?siduv",
++                    re.IGNORECASE,
++                )
++                if (
++                    status != "CASE_LAW_EVIDENCE_VERIFIED"
++                    or source_kinds != {"case_law"}
++                    or binding_precedent.search(str(claim.get("text", "")))
++                ):
++                    return False, []
+             elif claim_kind == "document_excerpt":
+                 expected = (
+                     "OCR_REVIEW_REQUIRED"
+diff --git a/services/case_law_provenance.py b/services/case_law_provenance.py
+new file mode 100644
+index 0000000..a958e55
+--- /dev/null
++++ b/services/case_law_provenance.py
+@@ -0,0 +1,133 @@
++"""V11.0 fail-closed provenance rules for court-practice records.
++
++This module does not retrieve judgments and does not decide their legal weight.
++It only validates the identity and source text of a case-law record before that
++record may cross the structured evidence boundary.
++"""
++from __future__ import annotations
++
++from datetime import date
++import hashlib
++import json
++import re
++from typing import Dict, Iterable, Tuple
++from urllib.parse import urlsplit
++
++
++CASE_LAW_PROVENANCE_VERSION = "V11.0-case-law-provenance-1"
++_RECORD_ID = re.compile(r"^CASE_[A-Z0-9][A-Z0-9_-]{2,120}$")
++_HASH_FIELDS = (
++    "source_kind",
++    "id",
++    "court_name",
++    "case_number",
++    "decision_date",
++    "decision_type",
++    "court_level",
++    "canonical_url",
++    "text",
++)
++
++
++def compute_case_law_record_sha256(record: Dict) -> str:
++    """Hash the exact audited provenance fields using canonical JSON."""
++    payload = {
++        field: str(record.get(field, ""))
++        for field in _HASH_FIELDS
++    }
++    raw = json.dumps(
++        payload,
++        ensure_ascii=False,
++        sort_keys=True,
++        separators=(",", ":"),
++    ).encode("utf-8")
++    return hashlib.sha256(raw).hexdigest()
++
++
++class CaseLawProvenanceVerifier:
++    VERSION = CASE_LAW_PROVENANCE_VERSION
++
++    @staticmethod
++    def _valid_https_url(value: str) -> bool:
++        try:
++            parsed = urlsplit(str(value or "").strip())
++        except ValueError:
++            return False
++        return bool(
++            parsed.scheme == "https"
++            and parsed.netloc
++            and parsed.username is None
++            and parsed.password is None
++        )
++
++    @staticmethod
++    def _valid_iso_date(value: str) -> bool:
++        raw = str(value or "").strip()
++        try:
++            parsed = date.fromisoformat(raw)
++        except ValueError:
++            return False
++        return parsed.isoformat() == raw
++
++    def verify_record(self, record: Dict) -> Tuple[bool, Dict]:
++        if not isinstance(record, dict):
++            return False, {}
++        if str(record.get("source_kind", "")).strip().casefold() != "case_law":
++            return False, {}
++
++        record_id = str(record.get("id", "")).strip().upper()
++        if not _RECORD_ID.fullmatch(record_id):
++            return False, {}
++
++        required_text = {
++            key: str(record.get(key, "")).strip()
++            for key in (
++                "court_name",
++                "case_number",
++                "decision_date",
++                "decision_type",
++                "court_level",
++                "canonical_url",
++                "text",
++                "record_sha256",
++            )
++        }
++        if any(not value for value in required_text.values()):
++            return False, {}
++        if not self._valid_iso_date(required_text["decision_date"]):
++            return False, {}
++        if not self._valid_https_url(required_text["canonical_url"]):
++            return False, {}
++        if len(required_text["text"]) < 24:
++            return False, {}
++
++        canonical = {
++            "source_kind": "case_law",
++            "id": record_id,
++            "court_name": required_text["court_name"],
++            "case_number": required_text["case_number"],
++            "decision_date": required_text["decision_date"],
++            "decision_type": required_text["decision_type"],
++            "court_level": required_text["court_level"],
++            "canonical_url": required_text["canonical_url"],
++            "text": required_text["text"],
++        }
++        expected_hash = compute_case_law_record_sha256(canonical)
++        if required_text["record_sha256"].casefold() != expected_hash:
++            return False, {}
++        canonical["record_sha256"] = expected_hash
++        canonical["authority_status"] = "not_asserted"
++        canonical["provenance_version"] = self.VERSION
++        return True, canonical
++
++    def build_map(self, records: Iterable[Dict]) -> Tuple[bool, Dict[str, Dict]]:
++        verified: Dict[str, Dict] = {}
++        for record in records or ():
++            valid, canonical = self.verify_record(record)
++            if not valid:
++                return False, {}
++            record_id = canonical["id"]
++            if record_id in verified:
++                return False, {}
++            verified[record_id] = canonical
++        return True, verified
+diff --git a/tests/test_case_law_provenance.py b/tests/test_case_law_provenance.py
+new file mode 100644
+index 0000000..0dbe441
+--- /dev/null
++++ b/tests/test_case_law_provenance.py
+@@ -0,0 +1,138 @@
++import copy
++import unittest
++
++from services.case_law_provenance import (
++    CaseLawProvenanceVerifier,
++    compute_case_law_record_sha256,
++)
++from verifiers.evidence_verifier import EvidenceVerifier
++
++
++class CaseLawProvenanceTests(unittest.TestCase):
++    def setUp(self):
++        self.record = {
++            "source_kind": "case_law",
++            "id": "CASE_TEST_001",
++            "court_name": "Testkohus",
++            "case_number": "TEST-1-23",
++            "decision_date": "2026-01-15",
++            "decision_type": "otsus",
++            "court_level": "test-level",
++            "canonical_url": "https://example.invalid/case/TEST-1-23",
++            "text": (
++                "Kohus selgitas, et asja lahendamisel tuleb hinnata kõiki "
++                "tõendeid nende kogumis."
++            ),
++        }
++        self.record["record_sha256"] = compute_case_law_record_sha256(self.record)
++
++    def test_exact_case_law_record_and_excerpt_pass(self):
++        claim = {
++            "claim_id": "CASE-1",
++            "kind": "case_law",
++            "text": "Kohus käsitles tõendite kogumis hindamist.",
++            "verification_status": "CASE_LAW_EVIDENCE_VERIFIED",
++            "sources": [{
++                "kind": "case_law",
++                "id": "CASE_TEST_001",
++                "evidence": "asja lahendamisel tuleb hinnata kõiki tõendeid nende kogumis",
++            }],
++        }
++
++        valid, verified = EvidenceVerifier().verify(
++            [claim], [], (), [self.record]
++        )
++
++        self.assertTrue(valid)
++        source = verified[0]["sources"][0]
++        self.assertEqual(source["case_number"], "TEST-1-23")
++        self.assertEqual(source["authority_status"], "not_asserted")
++        self.assertEqual(source["record_sha256"], self.record["record_sha256"])
++
++    def test_tampered_record_hash_fails_closed(self):
++        tampered = copy.deepcopy(self.record)
++        tampered["text"] += " Muudetud."
++
++        valid, _ = CaseLawProvenanceVerifier().verify_record(tampered)
++
++        self.assertFalse(valid)
++
++    def test_case_law_claim_requires_audited_record(self):
++        claim = {
++            "claim_id": "CASE-1",
++            "kind": "case_law",
++            "text": "Kohus käsitles tõendite kogumis hindamist.",
++            "verification_status": "CASE_LAW_EVIDENCE_VERIFIED",
++            "sources": [{
++                "kind": "case_law",
++                "id": "CASE_TEST_001",
++                "evidence": "asja lahendamisel tuleb hinnata kõiki tõendeid nende kogumis",
++            }],
++        }
++
++        valid, _ = EvidenceVerifier().verify([claim], [])
++
++        self.assertFalse(valid)
++
++    def test_case_law_cannot_masquerade_as_law(self):
++        claim = {
++            "claim_id": "LAW-1",
++            "kind": "law",
++            "text": "Vale allikaliik.",
++            "verification_status": "EVIDENCE_VERIFIED",
++            "sources": [{
++                "kind": "case_law",
++                "id": "CASE_TEST_001",
++                "evidence": "asja lahendamisel tuleb hinnata kõiki tõendeid nende kogumis",
++            }],
++        }
++
++        valid, _ = EvidenceVerifier().verify([claim], [], (), [self.record])
++
++        self.assertFalse(valid)
++
++    def test_binding_precedent_language_is_not_auto_verified(self):
++        claim = {
++            "claim_id": "CASE-1",
++            "kind": "case_law",
++            "text": "See lahend on siduv pretsedent kõigile kohtutele.",
++            "verification_status": "CASE_LAW_EVIDENCE_VERIFIED",
++            "sources": [{
++                "kind": "case_law",
++                "id": "CASE_TEST_001",
++                "evidence": "asja lahendamisel tuleb hinnata kõiki tõendeid nende kogumis",
++            }],
++        }
++
++        valid, _ = EvidenceVerifier().verify([claim], [], (), [self.record])
++
++        self.assertFalse(valid)
++
++    def test_existing_inference_cannot_smuggle_case_law_source(self):
++        laws = [{"id": "TEST_1", "text": "Seaduse täpne tekst."}]
++        spans = [{
++            "span_id": "DOC-1-P1-S1",
++            "page": 1,
++            "text": "Dokumendi täpne tekst.",
++        }]
++        claim = {
++            "claim_id": "INF-1",
++            "kind": "inference",
++            "text": "Sisendeid võrreldakse.",
++            "verification_status": "INPUTS_VERIFIED",
++            "sources": [
++                {"kind": "law", "id": "TEST_1", "evidence": "Seaduse täpne tekst."},
++                {"kind": "document", "id": "DOC-1-P1-S1", "evidence": "Dokumendi täpne tekst."},
++                {"kind": "case_law", "id": "CASE_TEST_001", "evidence": "asja lahendamisel tuleb hinnata kõiki tõendeid nende kogumis"},
++            ],
++        }
++
++        valid, _ = EvidenceVerifier().verify(
++            [claim], laws, spans, [self.record]
++        )
++
++        self.assertFalse(valid)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/V11_CASE_LAW_PROVENANCE.md b/V11_CASE_LAW_PROVENANCE.md
+new file mode 100644
+index 0000000..a816e22
+--- /dev/null
++++ b/V11_CASE_LAW_PROVENANCE.md
+@@ -0,0 +1,28 @@
++# V11.0 — Court-practice provenance boundary
++
++V11.0 introduces only the evidence/provenance architecture for court decisions.
++It does **not** add a court-practice corpus, retrieval, importer, prompt context,
++or UI exposure.
++
++A case-law record must be supplied as a separate trusted input with:
++
++- `source_kind = case_law`;
++- canonical internal `CASE_...` ID;
++- court name and case number;
++- ISO decision date;
++- decision type and court level;
++- HTTPS canonical source URL;
++- exact source text;
++- deterministic `record_sha256` over the audited metadata and text.
++
++The evidence boundary accepts `kind = case_law` only with
++`verification_status = CASE_LAW_EVIDENCE_VERIFIED` and only when the exact
++excerpt occurs literally in the hash-verified case-law record.
++
++Court-practice sources remain separate from statutory `law` sources. A case-law
++record cannot satisfy a law claim, and the existing `law + document`
++`INPUTS_VERIFIED` comparison path cannot silently acquire a case-law source.
++
++The verifier also refuses to auto-verify a claim that characterizes a judgment
++as a "binding precedent". Legal weight is deliberately `not_asserted` in V11.0
++and must be addressed by a later, separately audited policy layer.

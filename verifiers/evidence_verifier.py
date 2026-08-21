@@ -11,6 +11,8 @@ from __future__ import annotations
 import re
 from typing import Dict, Iterable, List, Tuple
 
+from services.case_law_provenance import CaseLawProvenanceVerifier
+
 
 class EvidenceVerifier:
     @staticmethod
@@ -26,6 +28,7 @@ class EvidenceVerifier:
         claims: Iterable[Dict],
         laws: Iterable[Dict],
         document_spans: Iterable[Dict] = (),
+        case_law_records: Iterable[Dict] = (),
     ) -> Tuple[bool, List[Dict]]:
         law_map = {
             self._normalize_id(law.get("id")): law
@@ -37,6 +40,11 @@ class EvidenceVerifier:
             for span in document_spans
             if span.get("span_id")
         }
+        case_law_valid, case_law_map = CaseLawProvenanceVerifier().build_map(
+            case_law_records
+        )
+        if not case_law_valid:
+            return False, []
         verified: List[Dict] = []
         for claim in claims or []:
             if not isinstance(claim, dict) or not str(claim.get("text", "")).strip():
@@ -66,6 +74,34 @@ class EvidenceVerifier:
                         "title": str(law.get("title", law.get("id", ""))),
                         "source": str(law.get("source", "")),
                         "evidence": str(source.get("evidence", "")).strip(),
+                    })
+                elif kind == "case_law":
+                    record = case_law_map.get(source_id)
+                    raw_evidence = str(source.get("evidence", "")).strip()
+                    if (
+                        record is None
+                        or len(raw_evidence) < 24
+                        or raw_evidence not in str(record.get("text", ""))
+                    ):
+                        return False, []
+                    clean_sources.append({
+                        "kind": "case_law",
+                        "id": record["id"],
+                        "title": (
+                            f"{record['court_name']}, {record['case_number']}, "
+                            f"{record['decision_date']}"
+                        ),
+                        "source": record["court_name"],
+                        "court_name": record["court_name"],
+                        "case_number": record["case_number"],
+                        "decision_date": record["decision_date"],
+                        "decision_type": record["decision_type"],
+                        "court_level": record["court_level"],
+                        "canonical_url": record["canonical_url"],
+                        "record_sha256": record["record_sha256"],
+                        "authority_status": record["authority_status"],
+                        "provenance_version": record["provenance_version"],
+                        "evidence": raw_evidence,
                     })
                 elif kind == "document":
                     span = span_map.get(source_id)
@@ -100,12 +136,24 @@ class EvidenceVerifier:
                     return False, []
                 source_kinds.add(kind)
             if claim_kind == "inference":
-                if status != "INPUTS_VERIFIED" or not {
+                if status != "INPUTS_VERIFIED" or source_kinds != {
                     "law", "document"
-                }.issubset(source_kinds):
+                }:
                     return False, []
             elif claim_kind == "law":
                 if status not in {"EVIDENCE_VERIFIED", "CITATION_VERIFIED"} or source_kinds != {"law"}:
+                    return False, []
+            elif claim_kind == "case_law":
+                binding_precedent = re.compile(
+                    r"(?:siduv|kohustuslik)\s+(?:kohtu)?pretsedent|"
+                    r"pretsedent\s+on\s+(?:õiguslikult\s+)?siduv",
+                    re.IGNORECASE,
+                )
+                if (
+                    status != "CASE_LAW_EVIDENCE_VERIFIED"
+                    or source_kinds != {"case_law"}
+                    or binding_precedent.search(str(claim.get("text", "")))
+                ):
                     return False, []
             elif claim_kind == "document_excerpt":
                 expected = (

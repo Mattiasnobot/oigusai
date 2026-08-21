@@ -1,0 +1,38 @@
+{
+  "name": "V11.0 — fail-closed court-practice provenance boundary",
+  "base_commit": "eb249503dcf53ae0790297ae60473a5f1f9efe1b",
+  "base_files": [
+    {
+      "path": "verifiers/evidence_verifier.py",
+      "git_blob_sha": "5ea28359f4fd0af9fd613e668b959cbe830c33cc"
+    }
+  ],
+  "new_files": [
+    {
+      "path": "services/case_law_provenance.py",
+      "sha256": "5234bf7ffbdfe735622c358faf29d0945e57d77ef7e1b68bf1e30bf769c72332"
+    },
+    {
+      "path": "tests/test_case_law_provenance.py",
+      "sha256": "60008e1a70a69af1922fa111ab10b2e151cff603a84172fb11e44b39a738df2a"
+    },
+    {
+      "path": "V11_CASE_LAW_PROVENANCE.md",
+      "sha256": "67a89f139f3c848e1926669beea3a21e2ae1396ff1ce002723705388b27e8a11"
+    }
+  ],
+  "tests": [
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_case_law_provenance"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_evidence_verifier"
+    ]
+  ]
+}

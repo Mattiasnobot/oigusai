@@ -30,7 +30,7 @@ _METADATA_ALIASES: Mapping[str, frozenset[str]] = {
         "valjaandja", "valjaandjanimi", "issuer", "issuername",
     }),
     "act_type": frozenset({
-        "aktliik", "aktiliik", "dokumendiliik", "documenttype", "acttype",
+        "aktliik", "aktiliik", "dokumentliik", "dokumendiliik", "documenttype", "acttype",
     }),
     "text_type": frozenset({
         "tekstiliik", "texttype",

@@ -176,11 +176,16 @@ class AnalysisOrchestrator:
                 repair_prompt,
                 response_schema,
             )
-            repair_text, repair_claims = ai_service.prepare_structured_response(
+            (
+                repair_text,
+                repair_claims,
+                repair_response_diagnostics,
+            ) = ai_service.prepare_structured_repair_response(
                 raw_response,
                 repair_laws,
                 analysis_case,
             )
+            diagnostics.update(repair_response_diagnostics)
             repair_valid, repair_sources = source_verifier.verify_sources(
                 repair_text,
                 repair_laws,

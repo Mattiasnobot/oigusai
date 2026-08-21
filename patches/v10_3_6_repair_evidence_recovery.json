@@ -1,0 +1,30 @@
+{
+  "name": "V10.3.6 — deterministic focused-repair evidence recovery",
+  "base_commit": "b038944eb2f2ae3d279662abff6c5acd20c69382",
+  "base_files": [
+    {
+      "path": "services/analysis_orchestrator.py",
+      "git_blob_sha": "26fd0e3b3c4b7920fb144a009e5df6197d99b284"
+    },
+    {
+      "path": "services/offline_ai.py",
+      "git_blob_sha": "4351e205ece971eba7d0b9d6087ffe8fc77905cb"
+    },
+    {
+      "path": "tests/test_coverage_verifier.py",
+      "git_blob_sha": "185e66a77d7710bb4ae87732fcdd583f80a3ea58"
+    },
+    {
+      "path": "tests/test_offline_ai.py",
+      "git_blob_sha": "bdd7549b4b085e1c7ec94df836c69f4a6fbbe4d9"
+    }
+  ],
+  "new_files": [],
+  "tests": [
+    ["{python}", "-m", "unittest", "tests.test_offline_ai"],
+    ["{python}", "-m", "unittest", "tests.test_coverage_verifier"],
+    ["{python}", "-m", "unittest", "tests.test_analysis_orchestrator"],
+    ["{python}", "-m", "unittest", "tests.test_evaluate_model"],
+    ["{python}", "-m", "unittest", "tests.test_main"]
+  ]
+}

@@ -611,6 +611,173 @@ class OfflineAIService:
         claims = self._verified_claims_from_raw(raw_response, laws, [])
         return analysis, claims
 
+    def prepare_structured_repair_response(
+        self,
+        raw_response: str,
+        laws: List[Dict],
+        case_desc: str = "",
+    ) -> Tuple[str, List[Dict], Dict]:
+        """Evidence-gate a focused repair with deterministic evidence recovery.
+
+        Recovery is intentionally narrow: the model must already return an audited
+        source_id and a claim that is supported by the recovered exact source
+        sentence. Only an inexact evidence quotation is repaired. Unsupported claim
+        text and unknown source IDs remain fail-closed.
+        """
+        diagnostics: Dict = {
+            "parse_valid": False,
+            "raw_claim_count": 0,
+            "raw_source_ids": [],
+            "accepted_claim_count": 0,
+            "accepted_source_ids": [],
+            "evidence_recovered_count": 0,
+            "dropped_claims": [],
+        }
+        payload = self._extract_json_payload(
+            self._strip_code_fences(raw_response or "")
+        )
+        if not isinstance(payload, dict) or not isinstance(payload.get("claims"), list):
+            diagnostics["dropped_claims"].append({
+                "index": 0,
+                "source_id": "",
+                "reason": "invalid_json_or_claims",
+            })
+            return "", [], diagnostics
+
+        diagnostics["parse_valid"] = True
+        raw_claims = list(payload.get("claims") or [])
+        diagnostics["raw_claim_count"] = len(raw_claims)
+        law_map = {
+            self._normalize_id(law.get("id")): law
+            for law in laws
+            if law.get("id")
+        }
+        normalized_claims: List[Dict] = []
+
+        for index, item in enumerate(raw_claims, start=1):
+            if not isinstance(item, dict):
+                diagnostics["dropped_claims"].append({
+                    "index": index,
+                    "source_id": "",
+                    "reason": "invalid_claim_shape",
+                })
+                continue
+            source_id = self._normalize_id(item.get("source_id"))
+            if source_id:
+                diagnostics["raw_source_ids"].append(source_id)
+            law = law_map.get(source_id)
+            if law is None:
+                diagnostics["dropped_claims"].append({
+                    "index": index,
+                    "source_id": source_id,
+                    "reason": "unknown_source",
+                })
+                continue
+
+            claim_text = self._clean_generated_text(item.get("text"))
+            evidence = self._clean_generated_text(item.get("evidence"))
+            if not claim_text:
+                diagnostics["dropped_claims"].append({
+                    "index": index,
+                    "source_id": source_id,
+                    "reason": "empty_claim_text",
+                })
+                continue
+
+            recovered = False
+            if not self._evidence_is_valid(evidence, law):
+                evidence = self._recover_source_evidence(claim_text, evidence, law)
+                if not evidence:
+                    diagnostics["dropped_claims"].append({
+                        "index": index,
+                        "source_id": source_id,
+                        "reason": "evidence_not_recoverable",
+                    })
+                    continue
+                recovered = True
+
+            if not self._claim_is_supported_by_evidence(claim_text, evidence):
+                diagnostics["dropped_claims"].append({
+                    "index": index,
+                    "source_id": source_id,
+                    "reason": (
+                        "claim_not_supported_by_recovered_evidence"
+                        if recovered
+                        else "claim_not_supported_by_evidence"
+                    ),
+                })
+                continue
+
+            if recovered:
+                diagnostics["evidence_recovered_count"] += 1
+            normalized_claims.append({
+                "text": claim_text,
+                "source_id": source_id,
+                "evidence": evidence,
+            })
+
+        normalized_raw = json.dumps(
+            {"claims": normalized_claims},
+            ensure_ascii=False,
+        )
+        analysis = self._prepare_output(normalized_raw, laws, case_desc)
+        claims = self._verified_claims_from_raw(normalized_raw, laws, [])
+        diagnostics["accepted_claim_count"] = len(claims)
+        accepted_ids: List[str] = []
+        for claim in claims:
+            for source in claim.get("sources") or []:
+                source_id = self._normalize_id(source.get("id"))
+                if source_id and source_id not in accepted_ids:
+                    accepted_ids.append(source_id)
+        diagnostics["accepted_source_ids"] = accepted_ids
+        return analysis, claims, diagnostics
+
+    def _recover_source_evidence(
+        self,
+        claim_text: str,
+        model_evidence: str,
+        law: Dict,
+    ) -> str:
+        """Choose a close exact source sentence without creating legal text."""
+        source_text = str(law.get("text", "") or "")
+        candidates = [
+            value.strip()
+            for value in re.split(r"(?<=[.!?])\s+|\n+", source_text)
+            if value.strip() and self._evidence_is_valid(value.strip(), law)
+        ]
+        if not candidates:
+            return ""
+
+        ignored = {
+            "selle", "ning", "kuid", "vaid", "tuleb", "saab", "peab",
+            "kohta", "korral", "alusel", "vastavalt",
+        }
+        query_tokens = {
+            token
+            for token in re.findall(
+                r"[a-zõäöü]{4,}",
+                f"{claim_text} {model_evidence}".casefold(),
+            )
+            if token not in ignored
+        }
+        if not query_tokens:
+            return ""
+
+        def score(candidate: str) -> Tuple[int, float, int]:
+            candidate_tokens = set(
+                re.findall(r"[a-zõäöü]{4,}", candidate.casefold())
+            )
+            overlap = len(query_tokens.intersection(candidate_tokens))
+            ratio = overlap / max(1, len(query_tokens))
+            return overlap, ratio, -len(candidate)
+
+        best = max(candidates, key=score)
+        overlap, _ratio, _length = score(best)
+        required_overlap = 1 if len(query_tokens) < 3 else 2
+        if overlap < required_overlap:
+            return ""
+        return best
+
     def _call_ollama(self, prompt: str, response_schema: Dict = None) -> str:
         response = requests.post(
             f"{self.ollama_url}/api/generate",

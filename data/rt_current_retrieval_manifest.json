@@ -1,0 +1,22 @@
+{
+  "version": "V11.4-rt-current-retrieval-1",
+  "depends_on": [
+    "V11.2.1-rt-live-adapter-1",
+    "V11.3-rt-authority-currentness-1"
+  ],
+  "official_search_endpoint": "https://www.riigiteataja.ee/api/oigusakt_otsing/1/otsi",
+  "official_xml_endpoint_template": "https://www.riigiteataja.ee/public-api/api/v1/akt/{act_id}/xml",
+  "current_revision_resolution_enabled": true,
+  "verified_live_section_retrieval_enabled": true,
+  "retrieval_composition_available": true,
+  "runtime_default_enabled": false,
+  "future_date_resolution_enabled": false,
+  "exact_title_verification_required": true,
+  "binding_authority_gate_required": true,
+  "local_corpus_fallback_allowed": true,
+  "fallback_must_be_explicitly_labeled": true,
+  "writes_legal_corpus": false,
+  "writes_case_law_corpus": false,
+  "model_context_integration_enabled": false,
+  "network_on_demand_only": true
+}

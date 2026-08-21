@@ -68,6 +68,8 @@ jobs:
         run: python scripts/verify_rt_live_adapter.py
       - name: Verify V11.3 Riigi Teataja authority/currentness contract
         run: python scripts/verify_rt_authority.py
+      - name: Verify V11.4 Riigi Teataja current-retrieval contract
+        run: python scripts/verify_rt_current_retrieval.py
       - name: Verify audited V6.1 184/200 retrieval baseline
         run: python scripts/verify_retrieval_baseline.py
       - name: Run deterministic 200-case lexical workflow evaluation

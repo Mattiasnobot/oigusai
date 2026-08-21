@@ -69,6 +69,7 @@ class ExecutedAnalysis:
     coverage_fallback_used: bool
     coverage_repair_used: bool
     coverage_report: Dict[str, Any]
+    coverage_repair_diagnostics: Dict[str, Any]
     verified_sources: List[str]
 
 
@@ -120,6 +121,122 @@ class AnalysisOrchestrator:
                 if len(fused) >= limit:
                     return fused
         return fused
+
+    async def _attempt_focused_coverage_repair(
+        self,
+        *,
+        trigger: str,
+        ai_service: OfflineAIService,
+        source_verifier: Any,
+        obligation_plan: Any,
+        analysis_case: str,
+        analysis_laws: List[Dict[str, Any]],
+        coverage_report: Dict[str, Any],
+        relevance_text: str,
+        event_date: str,
+    ) -> Dict[str, Any]:
+        """Run at most one schema-constrained repair against audited source targets."""
+        targets = CoverageVerifier.repair_targets(coverage_report)
+        repair_laws = CoverageVerifier.repair_laws(coverage_report, analysis_laws)
+        target_sources = [
+            str(target.get("source_id") or "") for target in targets
+            if str(target.get("source_id") or "")
+        ]
+        diagnostics: Dict[str, Any] = {
+            "attempted": bool(targets and repair_laws),
+            "trigger": str(trigger or ""),
+            "target_sources": target_sources,
+            "returned_sources": [],
+            "citation_valid": False,
+            "coverage_passed": False,
+            "semantic_relevance": False,
+            "missing_concepts": [],
+            "accepted": False,
+            "failure_reason": "",
+        }
+        if not targets or not repair_laws:
+            diagnostics["failure_reason"] = "no_audited_repair_targets"
+            return {"accepted": False, "diagnostics": diagnostics}
+
+        response_schema = CoverageVerifier.repair_schema(coverage_report)
+        repair_prompt = CoverageVerifier.repair_prompt(
+            coverage_report,
+            repair_laws,
+            analysis_case,
+            event_date,
+        )
+        if not response_schema or not repair_prompt:
+            diagnostics["failure_reason"] = "repair_prompt_or_schema_missing"
+            return {"accepted": False, "diagnostics": diagnostics}
+
+        try:
+            raw_response = await self.run_guarded_work(
+                "analysis",
+                ai_service.generate_structured,
+                repair_prompt,
+                response_schema,
+            )
+            repair_text, repair_claims = ai_service.prepare_structured_response(
+                raw_response,
+                repair_laws,
+                analysis_case,
+            )
+            repair_valid, repair_sources = source_verifier.verify_sources(
+                repair_text,
+                repair_laws,
+            )
+            diagnostics["returned_sources"] = list(repair_sources)
+            diagnostics["citation_valid"] = bool(repair_valid)
+            repaired_coverage = CoverageVerifier.verify(
+                obligation_plan,
+                analysis_laws,
+                repair_sources if repair_valid else [],
+                answer_text=repair_text,
+            )
+            diagnostics["coverage_passed"] = bool(
+                repaired_coverage.get("passed")
+            )
+            cited_ids = {str(value).strip().upper() for value in repair_sources}
+            cited_laws = [
+                law for law in analysis_laws
+                if str(law.get("id", "")).strip().upper() in cited_ids
+            ]
+            repaired_relevance = self.relevance_verifier.verify_answer(
+                relevance_text,
+                repair_text,
+                cited_laws,
+            )
+            diagnostics["semantic_relevance"] = bool(repaired_relevance.relevant)
+            diagnostics["missing_concepts"] = list(
+                getattr(repaired_relevance, "missing_concepts", ()) or ()
+            )
+            accepted = bool(
+                repair_valid
+                and repaired_coverage.get("passed")
+                and repaired_relevance.relevant
+            )
+            diagnostics["accepted"] = accepted
+            if not accepted:
+                if not repair_valid:
+                    diagnostics["failure_reason"] = "citation_verification"
+                elif not repaired_coverage.get("passed"):
+                    diagnostics["failure_reason"] = "coverage_verification"
+                else:
+                    diagnostics["failure_reason"] = "semantic_relevance"
+            return {
+                "accepted": accepted,
+                "diagnostics": diagnostics,
+                "analysis_text": repair_text,
+                "structured_claims": repair_claims,
+                "verified_sources": list(repair_sources),
+                "coverage_report": repaired_coverage,
+            }
+        except Exception as exc:
+            diagnostics["failure_reason"] = f"{type(exc).__name__}: {exc}"[:300]
+            self.logger.warning(
+                "Focused coverage repair failed (%s): %s", trigger, exc
+            )
+            return {"accepted": False, "diagnostics": diagnostics}
 
     async def prepare(self, request: Any) -> PreparedAnalysis:
         analysis_started = time.perf_counter()
@@ -361,7 +478,20 @@ class AnalysisOrchestrator:
         fallback_used = False
         coverage_fallback_used = False
         coverage_repair_used = False
+        repair_attempted = False
         coverage_report: Dict[str, Any] = {}
+        coverage_repair_diagnostics: Dict[str, Any] = {
+            "attempted": False,
+            "trigger": "",
+            "target_sources": [],
+            "returned_sources": [],
+            "citation_valid": False,
+            "coverage_passed": False,
+            "semantic_relevance": False,
+            "missing_concepts": [],
+            "accepted": False,
+            "failure_reason": "",
+        }
         case_description = str(getattr(request, "case_description", "") or "")
         analysis_case = (
             CaseIntakeService._user_evidence_text(case_description)
@@ -574,54 +704,50 @@ class AnalysisOrchestrator:
             and not fallback_used
             and isinstance(ai_service, OfflineAIService)
         ):
-            repair_instructions = CoverageVerifier.repair_instructions(
-                coverage_report
+            repair_attempted = True
+            repair_result = await self._attempt_focused_coverage_repair(
+                trigger="coverage",
+                ai_service=ai_service,
+                source_verifier=source_verifier,
+                obligation_plan=obligation_plan,
+                analysis_case=analysis_case,
+                analysis_laws=analysis_laws,
+                coverage_report=coverage_report,
+                relevance_text=relevance_text,
+                event_date=str(getattr(request, "event_date", "") or ""),
             )
-            repair_laws = CoverageVerifier.repair_laws(
-                coverage_report,
-                analysis_laws,
+            coverage_repair_diagnostics = dict(
+                repair_result.get("diagnostics") or {}
             )
-            if repair_instructions and repair_laws:
-                repair_case = (
-                    f"{analysis_case}\n\n{repair_instructions}"
-                )[:9000]
-                try:
-                    repair_text, repair_mock, repair_claims = await self.run_guarded_work(
-                        "analysis",
-                        ai_service.analyze_case_structured,
-                        repair_case,
-                        repair_laws,
-                        str(getattr(request, "event_date", "") or ""),
-                        [],
-                    )
-                    repair_valid, repair_sources = source_verifier.verify_sources(
-                        repair_text,
-                        repair_laws,
-                    )
-                    repaired_coverage = CoverageVerifier.verify(
-                        obligation_plan,
-                        analysis_laws,
-                        repair_sources if repair_valid else [],
-                        answer_text=repair_text,
-                    )
-                    if repair_valid and repaired_coverage.get("passed"):
-                        analysis_text = repair_text
-                        structured_claims = repair_claims
-                        is_mock = repair_mock
-                        verified_sources = repair_sources
-                        is_valid = True
-                        coverage_report = repaired_coverage
-                        coverage_repair_used = True
-                        self.logger.info(
-                            "Coverage repair succeeded for obligations: %s",
-                            ", ".join(
-                                row.get("kind", "")
-                                for row in coverage_report.get("obligations", [])
-                                if row.get("enforced")
-                            ),
-                        )
-                except Exception as exc:
-                    self.logger.warning("Coverage repair attempt failed: %s", exc)
+            if repair_result.get("accepted"):
+                analysis_text = str(repair_result.get("analysis_text") or "")
+                structured_claims = list(
+                    repair_result.get("structured_claims") or []
+                )
+                is_mock = False
+                verified_sources = list(
+                    repair_result.get("verified_sources") or []
+                )
+                is_valid = True
+                coverage_report = dict(
+                    repair_result.get("coverage_report") or {}
+                )
+                coverage_repair_used = True
+                self.logger.info(
+                    "Coverage repair succeeded for obligations: %s",
+                    ", ".join(
+                        row.get("kind", "")
+                        for row in coverage_report.get("obligations", [])
+                        if row.get("enforced")
+                    ),
+                )
+            else:
+                self.logger.info(
+                    "Focused coverage repair rejected: trigger=%s reason=%s returned=%s",
+                    coverage_repair_diagnostics.get("trigger"),
+                    coverage_repair_diagnostics.get("failure_reason"),
+                    ",".join(coverage_repair_diagnostics.get("returned_sources") or []),
+                )
 
         if coverage_report.get("enforced") and not coverage_report.get("passed"):
             if coverage_report.get("missing_source"):
@@ -673,9 +799,61 @@ class AnalysisOrchestrator:
         answer_relevance = self.relevance_verifier.verify_answer(
             relevance_text, analysis_text, cited_laws
         )
+        if (
+            not answer_relevance.relevant
+            and not fallback_used
+            and not repair_attempted
+            and coverage_report.get("enforced")
+            and isinstance(ai_service, OfflineAIService)
+        ):
+            repair_attempted = True
+            repair_result = await self._attempt_focused_coverage_repair(
+                trigger="semantic_relevance",
+                ai_service=ai_service,
+                source_verifier=source_verifier,
+                obligation_plan=obligation_plan,
+                analysis_case=analysis_case,
+                analysis_laws=analysis_laws,
+                coverage_report=coverage_report,
+                relevance_text=relevance_text,
+                event_date=str(getattr(request, "event_date", "") or ""),
+            )
+            coverage_repair_diagnostics = dict(
+                repair_result.get("diagnostics") or {}
+            )
+            if repair_result.get("accepted"):
+                analysis_text = str(repair_result.get("analysis_text") or "")
+                structured_claims = list(
+                    repair_result.get("structured_claims") or []
+                )
+                is_mock = False
+                verified_sources = list(
+                    repair_result.get("verified_sources") or []
+                )
+                is_valid = True
+                coverage_report = dict(
+                    repair_result.get("coverage_report") or {}
+                )
+                coverage_repair_used = True
+                cited_ids = set(verified_sources)
+                cited_laws = [
+                    law for law in analysis_laws
+                    if str(law.get("id", "")).upper() in cited_ids
+                ]
+                answer_relevance = self.relevance_verifier.verify_answer(
+                    relevance_text, analysis_text, cited_laws
+                )
+            else:
+                self.logger.info(
+                    "Focused relevance repair rejected: reason=%s returned=%s missing=%s",
+                    coverage_repair_diagnostics.get("failure_reason"),
+                    ",".join(coverage_repair_diagnostics.get("returned_sources") or []),
+                    ",".join(coverage_repair_diagnostics.get("missing_concepts") or []),
+                )
+
         if not answer_relevance.relevant and not fallback_used:
             self.logger.warning(
-                "AI response failed semantic relevance check; "
+                "AI response failed semantic relevance check after bounded repair; "
                 "returning verified source digest"
             )
             coverage_digest = CoverageVerifier.build_source_digest(
@@ -742,6 +920,9 @@ class AnalysisOrchestrator:
             verified_source_count=len(verified_sources),
             coverage_passed=bool(coverage_report.get("passed", True)),
             coverage_repair=coverage_repair_used,
+            coverage_repair_attempted=bool(coverage_repair_diagnostics.get("attempted")),
+            coverage_repair_trigger=str(coverage_repair_diagnostics.get("trigger") or ""),
+            coverage_repair_accepted=bool(coverage_repair_diagnostics.get("accepted")),
             missing_coverage=len(coverage_report.get("missing_answer") or []),
         )
 
@@ -756,6 +937,7 @@ class AnalysisOrchestrator:
             coverage_fallback_used=coverage_fallback_used,
             coverage_repair_used=coverage_repair_used,
             coverage_report=dict(coverage_report),
+            coverage_repair_diagnostics=dict(coverage_repair_diagnostics),
             verified_sources=list(verified_sources),
         )
 
@@ -904,4 +1086,7 @@ class AnalysisOrchestrator:
             "layered_answer": layered_answer,
             "pipeline": pipeline_result,
             "coverage": dict(getattr(executed, "coverage_report", {}) or {}),
+            "coverage_repair": dict(
+                getattr(executed, "coverage_repair_diagnostics", {}) or {}
+            ),
         }

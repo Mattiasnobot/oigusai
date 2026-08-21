@@ -600,6 +600,17 @@ class OfflineAIService:
         """Generate one JSON-schema-constrained response with the local model."""
         return self._call_ollama(prompt, response_schema=response_schema)
 
+    def prepare_structured_response(
+        self,
+        raw_response: str,
+        laws: List[Dict],
+        case_desc: str = "",
+    ) -> Tuple[str, List[Dict]]:
+        """Render and evidence-gate one already generated structured response."""
+        analysis = self._prepare_output(raw_response, laws, case_desc)
+        claims = self._verified_claims_from_raw(raw_response, laws, [])
+        return analysis, claims
+
     def _call_ollama(self, prompt: str, response_schema: Dict = None) -> str:
         response = requests.post(
             f"{self.ollama_url}/api/generate",

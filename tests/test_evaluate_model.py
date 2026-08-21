@@ -50,6 +50,26 @@ class EvaluateModelTests(unittest.TestCase):
         self.assertFalse(result["model_pass"])
         self.assertFalse(result["real_model_used"])
 
+    def test_assess_case_preserves_coverage_repair_diagnostics(self):
+        case = {"expected_source_groups": [["TLS_89"], ["TLS_97"]]}
+        finalized = {
+            "analysis_text": "Koondamine [TLS_89]. Etteteatamine [TLS_97].",
+            "verified_sources": ["TLS_89", "TLS_97"],
+            "pipeline": {"status": "completed"},
+            "verification_status": "EVIDENCE_VERIFIED",
+            "is_mock": False,
+            "coverage_repair": {
+                "attempted": True,
+                "trigger": "coverage",
+                "accepted": True,
+                "target_sources": ["TLS_89", "TLS_97"],
+            },
+        }
+        result = assess_case(case, finalized, fallback_used=False)
+        self.assertTrue(result["coverage_repair"]["attempted"])
+        self.assertEqual(result["coverage_repair"]["trigger"], "coverage")
+        self.assertTrue(result["coverage_repair"]["accepted"])
+
     def test_report_applies_model_and_fallback_thresholds(self):
         suite = {
             "version": "test",

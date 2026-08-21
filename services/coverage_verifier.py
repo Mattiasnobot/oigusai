@@ -57,6 +57,7 @@ class CoverageVerifier:
         "fine_context:challenge_decision": CoverageRule(
             source_groups=(("VTMS_114", "VTMS_118"),),
             rationale="Möödunud tähtaja kontekstis võib vaidlustamise katte anda VTMS § 114 või tähtaja ennistamist käsitlev VTMS § 118.",
+            required_answer_terms=(("kaebus", "vaidlust", "maakoht"),),
         ),
         "fine_context:payment_plan": CoverageRule(
             source_groups=(("KARS_66",),),
@@ -208,6 +209,136 @@ class CoverageVerifier:
         }
 
     @classmethod
+    def repair_targets(cls, report: Mapping[str, Any]) -> List[Dict[str, Any]]:
+        """Return ordered audited targets for one bounded model-repair pass."""
+        if report.get("missing_source"):
+            return []
+        targets: List[Dict[str, Any]] = []
+        for row in report.get("obligations") or []:
+            if not isinstance(row, dict) or not row.get("enforced"):
+                continue
+            candidate_sources = [
+                cls._normalize_id(value)
+                for value in (row.get("candidate_sources") or [])
+                if cls._normalize_id(value)
+            ]
+            if not candidate_sources:
+                continue
+            targets.append({
+                "kind": str(row.get("kind") or ""),
+                "answer_requirement": str(
+                    row.get("answer_requirement") or row.get("kind") or ""
+                ),
+                "source_id": candidate_sources[0],
+                "required_answer_terms": [
+                    [str(value).strip() for value in group if str(value).strip()]
+                    for group in (row.get("required_answer_terms") or [])
+                    if isinstance(group, (list, tuple))
+                ],
+            })
+        return targets
+
+    @classmethod
+    def repair_schema(cls, report: Mapping[str, Any]) -> Dict[str, Any]:
+        """Constrain Ollama repair output to the audited target count and IDs."""
+        targets = cls.repair_targets(report)
+        source_ids = list(dict.fromkeys(
+            str(target.get("source_id") or "")
+            for target in targets
+            if str(target.get("source_id") or "")
+        ))
+        count = len(targets)
+        if not count or not source_ids:
+            return {}
+        return {
+            "type": "object",
+            "properties": {
+                "claims": {
+                    "type": "array",
+                    "minItems": count,
+                    "maxItems": count,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "text": {"type": "string"},
+                            "source_id": {"type": "string", "enum": source_ids},
+                            "evidence": {"type": "string"},
+                        },
+                        "required": ["text", "source_id", "evidence"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            "required": ["claims"],
+            "additionalProperties": False,
+        }
+
+    @classmethod
+    def repair_prompt(
+        cls,
+        report: Mapping[str, Any],
+        laws: Sequence[Dict[str, Any]],
+        case_desc: str,
+        event_date: str = "",
+    ) -> str:
+        """Build a minimal repair-only prompt without the general analysis rules."""
+        targets = cls.repair_targets(report)
+        if not targets:
+            return ""
+        law_map = {
+            cls._normalize_id(law.get("id")): law
+            for law in (laws or [])
+            if cls._normalize_id(law.get("id"))
+        }
+        source_lines: List[str] = []
+        for target in targets:
+            source_id = str(target.get("source_id") or "")
+            law = law_map.get(source_id)
+            if law is None:
+                return ""
+            source_lines.append(
+                f"[{source_id}] {law.get('title', source_id)}: {law.get('text', '')}"
+            )
+
+        target_lines: List[str] = []
+        for index, target in enumerate(targets, start=1):
+            target_lines.extend([
+                f"KOHUSTUS {index}/{len(targets)} [{target.get('kind', '')}]",
+                f"- vasta: {target.get('answer_requirement', '')}",
+                f"- source_id peab olema täpselt: {target.get('source_id', '')}",
+            ])
+            for group in target.get("required_answer_terms") or []:
+                terms = [str(value).strip() for value in group if str(value).strip()]
+                if terms:
+                    target_lines.append(
+                        "- claim tekst peab sisaldama vähemalt üht markerit: "
+                        + " / ".join(terms)
+                    )
+
+        event_line = f"Sündmuse kuupäev: {event_date}\n" if event_date else ""
+        return "\n".join([
+            "Sa parandad ainult ÕigusAI auditeeritud vastusekatvust.",
+            "Kasuta AINULT allpool antud kontrollitud allikaid.",
+            "Ära vasta kõrvalteemadele ja ära lisa mudeli mälust ühtegi õigusväidet.",
+            "",
+            event_line.rstrip(),
+            "JUHTUM:",
+            str(case_desc or "").strip(),
+            "",
+            "TÄIDETAVAD KOHUSTUSED:",
+            *target_lines,
+            "",
+            "LUBATUD ALLIKAD:",
+            *source_lines,
+            "",
+            f"Tagasta claims massiivis TÄPSELT {len(targets)} elementi samas järjekorras.",
+            "Iga claim kasutab talle määratud source_id-d.",
+            "evidence peab olema sama allika tekstist täpselt kopeeritud katkematu katkend.",
+            "claim peab olema evidence otsene ja kitsas ümbersõnastus; kui kahtled, kasuta claim tekstina evidence teksti.",
+            "Tagasta ainult JSON, ilma Markdowni või muu tekstita.",
+        ]).replace("\n\n\n", "\n\n").strip()
+
+    @classmethod
     def repair_laws(
         cls,
         report: Mapping[str, Any],
@@ -221,21 +352,12 @@ class CoverageVerifier:
             for law in (laws or [])
             if cls._normalize_id(law.get("id"))
         }
-        ordered_ids: List[str] = []
-        for row in report.get("obligations") or []:
-            if not isinstance(row, dict) or not row.get("enforced"):
-                continue
-            chosen = next(
-                (
-                    cls._normalize_id(value)
-                    for value in (row.get("candidate_sources") or [])
-                    if cls._normalize_id(value) in law_map
-                ),
-                "",
-            )
-            if chosen and chosen not in ordered_ids:
-                ordered_ids.append(chosen)
-        return [law_map[source_id] for source_id in ordered_ids]
+        ordered_ids = [
+            str(target.get("source_id") or "")
+            for target in cls.repair_targets(report)
+            if str(target.get("source_id") or "") in law_map
+        ]
+        return [law_map[source_id] for source_id in dict.fromkeys(ordered_ids)]
 
     @classmethod
     def repair_instructions(cls, report: Mapping[str, Any]) -> str:

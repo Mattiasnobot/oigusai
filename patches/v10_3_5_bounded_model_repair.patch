@@ -1,0 +1,916 @@
+diff --git a/scripts/evaluate_model.py b/scripts/evaluate_model.py
+index e91c771..bd90b6c 100644
+--- a/scripts/evaluate_model.py
++++ b/scripts/evaluate_model.py
+@@ -78,6 +78,7 @@ def assess_case(case: Dict[str, Any], finalized: Dict[str, Any], *, fallback_use
+     verification_status = str(finalized.get("verification_status") or "")
+     is_mock = bool(finalized.get("is_mock"))
+     coverage = dict(finalized.get("coverage") or {})
++    coverage_repair = dict(finalized.get("coverage_repair") or {})
+ 
+     source_groups = case.get("expected_source_groups") or []
+     source_groups_ok = _source_groups_pass(verified_sources, source_groups)
+@@ -113,6 +114,7 @@ def assess_case(case: Dict[str, Any], finalized: Dict[str, Any], *, fallback_use
+         "phrases_all_ok": phrases_all_ok,
+         "phrases_any_ok": phrases_any_ok,
+         "coverage": coverage,
++        "coverage_repair": coverage_repair,
+     }
+ 
+ 
+@@ -255,6 +257,7 @@ async def run_case(
+             "phrases_all_ok": False,
+             "phrases_any_ok": False,
+             "coverage": {},
++            "coverage_repair": {},
+             "error": f"{type(exc).__name__}: {exc}",
+         })
+     result["duration_seconds"] = round(time.perf_counter() - started, 2)
+@@ -337,10 +340,19 @@ async def run_evaluation(
+         )
+         results.append(result)
+         marker = "PASS" if result.get("model_pass") else "FAIL"
++        repair = result.get("coverage_repair") or {}
++        repair_suffix = ""
++        if repair.get("attempted"):
++            repair_suffix = (
++                f" repair={repair.get('trigger')}"
++                f":{'accepted' if repair.get('accepted') else repair.get('failure_reason') or 'rejected'}"
++                f" returned={','.join(repair.get('returned_sources') or [])}"
++            )
+         print(
+             f"  {marker} status={result.get('verification_status')} "
+             f"fallback={result.get('fallback_used')} "
+-            f"sources={','.join(result.get('verified_sources') or [])}",
++            f"sources={','.join(result.get('verified_sources') or [])}"
++            f"{repair_suffix}",
+             flush=True,
+         )
+ 
+diff --git a/services/analysis_orchestrator.py b/services/analysis_orchestrator.py
+index 36f8605..26fd0e3 100644
+--- a/services/analysis_orchestrator.py
++++ b/services/analysis_orchestrator.py
+@@ -69,6 +69,7 @@ class ExecutedAnalysis:
+     coverage_fallback_used: bool
+     coverage_repair_used: bool
+     coverage_report: Dict[str, Any]
++    coverage_repair_diagnostics: Dict[str, Any]
+     verified_sources: List[str]
+ 
+ 
+@@ -121,6 +122,122 @@ class AnalysisOrchestrator:
+                     return fused
+         return fused
+ 
++    async def _attempt_focused_coverage_repair(
++        self,
++        *,
++        trigger: str,
++        ai_service: OfflineAIService,
++        source_verifier: Any,
++        obligation_plan: Any,
++        analysis_case: str,
++        analysis_laws: List[Dict[str, Any]],
++        coverage_report: Dict[str, Any],
++        relevance_text: str,
++        event_date: str,
++    ) -> Dict[str, Any]:
++        """Run at most one schema-constrained repair against audited source targets."""
++        targets = CoverageVerifier.repair_targets(coverage_report)
++        repair_laws = CoverageVerifier.repair_laws(coverage_report, analysis_laws)
++        target_sources = [
++            str(target.get("source_id") or "") for target in targets
++            if str(target.get("source_id") or "")
++        ]
++        diagnostics: Dict[str, Any] = {
++            "attempted": bool(targets and repair_laws),
++            "trigger": str(trigger or ""),
++            "target_sources": target_sources,
++            "returned_sources": [],
++            "citation_valid": False,
++            "coverage_passed": False,
++            "semantic_relevance": False,
++            "missing_concepts": [],
++            "accepted": False,
++            "failure_reason": "",
++        }
++        if not targets or not repair_laws:
++            diagnostics["failure_reason"] = "no_audited_repair_targets"
++            return {"accepted": False, "diagnostics": diagnostics}
++
++        response_schema = CoverageVerifier.repair_schema(coverage_report)
++        repair_prompt = CoverageVerifier.repair_prompt(
++            coverage_report,
++            repair_laws,
++            analysis_case,
++            event_date,
++        )
++        if not response_schema or not repair_prompt:
++            diagnostics["failure_reason"] = "repair_prompt_or_schema_missing"
++            return {"accepted": False, "diagnostics": diagnostics}
++
++        try:
++            raw_response = await self.run_guarded_work(
++                "analysis",
++                ai_service.generate_structured,
++                repair_prompt,
++                response_schema,
++            )
++            repair_text, repair_claims = ai_service.prepare_structured_response(
++                raw_response,
++                repair_laws,
++                analysis_case,
++            )
++            repair_valid, repair_sources = source_verifier.verify_sources(
++                repair_text,
++                repair_laws,
++            )
++            diagnostics["returned_sources"] = list(repair_sources)
++            diagnostics["citation_valid"] = bool(repair_valid)
++            repaired_coverage = CoverageVerifier.verify(
++                obligation_plan,
++                analysis_laws,
++                repair_sources if repair_valid else [],
++                answer_text=repair_text,
++            )
++            diagnostics["coverage_passed"] = bool(
++                repaired_coverage.get("passed")
++            )
++            cited_ids = {str(value).strip().upper() for value in repair_sources}
++            cited_laws = [
++                law for law in analysis_laws
++                if str(law.get("id", "")).strip().upper() in cited_ids
++            ]
++            repaired_relevance = self.relevance_verifier.verify_answer(
++                relevance_text,
++                repair_text,
++                cited_laws,
++            )
++            diagnostics["semantic_relevance"] = bool(repaired_relevance.relevant)
++            diagnostics["missing_concepts"] = list(
++                getattr(repaired_relevance, "missing_concepts", ()) or ()
++            )
++            accepted = bool(
++                repair_valid
++                and repaired_coverage.get("passed")
++                and repaired_relevance.relevant
++            )
++            diagnostics["accepted"] = accepted
++            if not accepted:
++                if not repair_valid:
++                    diagnostics["failure_reason"] = "citation_verification"
++                elif not repaired_coverage.get("passed"):
++                    diagnostics["failure_reason"] = "coverage_verification"
++                else:
++                    diagnostics["failure_reason"] = "semantic_relevance"
++            return {
++                "accepted": accepted,
++                "diagnostics": diagnostics,
++                "analysis_text": repair_text,
++                "structured_claims": repair_claims,
++                "verified_sources": list(repair_sources),
++                "coverage_report": repaired_coverage,
++            }
++        except Exception as exc:
++            diagnostics["failure_reason"] = f"{type(exc).__name__}: {exc}"[:300]
++            self.logger.warning(
++                "Focused coverage repair failed (%s): %s", trigger, exc
++            )
++            return {"accepted": False, "diagnostics": diagnostics}
++
+     async def prepare(self, request: Any) -> PreparedAnalysis:
+         analysis_started = time.perf_counter()
+         pipeline = AnalysisPipelineRun()
+@@ -361,7 +478,20 @@ class AnalysisOrchestrator:
+         fallback_used = False
+         coverage_fallback_used = False
+         coverage_repair_used = False
++        repair_attempted = False
+         coverage_report: Dict[str, Any] = {}
++        coverage_repair_diagnostics: Dict[str, Any] = {
++            "attempted": False,
++            "trigger": "",
++            "target_sources": [],
++            "returned_sources": [],
++            "citation_valid": False,
++            "coverage_passed": False,
++            "semantic_relevance": False,
++            "missing_concepts": [],
++            "accepted": False,
++            "failure_reason": "",
++        }
+         case_description = str(getattr(request, "case_description", "") or "")
+         analysis_case = (
+             CaseIntakeService._user_evidence_text(case_description)
+@@ -574,54 +704,50 @@ class AnalysisOrchestrator:
+             and not fallback_used
+             and isinstance(ai_service, OfflineAIService)
+         ):
+-            repair_instructions = CoverageVerifier.repair_instructions(
+-                coverage_report
++            repair_attempted = True
++            repair_result = await self._attempt_focused_coverage_repair(
++                trigger="coverage",
++                ai_service=ai_service,
++                source_verifier=source_verifier,
++                obligation_plan=obligation_plan,
++                analysis_case=analysis_case,
++                analysis_laws=analysis_laws,
++                coverage_report=coverage_report,
++                relevance_text=relevance_text,
++                event_date=str(getattr(request, "event_date", "") or ""),
+             )
+-            repair_laws = CoverageVerifier.repair_laws(
+-                coverage_report,
+-                analysis_laws,
++            coverage_repair_diagnostics = dict(
++                repair_result.get("diagnostics") or {}
+             )
+-            if repair_instructions and repair_laws:
+-                repair_case = (
+-                    f"{analysis_case}\n\n{repair_instructions}"
+-                )[:9000]
+-                try:
+-                    repair_text, repair_mock, repair_claims = await self.run_guarded_work(
+-                        "analysis",
+-                        ai_service.analyze_case_structured,
+-                        repair_case,
+-                        repair_laws,
+-                        str(getattr(request, "event_date", "") or ""),
+-                        [],
+-                    )
+-                    repair_valid, repair_sources = source_verifier.verify_sources(
+-                        repair_text,
+-                        repair_laws,
+-                    )
+-                    repaired_coverage = CoverageVerifier.verify(
+-                        obligation_plan,
+-                        analysis_laws,
+-                        repair_sources if repair_valid else [],
+-                        answer_text=repair_text,
+-                    )
+-                    if repair_valid and repaired_coverage.get("passed"):
+-                        analysis_text = repair_text
+-                        structured_claims = repair_claims
+-                        is_mock = repair_mock
+-                        verified_sources = repair_sources
+-                        is_valid = True
+-                        coverage_report = repaired_coverage
+-                        coverage_repair_used = True
+-                        self.logger.info(
+-                            "Coverage repair succeeded for obligations: %s",
+-                            ", ".join(
+-                                row.get("kind", "")
+-                                for row in coverage_report.get("obligations", [])
+-                                if row.get("enforced")
+-                            ),
+-                        )
+-                except Exception as exc:
+-                    self.logger.warning("Coverage repair attempt failed: %s", exc)
++            if repair_result.get("accepted"):
++                analysis_text = str(repair_result.get("analysis_text") or "")
++                structured_claims = list(
++                    repair_result.get("structured_claims") or []
++                )
++                is_mock = False
++                verified_sources = list(
++                    repair_result.get("verified_sources") or []
++                )
++                is_valid = True
++                coverage_report = dict(
++                    repair_result.get("coverage_report") or {}
++                )
++                coverage_repair_used = True
++                self.logger.info(
++                    "Coverage repair succeeded for obligations: %s",
++                    ", ".join(
++                        row.get("kind", "")
++                        for row in coverage_report.get("obligations", [])
++                        if row.get("enforced")
++                    ),
++                )
++            else:
++                self.logger.info(
++                    "Focused coverage repair rejected: trigger=%s reason=%s returned=%s",
++                    coverage_repair_diagnostics.get("trigger"),
++                    coverage_repair_diagnostics.get("failure_reason"),
++                    ",".join(coverage_repair_diagnostics.get("returned_sources") or []),
++                )
+ 
+         if coverage_report.get("enforced") and not coverage_report.get("passed"):
+             if coverage_report.get("missing_source"):
+@@ -673,9 +799,61 @@ class AnalysisOrchestrator:
+         answer_relevance = self.relevance_verifier.verify_answer(
+             relevance_text, analysis_text, cited_laws
+         )
++        if (
++            not answer_relevance.relevant
++            and not fallback_used
++            and not repair_attempted
++            and coverage_report.get("enforced")
++            and isinstance(ai_service, OfflineAIService)
++        ):
++            repair_attempted = True
++            repair_result = await self._attempt_focused_coverage_repair(
++                trigger="semantic_relevance",
++                ai_service=ai_service,
++                source_verifier=source_verifier,
++                obligation_plan=obligation_plan,
++                analysis_case=analysis_case,
++                analysis_laws=analysis_laws,
++                coverage_report=coverage_report,
++                relevance_text=relevance_text,
++                event_date=str(getattr(request, "event_date", "") or ""),
++            )
++            coverage_repair_diagnostics = dict(
++                repair_result.get("diagnostics") or {}
++            )
++            if repair_result.get("accepted"):
++                analysis_text = str(repair_result.get("analysis_text") or "")
++                structured_claims = list(
++                    repair_result.get("structured_claims") or []
++                )
++                is_mock = False
++                verified_sources = list(
++                    repair_result.get("verified_sources") or []
++                )
++                is_valid = True
++                coverage_report = dict(
++                    repair_result.get("coverage_report") or {}
++                )
++                coverage_repair_used = True
++                cited_ids = set(verified_sources)
++                cited_laws = [
++                    law for law in analysis_laws
++                    if str(law.get("id", "")).upper() in cited_ids
++                ]
++                answer_relevance = self.relevance_verifier.verify_answer(
++                    relevance_text, analysis_text, cited_laws
++                )
++            else:
++                self.logger.info(
++                    "Focused relevance repair rejected: reason=%s returned=%s missing=%s",
++                    coverage_repair_diagnostics.get("failure_reason"),
++                    ",".join(coverage_repair_diagnostics.get("returned_sources") or []),
++                    ",".join(coverage_repair_diagnostics.get("missing_concepts") or []),
++                )
++
+         if not answer_relevance.relevant and not fallback_used:
+             self.logger.warning(
+-                "AI response failed semantic relevance check; "
++                "AI response failed semantic relevance check after bounded repair; "
+                 "returning verified source digest"
+             )
+             coverage_digest = CoverageVerifier.build_source_digest(
+@@ -742,6 +920,9 @@ class AnalysisOrchestrator:
+             verified_source_count=len(verified_sources),
+             coverage_passed=bool(coverage_report.get("passed", True)),
+             coverage_repair=coverage_repair_used,
++            coverage_repair_attempted=bool(coverage_repair_diagnostics.get("attempted")),
++            coverage_repair_trigger=str(coverage_repair_diagnostics.get("trigger") or ""),
++            coverage_repair_accepted=bool(coverage_repair_diagnostics.get("accepted")),
+             missing_coverage=len(coverage_report.get("missing_answer") or []),
+         )
+ 
+@@ -756,6 +937,7 @@ class AnalysisOrchestrator:
+             coverage_fallback_used=coverage_fallback_used,
+             coverage_repair_used=coverage_repair_used,
+             coverage_report=dict(coverage_report),
++            coverage_repair_diagnostics=dict(coverage_repair_diagnostics),
+             verified_sources=list(verified_sources),
+         )
+ 
+@@ -904,4 +1086,7 @@ class AnalysisOrchestrator:
+             "layered_answer": layered_answer,
+             "pipeline": pipeline_result,
+             "coverage": dict(getattr(executed, "coverage_report", {}) or {}),
++            "coverage_repair": dict(
++                getattr(executed, "coverage_repair_diagnostics", {}) or {}
++            ),
+         }
+diff --git a/services/coverage_verifier.py b/services/coverage_verifier.py
+index 0c7d4f2..f6723d1 100644
+--- a/services/coverage_verifier.py
++++ b/services/coverage_verifier.py
+@@ -57,6 +57,7 @@ class CoverageVerifier:
+         "fine_context:challenge_decision": CoverageRule(
+             source_groups=(("VTMS_114", "VTMS_118"),),
+             rationale="Möödunud tähtaja kontekstis võib vaidlustamise katte anda VTMS § 114 või tähtaja ennistamist käsitlev VTMS § 118.",
++            required_answer_terms=(("kaebus", "vaidlust", "maakoht"),),
+         ),
+         "fine_context:payment_plan": CoverageRule(
+             source_groups=(("KARS_66",),),
+@@ -207,6 +208,136 @@ class CoverageVerifier:
+             "obligations": rows,
+         }
+ 
++    @classmethod
++    def repair_targets(cls, report: Mapping[str, Any]) -> List[Dict[str, Any]]:
++        """Return ordered audited targets for one bounded model-repair pass."""
++        if report.get("missing_source"):
++            return []
++        targets: List[Dict[str, Any]] = []
++        for row in report.get("obligations") or []:
++            if not isinstance(row, dict) or not row.get("enforced"):
++                continue
++            candidate_sources = [
++                cls._normalize_id(value)
++                for value in (row.get("candidate_sources") or [])
++                if cls._normalize_id(value)
++            ]
++            if not candidate_sources:
++                continue
++            targets.append({
++                "kind": str(row.get("kind") or ""),
++                "answer_requirement": str(
++                    row.get("answer_requirement") or row.get("kind") or ""
++                ),
++                "source_id": candidate_sources[0],
++                "required_answer_terms": [
++                    [str(value).strip() for value in group if str(value).strip()]
++                    for group in (row.get("required_answer_terms") or [])
++                    if isinstance(group, (list, tuple))
++                ],
++            })
++        return targets
++
++    @classmethod
++    def repair_schema(cls, report: Mapping[str, Any]) -> Dict[str, Any]:
++        """Constrain Ollama repair output to the audited target count and IDs."""
++        targets = cls.repair_targets(report)
++        source_ids = list(dict.fromkeys(
++            str(target.get("source_id") or "")
++            for target in targets
++            if str(target.get("source_id") or "")
++        ))
++        count = len(targets)
++        if not count or not source_ids:
++            return {}
++        return {
++            "type": "object",
++            "properties": {
++                "claims": {
++                    "type": "array",
++                    "minItems": count,
++                    "maxItems": count,
++                    "items": {
++                        "type": "object",
++                        "properties": {
++                            "text": {"type": "string"},
++                            "source_id": {"type": "string", "enum": source_ids},
++                            "evidence": {"type": "string"},
++                        },
++                        "required": ["text", "source_id", "evidence"],
++                        "additionalProperties": False,
++                    },
++                },
++            },
++            "required": ["claims"],
++            "additionalProperties": False,
++        }
++
++    @classmethod
++    def repair_prompt(
++        cls,
++        report: Mapping[str, Any],
++        laws: Sequence[Dict[str, Any]],
++        case_desc: str,
++        event_date: str = "",
++    ) -> str:
++        """Build a minimal repair-only prompt without the general analysis rules."""
++        targets = cls.repair_targets(report)
++        if not targets:
++            return ""
++        law_map = {
++            cls._normalize_id(law.get("id")): law
++            for law in (laws or [])
++            if cls._normalize_id(law.get("id"))
++        }
++        source_lines: List[str] = []
++        for target in targets:
++            source_id = str(target.get("source_id") or "")
++            law = law_map.get(source_id)
++            if law is None:
++                return ""
++            source_lines.append(
++                f"[{source_id}] {law.get('title', source_id)}: {law.get('text', '')}"
++            )
++
++        target_lines: List[str] = []
++        for index, target in enumerate(targets, start=1):
++            target_lines.extend([
++                f"KOHUSTUS {index}/{len(targets)} [{target.get('kind', '')}]",
++                f"- vasta: {target.get('answer_requirement', '')}",
++                f"- source_id peab olema täpselt: {target.get('source_id', '')}",
++            ])
++            for group in target.get("required_answer_terms") or []:
++                terms = [str(value).strip() for value in group if str(value).strip()]
++                if terms:
++                    target_lines.append(
++                        "- claim tekst peab sisaldama vähemalt üht markerit: "
++                        + " / ".join(terms)
++                    )
++
++        event_line = f"Sündmuse kuupäev: {event_date}\n" if event_date else ""
++        return "\n".join([
++            "Sa parandad ainult ÕigusAI auditeeritud vastusekatvust.",
++            "Kasuta AINULT allpool antud kontrollitud allikaid.",
++            "Ära vasta kõrvalteemadele ja ära lisa mudeli mälust ühtegi õigusväidet.",
++            "",
++            event_line.rstrip(),
++            "JUHTUM:",
++            str(case_desc or "").strip(),
++            "",
++            "TÄIDETAVAD KOHUSTUSED:",
++            *target_lines,
++            "",
++            "LUBATUD ALLIKAD:",
++            *source_lines,
++            "",
++            f"Tagasta claims massiivis TÄPSELT {len(targets)} elementi samas järjekorras.",
++            "Iga claim kasutab talle määratud source_id-d.",
++            "evidence peab olema sama allika tekstist täpselt kopeeritud katkematu katkend.",
++            "claim peab olema evidence otsene ja kitsas ümbersõnastus; kui kahtled, kasuta claim tekstina evidence teksti.",
++            "Tagasta ainult JSON, ilma Markdowni või muu tekstita.",
++        ]).replace("\n\n\n", "\n\n").strip()
++
+     @classmethod
+     def repair_laws(
+         cls,
+@@ -221,21 +352,12 @@ class CoverageVerifier:
+             for law in (laws or [])
+             if cls._normalize_id(law.get("id"))
+         }
+-        ordered_ids: List[str] = []
+-        for row in report.get("obligations") or []:
+-            if not isinstance(row, dict) or not row.get("enforced"):
+-                continue
+-            chosen = next(
+-                (
+-                    cls._normalize_id(value)
+-                    for value in (row.get("candidate_sources") or [])
+-                    if cls._normalize_id(value) in law_map
+-                ),
+-                "",
+-            )
+-            if chosen and chosen not in ordered_ids:
+-                ordered_ids.append(chosen)
+-        return [law_map[source_id] for source_id in ordered_ids]
++        ordered_ids = [
++            str(target.get("source_id") or "")
++            for target in cls.repair_targets(report)
++            if str(target.get("source_id") or "") in law_map
++        ]
++        return [law_map[source_id] for source_id in dict.fromkeys(ordered_ids)]
+ 
+     @classmethod
+     def repair_instructions(cls, report: Mapping[str, Any]) -> str:
+diff --git a/tests/test_coverage_verifier.py b/tests/test_coverage_verifier.py
+index d7dcf57..185e66a 100644
+--- a/tests/test_coverage_verifier.py
++++ b/tests/test_coverage_verifier.py
+@@ -1,4 +1,5 @@
+ import asyncio
++import json
+ import unittest
+ from types import SimpleNamespace
+ from unittest.mock import Mock
+@@ -18,27 +19,38 @@ async def immediate_work(_label, func, *args):
+ class _RepairingOfflineAI(OfflineAIService):
+     def __init__(self):
+         self.calls = 0
+-        self.law_ids = []
++        self.source_verifier = SourceVerifier()
++        self.repair_prompt = ""
++        self.repair_schema = {}
+ 
+     def analyze_case_structured(self, *_args, **_kwargs):
+         self.calls += 1
+-        laws = list(_args[1] if len(_args) > 1 else _kwargs.get("laws") or [])
+-        self.law_ids.append([str(law.get("id") or "") for law in laws])
+-        if self.calls == 1:
+-            return (
+-                "ÕIGUSLIK KOHALDAMINE:\nKoondamise alus on kirjeldatud sättes [TLS_89].\n\n"
+-                "SOOVITUSED:\nSäilita dokumendid.\n\nKASUTATUD ALLIKAD: [TLS_89]",
+-                False,
+-                [],
+-            )
+         return (
+-            "ÕIGUSLIK KOHALDAMINE:\nKoondamise alus on kirjeldatud sättes [TLS_89].\n"
+-            "Etteteatamise tähtaeg on kirjeldatud sättes [TLS_97].\n\n"
+-            "SOOVITUSED:\nSäilita dokumendid.\n\nKASUTATUD ALLIKAD: [TLS_89] [TLS_97]",
++            "ÕIGUSLIK KOHALDAMINE:\nKoondamise alus on kirjeldatud sättes [TLS_89].\n\n"
++            "SOOVITUSED:\nSäilita dokumendid.\n\nKASUTATUD ALLIKAD: [TLS_89]",
+             False,
+             [],
+         )
+ 
++    def generate_structured(self, prompt, response_schema):
++        self.calls += 1
++        self.repair_prompt = prompt
++        self.repair_schema = response_schema
++        return json.dumps({
++            "claims": [
++                {
++                    "text": "Koondamise alus on kirjeldatud sättes.",
++                    "source_id": "TLS_89",
++                    "evidence": "Koondamise alus on kirjeldatud sättes.",
++                },
++                {
++                    "text": "Etteteatamise tähtaeg on kirjeldatud sättes.",
++                    "source_id": "TLS_97",
++                    "evidence": "Etteteatamise tähtaeg on kirjeldatud sättes.",
++                },
++            ]
++        }, ensure_ascii=False)
++
+     def claims_from_verified_analysis(self, *_args, **_kwargs):
+         return []
+ 
+@@ -49,26 +61,36 @@ class _RepairingOfflineAI(OfflineAIService):
+ class _FormRepairingOfflineAI(OfflineAIService):
+     def __init__(self):
+         self.calls = 0
++        self.source_verifier = SourceVerifier()
++        self.repair_schema = {}
+ 
+     def analyze_case_structured(self, *_args, **_kwargs):
+         self.calls += 1
+-        if self.calls == 1:
+-            return (
+-                "ÕIGUSLIK KOHALDAMINE:\n"
+-                "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas vormis [TLS_95].\n\n"
+-                "SOOVITUSED:\nSäilita dokumendid.\n\nKASUTATUD ALLIKAD: [TLS_95]",
+-                False,
+-                [],
+-            )
+         return (
+             "ÕIGUSLIK KOHALDAMINE:\n"
+-            "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas vormis [TLS_95].\n"
+-            "Vorminõuet rikkudes tehtud ülesütlemisavaldus on tühine [TLS_95].\n\n"
++            "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas vormis [TLS_95].\n\n"
+             "SOOVITUSED:\nSäilita dokumendid.\n\nKASUTATUD ALLIKAD: [TLS_95]",
+             False,
+             [],
+         )
+ 
++    def generate_structured(self, _prompt, response_schema):
++        self.calls += 1
++        self.repair_schema = response_schema
++        return json.dumps({
++            "claims": [{
++                "text": (
++                    "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas "
++                    "vormis ja vorminõuet rikkudes tehtud ülesütlemisavaldus on tühine."
++                ),
++                "source_id": "TLS_95",
++                "evidence": (
++                    "Ülesütlemisavaldus tuleb teha kirjalikku taasesitamist võimaldavas "
++                    "vormis. Vorminõuet rikkudes tehtud ülesütlemisavaldus on tühine."
++                ),
++            }]
++        }, ensure_ascii=False)
++
+     def claims_from_verified_analysis(self, *_args, **_kwargs):
+         return []
+ 
+@@ -76,6 +98,47 @@ class _FormRepairingOfflineAI(OfflineAIService):
+         raise AssertionError("Focused form repair should succeed before fallback")
+ 
+ 
++class _RelevanceRepairingOfflineAI(OfflineAIService):
++    def __init__(self):
++        self.calls = 0
++        self.source_verifier = SourceVerifier()
++
++    def analyze_case_structured(self, *_args, **_kwargs):
++        self.calls += 1
++        return (
++            "ÕIGUSLIK KOHALDAMINE:\n"
++            "Koondamise alus on kirjeldatud sättes [TLS_89].\n"
++            "Etteteatamise tähtaeg on kirjeldatud sättes [TLS_97].\n\n"
++            "SOOVITUSED:\nSäilita dokumendid.\n\n"
++            "KASUTATUD ALLIKAD: [TLS_89] [TLS_97]",
++            False,
++            [],
++        )
++
++    def generate_structured(self, _prompt, _response_schema):
++        self.calls += 1
++        return json.dumps({
++            "claims": [
++                {
++                    "text": "Koondamise alus on kirjeldatud sättes.",
++                    "source_id": "TLS_89",
++                    "evidence": "Koondamise alus on kirjeldatud sättes.",
++                },
++                {
++                    "text": "Etteteatamise tähtaeg on kirjeldatud sättes.",
++                    "source_id": "TLS_97",
++                    "evidence": "Etteteatamise tähtaeg on kirjeldatud sättes.",
++                },
++            ]
++        }, ensure_ascii=False)
++
++    def claims_from_verified_analysis(self, *_args, **_kwargs):
++        return []
++
++    def build_source_only_fallback(self, *_args, **_kwargs):
++        raise AssertionError("Semantic relevance repair should succeed before fallback")
++
++
+ class CoverageVerifierTests(unittest.TestCase):
+     def test_redundancy_deadline_is_reported_missing_from_answer(self):
+         plan = MultiIssueRetrievalPlanner.plan(
+@@ -127,6 +190,52 @@ class CoverageVerifierTests(unittest.TestCase):
+             [["tühine"]],
+         )
+ 
++    def test_fine_challenge_requires_challenge_language_when_answer_is_checked(self):
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description=(
++                "Sain rahatrahvi. Kaebetähtaeg läks mööda. "
++                "Kas tähtaega saab ennistada ja kas trahvi saab ositi maksta?"
++            ),
++            search_text="rahatrahv kaebetähtaeg ennistada ositi maksta",
++            current_intents=["missed_deadline", "challenge_decision", "payment_plan"],
++            fine_context=True,
++        )
++        laws = [
++            {"id": "VTMS_118", "text": "Tähtaja ennistamine."},
++            {"id": "VTMS_114", "text": "Maakohtule kaebuse esitamise õigus."},
++            {"id": "KARS_66", "text": "Rahatrahvi tasumine ositi."},
++        ]
++        report = CoverageVerifier.verify(
++            plan,
++            laws,
++            ["VTMS_118", "KARS_66"],
++            answer_text="Tähtaega võib ennistada ja rahatrahvi võib tasuda ositi.",
++        )
++        self.assertFalse(report["passed"])
++        self.assertTrue(report["needs_repair"])
++        self.assertIn("remedy", report["missing_answer"])
++
++    def test_repair_schema_pins_exact_claim_count_and_allowed_ids(self):
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description="Mind koondatakse. Kui pikk etteteatamine on?",
++            search_text="koondamine etteteatamine",
++            current_intents=["deadline"],
++            fine_context=False,
++        )
++        laws = [
++            {"id": "TLS_89", "text": "Koondamine."},
++            {"id": "TLS_97", "text": "Etteteatamine."},
++        ]
++        report = CoverageVerifier.verify(plan, laws, ["TLS_89"])
++        schema = CoverageVerifier.repair_schema(report)
++        claims = schema["properties"]["claims"]
++        self.assertEqual(claims["minItems"], 2)
++        self.assertEqual(claims["maxItems"], 2)
++        self.assertEqual(
++            claims["items"]["properties"]["source_id"]["enum"],
++            ["TLS_89", "TLS_97"],
++        )
++
+     def test_repair_laws_keep_only_audited_coverage_sources(self):
+         plan = MultiIssueRetrievalPlanner.plan(
+             case_description="Mind koondatakse. Kui pikk etteteatamine on?",
+@@ -300,13 +409,75 @@ class CoverageVerifierTests(unittest.TestCase):
+             source_verifier=SourceVerifier(),
+         ))
+         self.assertEqual(ai.calls, 2)
+-        self.assertEqual(ai.law_ids[1], ["TLS_89", "TLS_97"])
++        self.assertEqual(
++            ai.repair_schema["properties"]["claims"]["minItems"], 2
++        )
++        self.assertNotIn("TLS_100", ai.repair_prompt)
++        self.assertEqual(
++            executed.coverage_repair_diagnostics["target_sources"],
++            ["TLS_89", "TLS_97"],
++        )
++        self.assertTrue(executed.coverage_repair_diagnostics["accepted"])
+         self.assertFalse(executed.fallback_used)
+         self.assertTrue(executed.coverage_repair_used)
+         self.assertTrue(executed.coverage_report["passed"])
+         self.assertEqual(set(executed.verified_sources), {"TLS_89", "TLS_97"})
+ 
+ 
++    def test_semantic_relevance_can_trigger_the_single_focused_repair(self):
++        laws = [
++            {"id": "TLS_89", "title": "TLS § 89", "text": "Koondamise alus on kirjeldatud sättes.", "source": "RT"},
++            {"id": "TLS_97", "title": "TLS § 97", "text": "Etteteatamise tähtaeg on kirjeldatud sättes.", "source": "RT"},
++        ]
++        plan = MultiIssueRetrievalPlanner.plan(
++            case_description="Mind koondatakse. Kui pikk etteteatamine on?",
++            search_text="koondamine etteteatamine",
++            current_intents=["deadline"],
++            fine_context=False,
++        )
++        relevance = Mock()
++        relevance.verify_answer.side_effect = [
++            SimpleNamespace(relevant=False, missing_concepts=["forced"], clarification=""),
++            SimpleNamespace(relevant=True, missing_concepts=[], clarification=""),
++            SimpleNamespace(relevant=True, missing_concepts=[], clarification=""),
++        ]
++        orchestrator = AnalysisOrchestrator(
++            legal_service=Mock(),
++            matter_store=None,
++            relevance_verifier=relevance,
++            run_guarded_work=immediate_work,
++        )
++        pipeline = AnalysisPipelineRun()
++        for stage in ("case_understanding", "document_evidence", "legal_retrieval"):
++            pipeline.complete(stage)
++        prepared = SimpleNamespace(
++            pipeline=pipeline,
++            current_turn="Mind koondatakse. Kui pikk etteteatamine on?",
++            answer_requirements=[],
++            obligation_plan=plan,
++            document_spans=[],
++            relevance_text="koondamine etteteatamine",
++            route_plan=SimpleNamespace(employment_form_question=False),
++            analysis_laws=laws,
++        )
++        request = SimpleNamespace(
++            case_description="Mind koondatakse. Kui pikk etteteatamine on?",
++            case_context="",
++            event_date="",
++        )
++        ai = _RelevanceRepairingOfflineAI()
++        executed = asyncio.run(orchestrator.execute(
++            request, prepared, ai_service=ai, source_verifier=SourceVerifier()
++        ))
++        self.assertEqual(ai.calls, 2)
++        self.assertFalse(executed.fallback_used)
++        self.assertTrue(executed.coverage_repair_used)
++        self.assertEqual(
++            executed.coverage_repair_diagnostics["trigger"],
++            "semantic_relevance",
++        )
++        self.assertTrue(executed.coverage_repair_diagnostics["accepted"])
++
+     def test_orchestrator_repairs_form_semantics_before_source_fallback(self):
+         laws = [{
+             "id": "TLS_95",
+@@ -361,6 +532,9 @@ class CoverageVerifierTests(unittest.TestCase):
+             source_verifier=SourceVerifier(),
+         ))
+         self.assertEqual(ai.calls, 2)
++        self.assertEqual(
++            ai.repair_schema["properties"]["claims"]["maxItems"], 1
++        )
+         self.assertFalse(executed.fallback_used)
+         self.assertTrue(executed.coverage_repair_used)
+         self.assertTrue(executed.coverage_report["passed"])
+diff --git a/tests/test_evaluate_model.py b/tests/test_evaluate_model.py
+index b522bd6..0b3a8a7 100644
+--- a/tests/test_evaluate_model.py
++++ b/tests/test_evaluate_model.py
+@@ -50,6 +50,26 @@ class EvaluateModelTests(unittest.TestCase):
+         self.assertFalse(result["model_pass"])
+         self.assertFalse(result["real_model_used"])
+ 
++    def test_assess_case_preserves_coverage_repair_diagnostics(self):
++        case = {"expected_source_groups": [["TLS_89"], ["TLS_97"]]}
++        finalized = {
++            "analysis_text": "Koondamine [TLS_89]. Etteteatamine [TLS_97].",
++            "verified_sources": ["TLS_89", "TLS_97"],
++            "pipeline": {"status": "completed"},
++            "verification_status": "EVIDENCE_VERIFIED",
++            "is_mock": False,
++            "coverage_repair": {
++                "attempted": True,
++                "trigger": "coverage",
++                "accepted": True,
++                "target_sources": ["TLS_89", "TLS_97"],
++            },
++        }
++        result = assess_case(case, finalized, fallback_used=False)
++        self.assertTrue(result["coverage_repair"]["attempted"])
++        self.assertEqual(result["coverage_repair"]["trigger"], "coverage")
++        self.assertTrue(result["coverage_repair"]["accepted"])
++
+     def test_report_applies_model_and_fallback_thresholds(self):
+         suite = {
+             "version": "test",
+diff --git a/services/offline_ai.py b/services/offline_ai.py
+--- a/services/offline_ai.py
++++ b/services/offline_ai.py
+@@ -603,5 +603,16 @@ class OfflineAIService:
+         """Generate one JSON-schema-constrained response with the local model."""
+         return self._call_ollama(prompt, response_schema=response_schema)
+ 
++    def prepare_structured_response(
++        self,
++        raw_response: str,
++        laws: List[Dict],
++        case_desc: str = "",
++    ) -> Tuple[str, List[Dict]]:
++        """Render and evidence-gate one already generated structured response."""
++        analysis = self._prepare_output(raw_response, laws, case_desc)
++        claims = self._verified_claims_from_raw(raw_response, laws, [])
++        return analysis, claims
++
+     def _call_ollama(self, prompt: str, response_schema: Dict = None) -> str:
+         response = requests.post(

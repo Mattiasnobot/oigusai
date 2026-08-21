@@ -1,0 +1,39 @@
+{
+  "name": "V10.3.5 — bounded schema-constrained model repair",
+  "base_commit": "4b4bd1f9468bb93a6886798322a4a47a215f28af",
+  "base_files": [
+    {
+      "path": "services/analysis_orchestrator.py",
+      "git_blob_sha": "36f86052d0fd38bd64113b9a4eb3750848912baa"
+    },
+    {
+      "path": "services/coverage_verifier.py",
+      "git_blob_sha": "0c7d4f26aa8e5765c6f86459fb147fb43dcee1b3"
+    },
+    {
+      "path": "services/offline_ai.py",
+      "git_blob_sha": "b3553a04cb19073f9f20403fd3021f650b0be5fa"
+    },
+    {
+      "path": "scripts/evaluate_model.py",
+      "git_blob_sha": "e91c7712bb79f0c8572961966bc92c58df54f8c2"
+    },
+    {
+      "path": "tests/test_coverage_verifier.py",
+      "git_blob_sha": "d7dcf5771ed16d53c12eb1f7f7aed146d0ce04af"
+    },
+    {
+      "path": "tests/test_evaluate_model.py",
+      "git_blob_sha": "b522bd641fcd2f8cac66707b94935af786ffb6eb"
+    }
+  ],
+  "new_files": [],
+  "tests": [
+    ["{python}", "-m", "unittest", "tests.test_coverage_verifier"],
+    ["{python}", "-m", "unittest", "tests.test_analysis_orchestrator"],
+    ["{python}", "-m", "unittest", "tests.test_offline_ai"],
+    ["{python}", "-m", "unittest", "tests.test_relevance_verifier"],
+    ["{python}", "-m", "unittest", "tests.test_evaluate_model"],
+    ["{python}", "-m", "unittest", "tests.test_main"]
+  ]
+}

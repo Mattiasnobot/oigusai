@@ -3,20 +3,19 @@
   "model": "qwen3.5:9b-q4_K_M",
   "cases": 6,
   "safe_passed": 6,
-  "model_passed": 4,
-  "fallback_count": 2,
+  "model_passed": 5,
+  "fallback_count": 1,
   "mock_count": 0,
-  "fallback_rate": 0.3333,
-  "model_pass_rate": 0.6667,
+  "fallback_rate": 0.1667,
+  "model_pass_rate": 0.8333,
   "acceptance": {
     "max_fallback_rate": 0.25,
     "min_model_pass_rate": 0.75
   },
-  "acceptance_passed": false,
-  "duration_seconds": 111.37,
+  "acceptance_passed": true,
+  "duration_seconds": 161.29,
   "failures": [
-    "MODEL-TLS-REDUNDANCY-01",
-    "MODEL-MULTI-FINE-01"
+    "MODEL-TLS-REDUNDANCY-01"
   ],
   "results": [
     {
@@ -74,8 +73,24 @@
           }
         ]
       },
-      "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nVorminõuet rikkudes tehtud või tingimuslik ülesütlemisavaldus on tühine [TLS_95].\nTööandja peab ülesütlemist põhjendama kirjalikku taasesitamist võimaldavas vormis [TLS_95].\nKui ülesütlemise põhjendamisel on rikutud kohustust, ei mõjuta see ülesütlemise kehtivust, kuid tuleb hüvitada tekkinud kahju [TLS_95].\n\nSOOVITUSED:\nSäilita tööleping, tööandja teated ja töösuhtega seotud kirjavahetus.\nPane kirja teate saamise ning töösuhte muutumise või lõppemise kuupäevad.\n\nKASUTATUD ALLIKAD: [TLS_95]",
-      "duration_seconds": 24.72
+      "coverage_repair": {
+        "attempted": true,
+        "trigger": "coverage",
+        "target_sources": [
+          "TLS_95"
+        ],
+        "returned_sources": [
+          "TLS_95"
+        ],
+        "citation_valid": true,
+        "coverage_passed": true,
+        "semantic_relevance": true,
+        "missing_concepts": [],
+        "accepted": true,
+        "failure_reason": ""
+      },
+      "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nTöölepingu ülesütlemine peab olema kirjalikku taasesitamist võimaldavas vormis tehtud, vastasel juhul on ülesütlemisavaldus tühine [TLS_95].\n\nSOOVITUSED:\nSäilita tööleping, tööandja teated ja töösuhtega seotud kirjavahetus.\nPane kirja teate saamise ning töösuhte muutumise või lõppemise kuupäevad.\n\nKASUTATUD ALLIKAD: [TLS_95]",
+      "duration_seconds": 42.32
     },
     {
       "id": "MODEL-TLS-REDUNDANCY-01",
@@ -147,8 +162,23 @@
           }
         ]
       },
+      "coverage_repair": {
+        "attempted": true,
+        "trigger": "coverage",
+        "target_sources": [
+          "TLS_89",
+          "TLS_97"
+        ],
+        "returned_sources": [],
+        "citation_valid": false,
+        "coverage_passed": false,
+        "semantic_relevance": true,
+        "missing_concepts": [],
+        "accepted": false,
+        "failure_reason": "citation_verification"
+      },
       "analysis_preview": "OLUKORD:\nMudeli vastus ei katnud kõiki tuvastatud küsimuse osi. Allpool kuvatakse ainult auditeeritud kohustustega seotud kontrollitud allikakatkendid.\n\nÕIGUSLIK KOHALDAMINE:\nTöölepingu erakorraline ülesütlemine tööandja poolt majanduslikel põhjustel 1 (1) Tööandja võib töölepingu erakorraliselt üles öelda, kui töösuhte jätkamine kokkulepitud tingimustel muutub võimatuks töömahu vähenemise või töö ümberkorraldamise tõttu või muul töö lõppemise juhul (koondamine) [TLS_89].\n2 (2) Koondamine on ka töölepingu erakorraline ülesütlemine: 1 1) tööandja tegevuse lõppemisel; 2 2) tööandja pankroti väljakuulutamisel või pankrotimenetluse lõpetamisel, pankrotti välja kuulutamata, raugemise tõttu [TLS_89].\nTööandja ülesütlemise etteteatamise tähtajad 1 (1) Tööandja võib töölepingu erakorraliselt üles öelda käesoleva paragrahvi lõikes 2 sätestatud etteteatamistähtaegu järgides [TLS_97].\n2 (2) Erakorralisest ülesütlemisest peab tööandja töötajale ette teatama, kui töötaja töösuhe tööandja juures on kestnud: 1 1) alla ühe tööaasta – vähemalt 15 kalendripäeva; 2 2) üks kuni viis tööaastat – vähemalt 30 kalendripäeva; 3 3) viis kuni kümme tööaastat – vähemalt 60 kalendripäeva; 4 4) kümme ja enam tö",
-      "duration_seconds": 21.69
+      "duration_seconds": 33.88
     },
     {
       "id": "MODEL-VOS-DEPOSIT-01",
@@ -176,8 +206,20 @@
         "needs_repair": false,
         "obligations": []
       },
+      "coverage_repair": {
+        "attempted": false,
+        "trigger": "",
+        "target_sources": [],
+        "returned_sources": [],
+        "citation_valid": false,
+        "coverage_passed": false,
+        "semantic_relevance": false,
+        "missing_concepts": [],
+        "accepted": false,
+        "failure_reason": ""
+      },
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nEluruumi üürilepinguga võib ette näha, et üürnik maksab lepingust tulenevate nõuete tagamiseks üürileandjale tagatisraha kuni kolme kuu üüri ulatuses [VOS_308].\nÜürnik võib tagatisraha maksta kolme kuu jooksul võrdsetes osades [VOS_308].\nKui üürileandja on rahuldanud tagatisraha arvelt oma nõude üürniku vastu, võib ta üürnikult nõuda tagatisraha taastamist eluruumi üürilepingus kokkulepitud ulatuses [VOS_308].\n\nSOOVITUSED:\nSäilita üürileping, maksekinnitused ning üürileandjaga peetud kirjavahetus.\nPane kirja nõutud summa, nõude kuupäev ja üürileandja põhjendus.\n\nKASUTATUD ALLIKAD: [VOS_308]",
-      "duration_seconds": 8.48
+      "duration_seconds": 10.84
     },
     {
       "id": "MODEL-HMS-SERVICE-01",
@@ -205,8 +247,20 @@
         "needs_repair": false,
         "obligations": []
       },
+      "coverage_repair": {
+        "attempted": false,
+        "trigger": "",
+        "target_sources": [],
+        "returned_sources": [],
+        "citation_valid": false,
+        "coverage_passed": false,
+        "semantic_relevance": false,
+        "missing_concepts": [],
+        "accepted": false,
+        "failure_reason": ""
+      },
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nHaldusakt, kutse, teade või muu dokument toimetatakse menetlusosalisele kätte postiga, dokumendi väljastanud haldusorgani poolt või elektrooniliselt [HMS_25].\nSeaduses sätestatud juhtudel antakse dokument allkirja vastu kätte väljakutsutud menetlusosalisele või avaldatakse ajalehes [HMS_25].\nKui menetlusosalisel on esindaja või menetlusosaline on määranud dokumentide vastuvõtmiseks isiku, võib dokumendi kätte toimetada üksnes esindajale või dokumentide vastuvõtmiseks määratud isikule ning dokument loetakse ka menetlusosalisele kättetoimetatuks [HMS_25].\n\nSOOVITUSED:\nSäilita olukorraga seotud otsused, teated ja kirjavahetus.\nPane kirja olulised kuupäevad ning täpsusta puuduv asjaolu, kui see võib vastust muuta.\n\nKASUTATUD ALLIKAD: [HMS_25]",
-      "duration_seconds": 9.71
+      "duration_seconds": 12.09
     },
     {
       "id": "MODEL-TYPO-ABIPOL-01",
@@ -234,18 +288,30 @@
         "needs_repair": false,
         "obligations": []
       },
-      "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nAbipolitseinik võib rakendada korrakaitseseaduse §-des 28 ja 30, § 32 lõigetes 1–4, §-des 34, 38, 41, 42 ja 44, § 45 lõigetes 1 ja 5 ning §-des 46–52 sätestatud meetmeid, kui ta on kaasatud meedet kohaldama politseiametniku korraldusel [ABIPOLS_16].\nAbipolitseinik ei ole pädev kohaldama vahetut sundi, kui ta osaleb käesoleva seaduse § 3 lõike 3 alusel politsei tegevuses [ABIPOLS_16].\n\nSOOVITUSED:\nSäilita trahviotsus, trahviteade või muu saadud dokument muutmata kujul.\nPane kirja dokumendi kättesaamise aeg ning kontrolli sellelt menetlejat, rikkumise kirjeldust, tõendeid ja vaidlustamise tähtaega.\n\nKASUTATUD ALLIKAD: [ABIPOLS_16]",
-      "duration_seconds": 13.13
+      "coverage_repair": {
+        "attempted": false,
+        "trigger": "",
+        "target_sources": [],
+        "returned_sources": [],
+        "citation_valid": false,
+        "coverage_passed": false,
+        "semantic_relevance": false,
+        "missing_concepts": [],
+        "accepted": false,
+        "failure_reason": ""
+      },
+      "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nAbipolitseinik võib rakendada korrakaitseseaduse §-des 28 ja 30, § 32 lõigetes 1–4, §-des 34, 38, 41, 42 ja 44, § 45 lõigetes 1 ja 5 ning §-des 46–52 sätestatud meetmeid, kui ta on kaasatud meedet kohaldama politseiametniku korraldusel [ABIPOLS_16].\nAbipolitseinik ei ole pädev kohaldama vahetut sundi, kui ta osaleb politsei tegevuses [ABIPOLS_16].\n\nSOOVITUSED:\nSäilita trahviotsus, trahviteade või muu saadud dokument muutmata kujul.\nPane kirja dokumendi kättesaamise aeg ning kontrolli sellelt menetlejat, rikkumise kirjeldust, tõendeid ja vaidlustamise tähtaega.\n\nKASUTATUD ALLIKAD: [ABIPOLS_16]",
+      "duration_seconds": 18.07
     },
     {
       "id": "MODEL-MULTI-FINE-01",
       "query": "Sain rahatrahvi. Kaebetähtaeg läks mööda. Kas tähtaega saab ennistada ja kas trahvi saab ositi maksta?",
       "safe_pass": true,
-      "model_pass": false,
-      "real_model_used": false,
-      "fallback_used": true,
+      "model_pass": true,
+      "real_model_used": true,
+      "fallback_used": false,
       "is_mock": false,
-      "verification_status": "SOURCE_ONLY_FALLBACK",
+      "verification_status": "EVIDENCE_VERIFIED",
       "verified_sources": [
         "VTMS_118",
         "VTMS_114",
@@ -305,7 +371,13 @@
               "VTMS_114",
               "VTMS_118"
             ],
-            "required_answer_terms": [],
+            "required_answer_terms": [
+              [
+                "kaebus",
+                "vaidlust",
+                "maakoht"
+              ]
+            ],
             "missing_answer_terms": [],
             "rationale": "Möödunud tähtaja kontekstis võib vaidlustamise katte anda VTMS § 114 või tähtaja ennistamist käsitlev VTMS § 118."
           },
@@ -332,8 +404,28 @@
           }
         ]
       },
-      "analysis_preview": "OLUKORD:\nMudeli vastus ei katnud kõiki tuvastatud küsimuse osi. Allpool kuvatakse ainult auditeeritud kohustustega seotud kontrollitud allikakatkendid.\n\nÕIGUSLIK KOHALDAMINE:\nKaebuse käiguta jätmine ja kaebuse läbi vaatamata jätmine eelmenetluses 1 (1) Kui kaebus ei vasta käesoleva seadustiku § 115 nõuetele, teeb maakohtunik selle käiguta jätmise kohta määruse ning annab kaebuse esitajale tähtaja puuduste kõrvaldamiseks [VTMS_118].\n2 (2) Maakohtunik teeb kaebuse läbi vaatamata jätmise kohta määruse ja saadab määruse koopia ning tagastab kaebuse selle esitanud isikule, kui: 1 1) kaebus on esitatud pärast käesoleva seadustiku § 114 lõigetes 3 ja 4 sätestatud tähtaja möödumist ja tähtaja ennistamise taotlust ei ole esitatud või maakohtunik on jätnud tähtaja ennistamata; 2 2) kaebuse on esitanud isik, kellel käesoleva seadustiku § 114 lõike 1 järgi ei ole õigust kaebust esitada; 3 3) kaebuse esitanud isik ei ole käesoleva paragrahvi lõikes 1 ettenähtud korras määratud tähtaja jooksul kõrvaldanud kaebuses esinenud puudusi; 4 4) kaebusest on kuni kohtuistungi alguseni loobutud [VTMS_118].\nMaakohtule kaebuse esitamise õigus ja tähtaeg 1 (1) Menetlusosalisel on õigus esitada maakohtule kae",
-      "duration_seconds": 33.64
+      "coverage_repair": {
+        "attempted": true,
+        "trigger": "coverage",
+        "target_sources": [
+          "VTMS_118",
+          "VTMS_114",
+          "KARS_66"
+        ],
+        "returned_sources": [
+          "VTMS_118",
+          "VTMS_114",
+          "KARS_66"
+        ],
+        "citation_valid": true,
+        "coverage_passed": true,
+        "semantic_relevance": true,
+        "missing_concepts": [],
+        "accepted": true,
+        "failure_reason": ""
+      },
+      "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nMaakohtunik teeb kaebuse läbi vaatamata jätmise kohta määruse, kui kaebus on esitatud pärast tähtaja möödumist ja tähtaja ennistamise taotlust ei ole esitatud või maakohtunik on jätnud tähtaja ennistamata [VTMS_118].\nMenetlusosalisel on õigus esitada maakohtule kaebus kohtuvälise menetleja otsuse peale 15 päeva jooksul, alates otsuse kättesaamisest või selle kättesaadavaks muutumisest [VTMS_114].\nKohus või väärtegu menetlev kohtuväline menetleja võib määrata rahatrahvi tasumise ositi mõjuvatel põhjustel [KARS_66].\n\nSOOVITUSED:\nSäilita trahviotsus, trahviteade või muu saadud dokument muutmata kujul.\nPane kirja dokumendi kättesaamise aeg ning kontrolli sellelt menetlejat, rikkumise kirjeldust, tõendeid ja vaidlustamise tähtaega.\n\nKASUTATUD ALLIKAD: [VTMS_118] [VTMS_114] [KARS_66]",
+      "duration_seconds": 44.08
     }
   ],
   "method": "real_ollama_analysis_orchestrator_smoke_eval",
@@ -341,8 +433,8 @@
     "ollama_ready": true,
     "analysis_model_ready": true,
     "analysis_model_loaded": true,
-    "analysis_model_size_vram": 5729167604,
-    "analysis_model_expires_at": "2026-08-21T02:39:52.0221383+03:00",
+    "analysis_model_size_vram": 8897335129,
+    "analysis_model_expires_at": "2026-08-21T12:51:47.2222912+03:00",
     "ollama_runtime_error": null,
     "preload_enabled": true,
     "preload_attempted": true,
@@ -357,7 +449,7 @@
     "analysis_model_ready": true,
     "analysis_model_loaded": true,
     "analysis_model_size_vram": 5729167604,
-    "analysis_model_expires_at": "2026-08-21T03:04:23.6225215+03:00",
+    "analysis_model_expires_at": "2026-08-21T13:06:09.6920396+03:00",
     "ollama_runtime_error": null,
     "preload_enabled": true,
     "preload_attempted": true,

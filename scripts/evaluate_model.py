@@ -78,6 +78,7 @@ def assess_case(case: Dict[str, Any], finalized: Dict[str, Any], *, fallback_use
     verification_status = str(finalized.get("verification_status") or "")
     is_mock = bool(finalized.get("is_mock"))
     coverage = dict(finalized.get("coverage") or {})
+    coverage_repair = dict(finalized.get("coverage_repair") or {})
 
     source_groups = case.get("expected_source_groups") or []
     source_groups_ok = _source_groups_pass(verified_sources, source_groups)
@@ -113,6 +114,7 @@ def assess_case(case: Dict[str, Any], finalized: Dict[str, Any], *, fallback_use
         "phrases_all_ok": phrases_all_ok,
         "phrases_any_ok": phrases_any_ok,
         "coverage": coverage,
+        "coverage_repair": coverage_repair,
     }
 
 
@@ -255,6 +257,7 @@ async def run_case(
             "phrases_all_ok": False,
             "phrases_any_ok": False,
             "coverage": {},
+            "coverage_repair": {},
             "error": f"{type(exc).__name__}: {exc}",
         })
     result["duration_seconds"] = round(time.perf_counter() - started, 2)
@@ -337,10 +340,19 @@ async def run_evaluation(
         )
         results.append(result)
         marker = "PASS" if result.get("model_pass") else "FAIL"
+        repair = result.get("coverage_repair") or {}
+        repair_suffix = ""
+        if repair.get("attempted"):
+            repair_suffix = (
+                f" repair={repair.get('trigger')}"
+                f":{'accepted' if repair.get('accepted') else repair.get('failure_reason') or 'rejected'}"
+                f" returned={','.join(repair.get('returned_sources') or [])}"
+            )
         print(
             f"  {marker} status={result.get('verification_status')} "
             f"fallback={result.get('fallback_used')} "
-            f"sources={','.join(result.get('verified_sources') or [])}",
+            f"sources={','.join(result.get('verified_sources') or [])}"
+            f"{repair_suffix}",
             flush=True,
         )
 

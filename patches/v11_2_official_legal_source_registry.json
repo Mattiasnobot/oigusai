@@ -1,0 +1,58 @@
+{
+  "name": "V11.2 — disabled official legal source registry",
+  "base_commit": "9ca250b17f7190424a6faed8ee3a891a55663fb0",
+  "base_files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "git_blob_sha": "d7871e58233d0fd8deda77c418d5b426d7777374"
+    }
+  ],
+  "new_files": [
+    {
+      "path": "data/legal_source_registry.json",
+      "sha256": "af02fa61ecd3affd2a7e0d9a4cfb714e69eeaa7117f1bf573fa5256cc63d2506"
+    },
+    {
+      "path": "data/legal_source_registry_manifest.json",
+      "sha256": "ec585471a0b8906b6ba98924943a15c6d49b48d1d854639ffcaa90b04a7eb958"
+    },
+    {
+      "path": "services/legal_source_registry.py",
+      "sha256": "639a04a9c060b9c40071b60991a28d98029a5e649914f92b0373db19e9616715"
+    },
+    {
+      "path": "scripts/verify_legal_source_registry.py",
+      "sha256": "59cf98e120b0b1131198dd05cc4b1f78bcdd8d7324df73589849428da93a2b74"
+    },
+    {
+      "path": "tests/test_legal_source_registry.py",
+      "sha256": "616c818a4d2f264e8ebf3023de0d83ba5e7da44ade106f9a866daecf36cbbcd2"
+    },
+    {
+      "path": "V11_OFFICIAL_SOURCE_REGISTRY.md",
+      "sha256": "712862d1d7659dfdc6e06e3577e04f2abc0eaaaab9b98f632c673a31c8d7e040"
+    }
+  ],
+  "tests": [
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_legal_source_registry",
+      "-v"
+    ],
+    [
+      "{python}",
+      "scripts/verify_legal_source_registry.py"
+    ]
+  ],
+  "expected_total_tests": 237,
+  "source_count": 23,
+  "binding_rule_sources": [
+    "RT_NATIONAL_LAW",
+    "RT_LOCAL_LAW",
+    "EURLEX_EU_LAW"
+  ],
+  "runtime_changes": false,
+  "network_calls": false
+}

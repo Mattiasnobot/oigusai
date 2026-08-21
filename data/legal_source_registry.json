@@ -1,0 +1,489 @@
+{
+  "version": "V11.2-official-source-registry-1",
+  "policy": {
+    "binding_rule": [
+      "binding_national_law",
+      "binding_local_law",
+      "binding_eu_law"
+    ],
+    "court_holding": [
+      "judicial_decision"
+    ],
+    "legislative_history": [
+      "legislative_history"
+    ],
+    "draft_legislation": [
+      "draft_legislation"
+    ],
+    "official_notice": [
+      "official_notice"
+    ],
+    "institutional_interpretation": [
+      "institutional_interpretation"
+    ],
+    "regulator_guidance": [
+      "regulator_guidance"
+    ],
+    "secondary_analysis": [
+      "secondary_analysis"
+    ]
+  },
+  "sources": [
+    {
+      "id": "RT_NATIONAL_LAW",
+      "display_name": "Riigi Teataja — riiklikud õigusaktid",
+      "source_group": "primary_binding",
+      "authority_class": "binding_national_law",
+      "source_kind": "law",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "riigiteataja.ee",
+        "www.riigiteataja.ee"
+      ],
+      "allowed_claim_classes": [
+        "binding_rule"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "RT_LOCAL_LAW",
+      "display_name": "Riigi Teataja — kohaliku omavalitsuse õigusaktid",
+      "source_group": "primary_binding",
+      "authority_class": "binding_local_law",
+      "source_kind": "law",
+      "jurisdiction": "EE_LOCAL",
+      "canonical_hosts": [
+        "riigiteataja.ee",
+        "www.riigiteataja.ee"
+      ],
+      "allowed_claim_classes": [
+        "binding_rule"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "RT_CASE_LAW",
+      "display_name": "Riigi Teataja — kohtulahendid",
+      "source_group": "judicial",
+      "authority_class": "judicial_decision",
+      "source_kind": "case_law",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "riigiteataja.ee",
+        "www.riigiteataja.ee"
+      ],
+      "allowed_claim_classes": [
+        "court_holding"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "OFFICIAL_NOTICES",
+      "display_name": "Ametlikud Teadaanded",
+      "source_group": "official_notice",
+      "authority_class": "official_notice",
+      "source_kind": "official_notice",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "ametlikudteadaanded.ee",
+        "www.ametlikudteadaanded.ee"
+      ],
+      "allowed_claim_classes": [
+        "official_notice"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "RIIGIKOGU_PROCEEDINGS",
+      "display_name": "Riigikogu — eelnõud ja menetlus",
+      "source_group": "legislative",
+      "authority_class": "legislative_history",
+      "source_kind": "legislative_history",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "riigikogu.ee",
+        "www.riigikogu.ee"
+      ],
+      "allowed_claim_classes": [
+        "legislative_history"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "EIS_DRAFTS",
+      "display_name": "Eelnõude infosüsteem (EIS)",
+      "source_group": "legislative",
+      "authority_class": "draft_legislation",
+      "source_kind": "draft_legislation",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "eelnoud.valitsus.ee"
+      ],
+      "allowed_claim_classes": [
+        "draft_legislation"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "RIIGIKOHUS_DECISIONS",
+      "display_name": "Riigikohus — lahendid",
+      "source_group": "judicial",
+      "authority_class": "judicial_decision",
+      "source_kind": "case_law",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "riigikohus.ee",
+        "www.riigikohus.ee"
+      ],
+      "allowed_claim_classes": [
+        "court_holding"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "RIIGIKOHUS_ANALYSES",
+      "display_name": "Riigikohus — kohtupraktika analüüsid",
+      "source_group": "institutional_guidance",
+      "authority_class": "secondary_analysis",
+      "source_kind": "secondary_analysis",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "riigikohus.ee",
+        "www.riigikohus.ee"
+      ],
+      "allowed_claim_classes": [
+        "secondary_analysis"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "OIGUSKANTSLER_POSITIONS",
+      "display_name": "Õiguskantsler — seisukohad ja algatused",
+      "source_group": "institutional_guidance",
+      "authority_class": "institutional_interpretation",
+      "source_kind": "institutional_interpretation",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "oiguskantsler.ee",
+        "www.oiguskantsler.ee"
+      ],
+      "allowed_claim_classes": [
+        "institutional_interpretation"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "EURLEX_EU_LAW",
+      "display_name": "EUR-Lex / Euroopa Liidu Teataja",
+      "source_group": "primary_binding",
+      "authority_class": "binding_eu_law",
+      "source_kind": "law",
+      "jurisdiction": "EU",
+      "canonical_hosts": [
+        "eur-lex.europa.eu"
+      ],
+      "allowed_claim_classes": [
+        "binding_rule"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "CURIA_CASE_LAW",
+      "display_name": "CURIA — Euroopa Liidu Kohtu praktika",
+      "source_group": "judicial",
+      "authority_class": "judicial_decision",
+      "source_kind": "case_law",
+      "jurisdiction": "EU",
+      "canonical_hosts": [
+        "curia.europa.eu"
+      ],
+      "allowed_claim_classes": [
+        "court_holding"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "HUDOC_ECHR_CASE_LAW",
+      "display_name": "HUDOC — Euroopa Inimõiguste Kohtu praktika",
+      "source_group": "judicial",
+      "authority_class": "judicial_decision",
+      "source_kind": "case_law",
+      "jurisdiction": "ECHR",
+      "canonical_hosts": [
+        "hudoc.echr.coe.int"
+      ],
+      "allowed_claim_classes": [
+        "court_holding"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "TTJA_GUIDANCE",
+      "display_name": "Tarbijakaitse ja Tehnilise Järelevalve Amet",
+      "source_group": "institutional_guidance",
+      "authority_class": "regulator_guidance",
+      "source_kind": "regulator_guidance",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "ttja.ee",
+        "www.ttja.ee"
+      ],
+      "allowed_claim_classes": [
+        "regulator_guidance"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "AKI_GUIDANCE",
+      "display_name": "Andmekaitse Inspektsioon",
+      "source_group": "institutional_guidance",
+      "authority_class": "regulator_guidance",
+      "source_kind": "regulator_guidance",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "aki.ee",
+        "www.aki.ee"
+      ],
+      "allowed_claim_classes": [
+        "regulator_guidance"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "TI_GUIDANCE",
+      "display_name": "Tööinspektsioon",
+      "source_group": "institutional_guidance",
+      "authority_class": "regulator_guidance",
+      "source_kind": "regulator_guidance",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "ti.ee",
+        "www.ti.ee"
+      ],
+      "allowed_claim_classes": [
+        "regulator_guidance"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "EMTA_GUIDANCE",
+      "display_name": "Maksu- ja Tolliamet",
+      "source_group": "institutional_guidance",
+      "authority_class": "regulator_guidance",
+      "source_kind": "regulator_guidance",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "emta.ee",
+        "www.emta.ee"
+      ],
+      "allowed_claim_classes": [
+        "regulator_guidance"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "FINANTSINSPEKTSIOON_GUIDANCE",
+      "display_name": "Finantsinspektsioon",
+      "source_group": "institutional_guidance",
+      "authority_class": "regulator_guidance",
+      "source_kind": "regulator_guidance",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "finantsinspektsioon.ee",
+        "www.finantsinspektsioon.ee"
+      ],
+      "allowed_claim_classes": [
+        "regulator_guidance"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "EESTIPANK_GUIDANCE",
+      "display_name": "Eesti Pank",
+      "source_group": "institutional_guidance",
+      "authority_class": "regulator_guidance",
+      "source_kind": "regulator_guidance",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "eestipank.ee",
+        "www.eestipank.ee"
+      ],
+      "allowed_claim_classes": [
+        "regulator_guidance"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "KONKURENTSIAMET_GUIDANCE",
+      "display_name": "Konkurentsiamet",
+      "source_group": "institutional_guidance",
+      "authority_class": "regulator_guidance",
+      "source_kind": "regulator_guidance",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "konkurentsiamet.ee",
+        "www.konkurentsiamet.ee"
+      ],
+      "allowed_claim_classes": [
+        "regulator_guidance"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "TRANSPORDIAMET_GUIDANCE",
+      "display_name": "Transpordiamet",
+      "source_group": "institutional_guidance",
+      "authority_class": "regulator_guidance",
+      "source_kind": "regulator_guidance",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "transpordiamet.ee",
+        "www.transpordiamet.ee"
+      ],
+      "allowed_claim_classes": [
+        "regulator_guidance"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "KESKKONNAAMET_GUIDANCE",
+      "display_name": "Keskkonnaamet",
+      "source_group": "institutional_guidance",
+      "authority_class": "regulator_guidance",
+      "source_kind": "regulator_guidance",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "keskkonnaamet.ee",
+        "www.keskkonnaamet.ee"
+      ],
+      "allowed_claim_classes": [
+        "regulator_guidance"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "RAVIMIAMET_GUIDANCE",
+      "display_name": "Ravimiamet",
+      "source_group": "institutional_guidance",
+      "authority_class": "regulator_guidance",
+      "source_kind": "regulator_guidance",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "ravimiamet.ee",
+        "www.ravimiamet.ee"
+      ],
+      "allowed_claim_classes": [
+        "regulator_guidance"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    },
+    {
+      "id": "PAASTEAMET_GUIDANCE",
+      "display_name": "Päästeamet",
+      "source_group": "institutional_guidance",
+      "authority_class": "regulator_guidance",
+      "source_kind": "regulator_guidance",
+      "jurisdiction": "EE",
+      "canonical_hosts": [
+        "paasteamet.ee",
+        "www.paasteamet.ee"
+      ],
+      "allowed_claim_classes": [
+        "regulator_guidance"
+      ],
+      "features": {
+        "live_adapter_enabled": false,
+        "retrieval_enabled": false,
+        "model_context_enabled": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "version": "V11.2-source-registry-manifest-1",
+  "registry_path": "data/legal_source_registry.json",
+  "source_count": 23,
+  "registry_sha256": "b036f9a3a226dc9db8d8fb040ff42f0d0579d20ed32137a3d2d768e94249037b",
+  "live_adapters_enabled": false,
+  "retrieval_integration_enabled": false,
+  "model_context_integration_enabled": false
+}

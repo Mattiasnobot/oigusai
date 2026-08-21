@@ -25,6 +25,8 @@ _BINDING_CLAIM_CLASS = "binding_rule"
 _OPEN_END_MARKERS = frozenset({"", "hetkel kehtiv", "currently valid", "open"})
 _SERIES_RE = re.compile(r"^RT\s+(I|II|III|IV)\b", re.IGNORECASE)
 _BARE_SERIES_RE = re.compile(r"^(?:RT\s+)?(I|II|III|IV)$", re.IGNORECASE)
+_XSD_DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})(?:Z|([+-])(\d{2}):(\d{2}))?$")
+_DMY_DATE_RE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{4})$")
 
 _METADATA_ALIASES: Mapping[str, frozenset[str]] = {
     "issuer": frozenset({
@@ -116,17 +118,30 @@ def extract_revision_metadata(xml_bytes: bytes) -> Dict[str, str]:
 
 
 def _parse_date(value: str, field: str) -> date:
+    """Parse an audited RT legal date without converting its civil date.
+
+    RT XML uses XML Schema ``date`` values, which may carry ``Z`` or a numeric
+    timezone (for example ``2026-09-30+03:00``).  A legal validity boundary is
+    a civil date, so the timezone is syntax-validated but the lexical date
+    component is preserved instead of being converted through UTC.
+    """
     text = _clean_text(value)
-    for pattern, order in (
-        (r"^(\d{4})-(\d{2})-(\d{2})$", "ymd"),
-        (r"^(\d{2})\.(\d{2})\.(\d{4})$", "dmy"),
-    ):
-        match = re.fullmatch(pattern, text)
-        if not match:
-            continue
+    match = _XSD_DATE_RE.fullmatch(text)
+    if match:
+        sign, offset_hour_raw, offset_minute_raw = match.group(4), match.group(5), match.group(6)
+        if sign is not None:
+            offset_hour = int(offset_hour_raw)
+            offset_minute = int(offset_minute_raw)
+            if offset_hour > 14 or offset_minute > 59 or (offset_hour == 14 and offset_minute != 0):
+                raise RTAuthorityError(f"RT {field} date has an invalid XML Schema timezone: {text!r}.")
         try:
-            if order == "ymd":
-                return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+            return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        except ValueError as exc:
+            raise RTAuthorityError(f"Invalid RT {field} date: {text!r}.") from exc
+
+    match = _DMY_DATE_RE.fullmatch(text)
+    if match:
+        try:
             return date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
         except ValueError as exc:
             raise RTAuthorityError(f"Invalid RT {field} date: {text!r}.") from exc

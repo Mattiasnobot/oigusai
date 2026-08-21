@@ -1,0 +1,20 @@
+{
+  "name": "V10.4.4 — morphology-aware quantity verification",
+  "base_commit": "0a02dc2daa0e8488246059bcf37c3258964b1e54",
+  "base_files": [
+    {
+      "path": "services/offline_ai.py",
+      "git_blob_sha": "6a4694606f376c192c7f4bb5dec854f8c9e69489"
+    },
+    {
+      "path": "tests/test_repair_diagnostics.py",
+      "git_blob_sha": "5eea606389f408d8013d172c03527f1abe3a835d"
+    }
+  ],
+  "new_files": [],
+  "tests": [
+    ["{python}", "-m", "unittest", "tests.test_repair_diagnostics"],
+    ["{python}", "-m", "unittest", "tests.test_offline_ai"],
+    ["{python}", "-m", "unittest", "tests.test_coverage_verifier"]
+  ]
+}

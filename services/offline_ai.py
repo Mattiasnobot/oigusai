@@ -838,6 +838,38 @@ class OfflineAIService:
             return candidate
         return ""
 
+    @staticmethod
+    def _extract_quantities(value: str) -> set:
+        """Extract quantities while canonicalizing only Estonian case variants.
+
+        Word forms stay separate from digits so a structural source number such as
+        ``1`` cannot accidentally support a model claim that says ``üks kuu``.
+        """
+        quantity_pattern = re.compile(
+            r"(?<!\w)(?:\d+(?:[.,]\d+)?%?|üks|ühe|üht|kaks|kahe|kahte|"
+            r"kolm|kolme|nelja|neli|viis|viie|kuus|kuue|seitse|seitsme|"
+            r"kaheksa|üheksa|kümme|kümne|sada|saja|tuhat|tuhande)(?!\w)",
+            re.IGNORECASE,
+        )
+        canonical_words = {
+            "ühe": "üks",
+            "üht": "üks",
+            "kahe": "kaks",
+            "kahte": "kaks",
+            "kolme": "kolm",
+            "nelja": "neli",
+            "viie": "viis",
+            "kuue": "kuus",
+            "seitsme": "seitse",
+            "kümne": "kümme",
+            "saja": "sada",
+            "tuhande": "tuhat",
+        }
+        return {
+            canonical_words.get(token.casefold(), token.casefold())
+            for token in quantity_pattern.findall(str(value or ""))
+        }
+
     def _claim_support_debug(self, claim: str, evidence: str) -> Dict:
         """Explain the existing lexical support gate without changing its result."""
         claim_norm = self._normalize_evidence_text(claim)
@@ -854,14 +886,8 @@ class OfflineAIService:
             for marker in inference_markers
             if marker in claim_norm and marker not in evidence_norm
         ]
-        quantity_pattern = re.compile(
-            r"(?<!\w)(?:\d+(?:[.,]\d+)?%?|üks|ühe|üht|kaks|kahe|kahte|"
-            r"kolm|kolme|nelja|neli|viis|viie|kuus|kuue|seitse|seitsme|"
-            r"kaheksa|üheksa|kümme|kümne|sada|saja|tuhat|tuhande)(?!\w)",
-            re.IGNORECASE,
-        )
-        claim_quantities = set(quantity_pattern.findall(claim_norm))
-        evidence_quantities = set(quantity_pattern.findall(evidence_norm))
+        claim_quantities = self._extract_quantities(claim_norm)
+        evidence_quantities = self._extract_quantities(evidence_norm)
         ignored = {"selle", "ning", "kuid", "vaid", "tuleb", "saab", "peab"}
         claim_tokens = {
             token
@@ -1429,14 +1455,8 @@ Palun kirjuta vastus uuesti nii, et:
         if any(marker in claim_norm and marker not in evidence_norm for marker in inference_markers):
             return False
 
-        quantity_pattern = re.compile(
-            r"(?<!\w)(?:\d+(?:[.,]\d+)?%?|üks|ühe|üht|kaks|kahe|kahte|"
-            r"kolm|kolme|nelja|neli|viis|viie|kuus|kuue|seitse|seitsme|"
-            r"kaheksa|üheksa|kümme|kümne|sada|saja|tuhat|tuhande)(?!\w)",
-            re.IGNORECASE,
-        )
-        claim_quantities = set(quantity_pattern.findall(claim_norm))
-        evidence_quantities = set(quantity_pattern.findall(evidence_norm))
+        claim_quantities = self._extract_quantities(claim_norm)
+        evidence_quantities = self._extract_quantities(evidence_norm)
         if not claim_quantities.issubset(evidence_quantities):
             return False
 
@@ -1481,15 +1501,9 @@ Palun kirjuta vastus uuesti nii, et:
         if any(marker in claim_norm for marker in forbidden):
             return False
 
-        quantity_pattern = re.compile(
-            r"(?<!\w)(?:\d+(?:[.,]\d+)?%?|üks|ühe|üht|kaks|kahe|kahte|"
-            r"kolm|kolme|nelja|neli|viis|viie|kuus|kuue|seitse|seitsme|"
-            r"kaheksa|üheksa|kümme|kümne|sada|saja|tuhat|tuhande)(?!\w)",
-            re.IGNORECASE,
-        )
-        claim_quantities = set(quantity_pattern.findall(claim_norm))
-        evidence_quantities = set(
-            quantity_pattern.findall(f"{law_norm} {document_norm}")
+        claim_quantities = self._extract_quantities(claim_norm)
+        evidence_quantities = self._extract_quantities(
+            f"{law_norm} {document_norm}"
         )
         if not claim_quantities.issubset(evidence_quantities):
             return False

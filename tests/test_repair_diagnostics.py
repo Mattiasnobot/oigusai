@@ -72,5 +72,47 @@ class RepairDiagnosticsTests(unittest.TestCase):
         ))
 
 
+    def test_quantity_gate_canonicalizes_estonian_number_case_variants(self):
+        service = OfflineAIService(allow_mock=False, repair_debug=True)
+        claim = (
+            "Kümne ja enam aastat kestnud töösuhte korral tuleb ette teatada "
+            "vähemalt 90 kalendripäeva."
+        )
+        evidence = (
+            "Kümme ja enam tööaastat kestnud töösuhte korral tuleb ette teatada "
+            "vähemalt 90 kalendripäeva."
+        )
+
+        debug = service._claim_support_debug(claim, evidence)
+
+        self.assertTrue(service._claim_is_supported_by_evidence(claim, evidence))
+        self.assertTrue(debug["passed"])
+        self.assertEqual(debug["missing_quantities"], [])
+        self.assertIn("kümme", debug["claim_quantities"])
+        self.assertNotIn("kümne", debug["claim_quantities"])
+
+    def test_quantity_gate_still_rejects_different_deadline(self):
+        service = OfflineAIService(allow_mock=False, repair_debug=True)
+        claim = "Kümne ja enam tööaasta korral tuleb ette teatada 90 kalendripäeva."
+        evidence = "Kümme ja enam tööaasta korral tuleb ette teatada 60 kalendripäeva."
+
+        debug = service._claim_support_debug(claim, evidence)
+
+        self.assertFalse(service._claim_is_supported_by_evidence(claim, evidence))
+        self.assertFalse(debug["passed"])
+        self.assertEqual(debug["missing_quantities"], ["90"])
+
+    def test_quantity_gate_keeps_word_numbers_separate_from_digits(self):
+        service = OfflineAIService(allow_mock=False, repair_debug=True)
+        claim = "Tööandja peab ette teatama vähemalt üks kuu."
+        evidence = "1 (1) Tööandja peab ette teatama vähemalt kuu."
+
+        debug = service._claim_support_debug(claim, evidence)
+
+        self.assertFalse(service._claim_is_supported_by_evidence(claim, evidence))
+        self.assertEqual(debug["missing_quantities"], ["üks"])
+        self.assertIn("1", debug["evidence_quantities"])
+
+
 if __name__ == "__main__":
     unittest.main()

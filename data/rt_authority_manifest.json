@@ -1,0 +1,24 @@
+{
+  "version": "V11.3-rt-authority-currentness-1",
+  "depends_on_live_adapter_version": "V11.2.1-rt-live-adapter-1",
+  "source_registry_version": "V11.2-official-source-registry-1",
+  "binding_claim_class": "binding_rule",
+  "audited_source_mapping": {
+    "RT I": "RT_NATIONAL_LAW",
+    "RT IV": "RT_LOCAL_LAW"
+  },
+  "audited_binding_act_types": [
+    "seadus",
+    "määrus"
+  ],
+  "authority_classification_enabled": true,
+  "currentness_verification_enabled": true,
+  "current_revision_resolution_enabled": false,
+  "future_date_assertions_enabled": false,
+  "binding_claim_policy_gate_enabled": true,
+  "network_on_demand_only": true,
+  "writes_legal_corpus": false,
+  "writes_case_law_corpus": false,
+  "retrieval_integration_enabled": false,
+  "model_context_integration_enabled": false
+}

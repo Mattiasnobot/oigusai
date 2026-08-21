@@ -1,0 +1,16 @@
+{
+  "version": "V11.5-verified-live-model-context-1",
+  "depends_on_current_retrieval_version": "V11.4-rt-current-retrieval-1",
+  "required_live_verification_status": "BINDING_SECTION_VERIFIED",
+  "required_evidence_source": "rt_live_verified",
+  "verified_live_model_context_integration_enabled": true,
+  "runtime_default_enabled": false,
+  "runtime_env": "RT_VERIFIED_LIVE_MODEL_CONTEXT_ENABLED",
+  "audited_local_context_remains_enabled": true,
+  "local_fallback_may_masquerade_as_live": false,
+  "future_date_assertions_enabled": false,
+  "corpus_write_enabled": false,
+  "persistent_live_cache_enabled": false,
+  "downstream_source_verification_required": true,
+  "downstream_evidence_verification_required": true
+}

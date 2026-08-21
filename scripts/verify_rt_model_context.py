@@ -30,6 +30,8 @@ def verify_manifest() -> dict:
     required_true = (
         "verified_live_model_context_enabled",
         "explicit_model_context_adapter_enabled",
+        "application_runtime_wiring_enabled",
+        "same_analysis_laws_object_reused_downstream",
         "live_content_hash_verified",
         "live_section_provenance_chain_verified",
         "live_exact_rt_urls_verified",
@@ -49,7 +51,7 @@ def verify_manifest() -> dict:
             raise RuntimeError(f"V11.5 manifest must keep {field}=true.")
     required_false = (
         "runtime_default_enabled",
-        "analysis_orchestrator_integration_enabled",
+        "analysis_orchestrator_code_modified",
         "unverified_live_model_context_enabled",
         "writes_legal_corpus",
         "persistent_live_cache_enabled",
@@ -57,6 +59,8 @@ def verify_manifest() -> dict:
     for field in required_false:
         if payload.get(field) is not False:
             raise RuntimeError(f"V11.5 manifest must keep {field}=false.")
+    if payload.get("runtime_env") != "RT_VERIFIED_LIVE_MODEL_CONTEXT_ENABLED":
+        raise RuntimeError("V11.5 runtime opt-in environment variable drifted.")
     if payload.get("required_live_verification_status") != "BINDING_SECTION_VERIFIED":
         raise RuntimeError("V11.5 live admission status drifted.")
     if payload.get("required_live_evidence_source") != "rt_live_verified":
@@ -96,10 +100,12 @@ def main() -> int:
         "required_live_verification_status: "
         f"{manifest['required_live_verification_status']}"
     )
+    print(f"application_runtime_wiring_enabled: {str(manifest['application_runtime_wiring_enabled']).lower()}")
     print(f"runtime_default_enabled: {str(manifest['runtime_default_enabled']).lower()}")
+    print(f"runtime_env: {manifest['runtime_env']}")
     print(
-        "analysis_orchestrator_integration_enabled: "
-        f"{str(manifest['analysis_orchestrator_integration_enabled']).lower()}"
+        "same_analysis_laws_object_reused_downstream: "
+        f"{str(manifest['same_analysis_laws_object_reused_downstream']).lower()}"
     )
     print("RT VERIFIED LIVE MODEL CONTEXT CONTRACT: PASS")
 

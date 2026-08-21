@@ -13,7 +13,7 @@
     "min_model_pass_rate": 0.75
   },
   "acceptance_passed": true,
-  "duration_seconds": 138.56,
+  "duration_seconds": 129.35,
   "failures": [],
   "results": [
     {
@@ -170,7 +170,7 @@
         ]
       },
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nTöölepingu ülesütlemine peab olema kirjalikku taasesitamist võimaldavas vormis tehtud, vastasel juhul on ülesütlemisavaldus tühine [TLS_95].\n\nSOOVITUSED:\nSäilita tööleping, tööandja teated ja töösuhtega seotud kirjavahetus.\nPane kirja teate saamise ning töösuhte muutumise või lõppemise kuupäevad.\n\nKASUTATUD ALLIKAD: [TLS_95]",
-      "duration_seconds": 24.99
+      "duration_seconds": 23.01
     },
     {
       "id": "MODEL-TLS-REDUNDANCY-01",
@@ -610,7 +610,7 @@
         ]
       },
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nTööandja võib töölepingu erakorraliselt üles öelda koondamise tõttu, kui töösuhte jätkamine muutub võimatuks töömahu vähenemise või töö ümberkorraldamise tõttu või muul töö lõppemise juhul ning enne ülesütlemist peab ta pakkuma töötajale võimaluse korral teist tööd [TLS_89].\nErakorralisest ülesütlemisest peab tööandja töötajale ette teatama vastavalt kestnud töösuhte pikkusele: alla ühe aasta – vähemalt 15 kalendripäeva, üks kuni viis aastat – vähemalt 30 kalendripäeva, viis kuni kümme aastat – vähemalt 60 kalendripäeva ja kümne ja enam aastat – vähemalt 90 kalendripäeva [TLS_97].\n\nSOOVITUSED:\nSäilita tööleping, tööandja teated ja töösuhtega seotud kirjavahetus.\nPane kirja teate saamise ning töösuhte muutumise või lõppemise kuupäevad.\n\nKASUTATUD ALLIKAD: [TLS_89] [TLS_97]",
-      "duration_seconds": 30.81
+      "duration_seconds": 28.71
     },
     {
       "id": "MODEL-VOS-DEPOSIT-01",
@@ -652,7 +652,7 @@
         "failure_reason": ""
       },
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nEluruumi üürilepinguga võib ette näha, et üürnik maksab lepingust tulenevate nõuete tagamiseks üürileandjale tagatisraha kuni kolme kuu üüri ulatuses [VOS_308].\nÜürnik võib tagatisraha maksta kolme kuu jooksul võrdsetes osades [VOS_308].\nKui üürileandja on rahuldanud tagatisraha arvelt oma nõude üürniku vastu, võib ta üürnikult nõuda tagatisraha taastamist eluruumi üürilepingus kokkulepitud ulatuses [VOS_308].\n\nSOOVITUSED:\nSäilita üürileping, maksekinnitused ning üürileandjaga peetud kirjavahetus.\nPane kirja nõutud summa, nõude kuupäev ja üürileandja põhjendus.\n\nKASUTATUD ALLIKAD: [VOS_308]",
-      "duration_seconds": 10.67
+      "duration_seconds": 9.97
     },
     {
       "id": "MODEL-HMS-SERVICE-01",
@@ -694,7 +694,7 @@
         "failure_reason": ""
       },
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nHaldusakt, kutse, teade või muu dokument toimetatakse menetlusosalisele kätte postiga, dokumendi väljastanud haldusorgani poolt või elektrooniliselt [HMS_25].\nSeaduses sätestatud juhtudel antakse dokument allkirja vastu kätte väljakutsutud menetlusosalisele või avaldatakse ajalehes [HMS_25].\nKui menetlusosalisel on esindaja või menetlusosaline on määranud dokumentide vastuvõtmiseks isiku, võib dokumendi kätte toimetada üksnes esindajale või dokumentide vastuvõtmiseks määratud isikule ning dokument loetakse ka menetlusosalisele kättetoimetatuks [HMS_25].\n\nSOOVITUSED:\nSäilita olukorraga seotud otsused, teated ja kirjavahetus.\nPane kirja olulised kuupäevad ning täpsusta puuduv asjaolu, kui see võib vastust muuta.\n\nKASUTATUD ALLIKAD: [HMS_25]",
-      "duration_seconds": 12.19
+      "duration_seconds": 11.38
     },
     {
       "id": "MODEL-TYPO-ABIPOL-01",
@@ -736,7 +736,7 @@
         "failure_reason": ""
       },
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nAbipolitseinik võib rakendada korrakaitseseaduse §-des 28 ja 30, § 32 lõigetes 1–4, §-des 34, 38, 41, 42 ja 44, § 45 lõigetes 1 ja 5 ning §-des 46–52 sätestatud meetmeid, kui ta on kaasatud meedet kohaldama politseiametniku korraldusel [ABIPOLS_16].\nAbipolitseinik ei ole pädev kohaldama vahetut sundi, kui ta osaleb politsei tegevuses [ABIPOLS_16].\n\nSOOVITUSED:\nSäilita trahviotsus, trahviteade või muu saadud dokument muutmata kujul.\nPane kirja dokumendi kättesaamise aeg ning kontrolli sellelt menetlejat, rikkumise kirjeldust, tõendeid ja vaidlustamise tähtaega.\n\nKASUTATUD ALLIKAD: [ABIPOLS_16]",
-      "duration_seconds": 15.75
+      "duration_seconds": 14.76
     },
     {
       "id": "MODEL-MULTI-FINE-01",
@@ -1116,7 +1116,7 @@
         ]
       },
       "analysis_preview": "OLUKORD:\nKasutaja kirjeldatud olukorda hinnati leitud kontrollitud allikate põhjal.\n\nÕIGUSLIK KOHALDAMINE:\nMaakohtunik teeb kaebuse läbi vaatamata jätmise kohta määruse ja saadab määruse koopia ning tagastab kaebuse selle esitanud isikule, kui kaebus on esitatud pärast tähtaja möödumist ja tähtaja ennistamise taotlust ei ole esitatud või maakohtunik on jätnud tähtaja ennistamata [VTMS_118].\nMenetlusosalisel on õigus esitada maakohtule kaebus kohtuvälise menetleja järgmiste otsuste peale, sealhulgas üldmenetluses tehtud otsuse peale [VTMS_114].\nKohus või väärtegu menetlev kohtuväline menetleja võib mõjuvatel põhjustel määrata rahatrahvi tasumise ositi [KARS_66].\n\nSOOVITUSED:\nSäilita trahviotsus, trahviteade või muu saadud dokument muutmata kujul.\nPane kirja dokumendi kättesaamise aeg ning kontrolli sellelt menetlejat, rikkumise kirjeldust, tõendeid ja vaidlustamise tähtaega.\n\nKASUTATUD ALLIKAD: [VTMS_118] [VTMS_114] [KARS_66]",
-      "duration_seconds": 44.16
+      "duration_seconds": 41.53
     }
   ],
   "method": "real_ollama_analysis_orchestrator_smoke_eval",
@@ -1129,7 +1129,7 @@
     "analysis_model_ready": true,
     "analysis_model_loaded": true,
     "analysis_model_size_vram": 5729167604,
-    "analysis_model_expires_at": "2026-08-21T16:59:53.506814+03:00",
+    "analysis_model_expires_at": "2026-08-21T17:36:53.5588055+03:00",
     "ollama_runtime_error": null,
     "preload_enabled": true,
     "preload_attempted": true,
@@ -1144,7 +1144,7 @@
     "analysis_model_ready": true,
     "analysis_model_loaded": true,
     "analysis_model_size_vram": 5729167604,
-    "analysis_model_expires_at": "2026-08-21T17:36:53.5588055+03:00",
+    "analysis_model_expires_at": "2026-08-21T18:32:35.1908864+03:00",
     "ollama_runtime_error": null,
     "preload_enabled": true,
     "preload_attempted": true,

@@ -6,3 +6,5 @@ __pycache__/
 data/.rt_cache/
 cache/
 data/lancedb/
+
+data/laws.pre_v5_1.json

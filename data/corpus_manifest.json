@@ -1,0 +1,22 @@
+{
+  "version": "V10.5-corpus-manifest-1",
+  "corpus_path": "data/laws.json",
+  "source": "Riigi Teataja",
+  "record_count": 22287,
+  "git_blob_sha": "f845b8cd176c504adcb5f3ab8fb57fd4aac9e7fb",
+  "runtime_fingerprint": {
+    "algorithm": "sha256",
+    "implementation": "services.vector_search.compute_corpus_fingerprint",
+    "verification": "scripts/ci_quality_gate.py computes and validates the fingerprint on every CI run"
+  },
+  "retrieval_audit": {
+    "baseline": "eval/V61_CI_BASELINE.json",
+    "cases": 200,
+    "retrieval_passed": 184,
+    "retrieval_floor": 184
+  },
+  "legacy_snapshots": {
+    "tracked": false,
+    "removed_path": "data/laws.pre_v5_1.json"
+  }
+}

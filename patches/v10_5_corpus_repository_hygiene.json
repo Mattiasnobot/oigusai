@@ -1,0 +1,18 @@
+{
+  "name": "V10.5 — corpus and repository hygiene",
+  "base_commit": "09869a03a540f5069f302c890fd9b61ceffefaff",
+  "base_files": [
+    {"path": ".gitignore", "git_blob_sha": "473c65ac75d29c7dab122292cd71de4e0e89dbdc"},
+    {"path": ".github/workflows/ci.yml", "git_blob_sha": "bfc976ee1ce9ef455095c3f30b9d37f99ca91f2a"}
+  ],
+  "new_files": [
+    {"path": "LICENSE", "sha256": "bf8e70d924fbe27e4703986c79c1ab47055ecc19bdd244064f805bb0622cdcae"},
+    {"path": "DEPENDENCY_PROVENANCE.md", "sha256": "25f339042c721b7a0753b0bd170be8ffb97284b028172f66b871131e26750480"},
+    {"path": "data/corpus_manifest.json", "sha256": "724296470a812498cddc38b55e440cda2121b3b2841426a55757adff572b66ec"},
+    {"path": "scripts/verify_corpus_manifest.py", "sha256": "0625c0a3c23d81d018beee867ea17873791dfa3712747afec87a3761de86d182"},
+    {"path": "tests/test_corpus_manifest.py", "sha256": "0081302b55d7f6c1c996496e9180c77a0bd6aa153638cec3e5463cfba59eefa0"}
+  ],
+  "tests": [
+    ["{python}", "-m", "unittest", "discover", "-s", "tests", "-p", "test_corpus_manifest.py", "-v"]
+  ]
+}

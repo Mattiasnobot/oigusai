@@ -1,4 +1,4 @@
-"""Deterministic obligation coverage verification for ÕigusAI V10.3.
+"""Deterministic obligation coverage verification for ÕigusAI V10.4.
 
 Coverage is deliberately narrower than legal reasoning.  The verifier checks
 whether an audited retrieval obligation has at least one trusted source in the
@@ -6,23 +6,15 @@ model context and whether the final cited answer actually uses the required
 source group.  It never creates a new authority and it never treats model
 memory as a legal source.
 
-The small rule map below is intentionally explicit and temporary.  V10.4 moves
-these auditable obligation -> source-group rules into the policy registry.
+Audited obligation -> source-group rules live in services.policy_registry.
+CoverageVerifier consumes that versioned registry without owning policy metadata.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 
-
-@dataclass(frozen=True)
-class CoverageRule:
-    """Audited source groups required for one retrieval-obligation reason."""
-
-    source_groups: Tuple[Tuple[str, ...], ...]
-    rationale: str
-    required_answer_terms: Tuple[Tuple[str, ...], ...] = ()
+from services.policy_registry import CoveragePolicyRegistry
 
 
 class CoverageVerifier:
@@ -32,38 +24,6 @@ class CoverageVerifier:
     STATUS_ANSWER_MISSING = "ANSWER_MISSING"
     STATUS_SOURCE_MISSING = "SOURCE_MISSING"
     STATUS_RULE_UNRESOLVED = "RULE_UNRESOLVED"
-
-    _RULES: Mapping[str, CoverageRule] = {
-        "employment_context:redundancy_basis": CoverageRule(
-            source_groups=(("TLS_89",),),
-            rationale="Koondamise aluse auditeeritud routing kasutab TLS § 89.",
-        ),
-        "employment_context:notice_period": CoverageRule(
-            source_groups=(("TLS_97",),),
-            rationale="Koondamise etteteatamise auditeeritud routing kasutab TLS § 97.",
-        ),
-        "employment_context:termination_form": CoverageRule(
-            source_groups=(("TLS_95",),),
-            rationale="Töölepingu ülesütlemise vorminõude auditeeritud routing kasutab TLS § 95.",
-            required_answer_terms=(
-                ("kirjalikku taasesitamist võimaldavas vormis",),
-                ("tühine",),
-            ),
-        ),
-        "fine_context:missed_deadline": CoverageRule(
-            source_groups=(("VTMS_118",),),
-            rationale="Möödunud väärteokaebuse tähtaja auditeeritud routing kasutab VTMS § 118.",
-        ),
-        "fine_context:challenge_decision": CoverageRule(
-            source_groups=(("VTMS_114", "VTMS_118"),),
-            rationale="Möödunud tähtaja kontekstis võib vaidlustamise katte anda VTMS § 114 või tähtaja ennistamist käsitlev VTMS § 118.",
-            required_answer_terms=(("kaebus", "vaidlust", "maakoht"),),
-        ),
-        "fine_context:payment_plan": CoverageRule(
-            source_groups=(("KARS_66",),),
-            rationale="Rahatrahvi ositi tasumise auditeeritud routing kasutab KarS § 66.",
-        ),
-    }
 
     @staticmethod
     def _normalize_id(value: Any) -> str:
@@ -111,12 +71,13 @@ class CoverageVerifier:
             answer_requirement = str(
                 getattr(obligation, "answer_requirement", "") or ""
             )
-            rule = cls._RULES.get(reason)
+            rule = CoveragePolicyRegistry.get(reason)
             if rule is None:
                 unresolved_rules.append(kind)
                 rows.append({
                     "kind": kind,
                     "reason": reason,
+                    "rule_id": "",
                     "answer_requirement": answer_requirement,
                     "enforced": False,
                     "status": cls.STATUS_RULE_UNRESOLVED,
@@ -125,7 +86,7 @@ class CoverageVerifier:
                     "cited_sources": [],
                     "required_answer_terms": [],
                     "missing_answer_terms": [],
-                    "rationale": "V10.3-l puudub sellele kohustusele veel auditeeritud coverage-reegel.",
+                    "rationale": "Auditeeritud coverage-policy registry's puudub sellele kohustusele reegel.",
                 })
                 continue
 
@@ -180,6 +141,7 @@ class CoverageVerifier:
             rows.append({
                 "kind": kind,
                 "reason": reason,
+                "rule_id": rule.rule_id,
                 "answer_requirement": answer_requirement,
                 "enforced": True,
                 "status": status,
@@ -197,6 +159,7 @@ class CoverageVerifier:
 
         passed = not missing_answer and not missing_source
         return {
+            "policy_registry_version": CoveragePolicyRegistry.VERSION,
             "passed": passed,
             "enforced": enforced_count > 0,
             "enforced_count": enforced_count,

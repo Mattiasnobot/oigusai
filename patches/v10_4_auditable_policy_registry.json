@@ -1,0 +1,46 @@
+{
+  "name": "V10.4 — auditable coverage policy registry",
+  "base_commit": "a6d008b679ef2e57365695dcf1dcc6d5632ce3b4",
+  "base_files": [
+    {
+      "path": "services/coverage_verifier.py",
+      "git_blob_sha": "f6723d12cfecb9b105fa35f755387b705611fc97"
+    }
+  ],
+  "new_files": [
+    {
+      "path": "services/policy_registry.py",
+      "sha256": "b4d92e50359916f8c71b449b934b40ab870f90be04f7af5c1a6a891aee39dd44"
+    },
+    {
+      "path": "tests/test_policy_registry.py",
+      "sha256": "4d7d6444ae931faaab5417070abd33bfc27d40c8b511069cdce1f0cf01eee1ed"
+    }
+  ],
+  "tests": [
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_policy_registry"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_coverage_verifier"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_repair_evidence_recovery"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_evaluate_model"
+    ]
+  ]
+}

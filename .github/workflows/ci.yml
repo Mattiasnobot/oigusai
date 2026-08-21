@@ -60,6 +60,8 @@ jobs:
         run: python scripts/ci_quality_gate.py
       - name: Verify corpus manifest and repository hygiene
         run: python scripts/verify_corpus_manifest.py
+      - name: Verify disabled V11.1 case-law corpus boundary
+        run: python scripts/verify_case_law_corpus.py
       - name: Verify audited V6.1 184/200 retrieval baseline
         run: python scripts/verify_retrieval_baseline.py
       - name: Run deterministic 200-case lexical workflow evaluation

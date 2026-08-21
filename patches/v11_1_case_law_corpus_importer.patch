@@ -1,0 +1,607 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index d608c0f..d7871e5 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -60,6 +60,8 @@ jobs:
+         run: python scripts/ci_quality_gate.py
+       - name: Verify corpus manifest and repository hygiene
+         run: python scripts/verify_corpus_manifest.py
++      - name: Verify disabled V11.1 case-law corpus boundary
++        run: python scripts/verify_case_law_corpus.py
+       - name: Verify audited V6.1 184/200 retrieval baseline
+         run: python scripts/verify_retrieval_baseline.py
+       - name: Run deterministic 200-case lexical workflow evaluation
+diff --git a/V11_CASE_LAW_CORPUS.md b/V11_CASE_LAW_CORPUS.md
+new file mode 100644
+index 0000000..d4df0a8
+--- /dev/null
++++ b/V11_CASE_LAW_CORPUS.md
+@@ -0,0 +1,51 @@
++# V11.1 — Curated case-law corpus and offline importer
++
++V11.1 creates the storage/import boundary for future court-practice retrieval.
++It does **not** enable court-practice retrieval, model context, or live network
++import.
++
++## Source boundary
++
++Public Estonian court decisions are searched through Riigi Teataja, backed by
++court information-system publication. V11.1 accepts only HTTPS canonical URLs
++on `riigiteataja.ee` / `www.riigiteataja.ee`.
++
++The importer never fetches that URL. Its input is a local JSON array that must be
++reviewed outside this script. The importer proves deterministic local identity
++and integrity; it does **not** prove that supplied text matches the live page.
++A live source adapter belongs to a later separately audited step.
++
++## Raw input fields
++
++Each local import row contains:
++
++- `court_name`
++- `case_number`
++- `decision_date` (`YYYY-MM-DD`, not future)
++- `decision_type`
++- `court_level`: `first_instance`, `appeal`, or `supreme`
++- `canonical_url`: official Riigi Teataja HTTPS URL
++- `text`: reviewed source text
++
++An optional `id` is accepted only if it exactly matches the deterministic ID
++computed from case number, decision date, and decision type.
++
++## Committed corpus
++
++- `data/case_law.json` — canonical V11.0 provenance records
++- `data/case_law_manifest.json` — byte hash, record count and disabled-feature flags
++
++The first V11.1 commit intentionally contains an empty `[]` corpus. Test records
++must never be committed as real court practice.
++
++## Safety properties
++
++The manifest must retain:
++
++- `retrieval_enabled = false`
++- `model_context_enabled = false`
++- `live_import_enabled = false`
++- `authority_status = not_asserted`
++
++`record_sha256` protects record integrity. It does not turn a judgment into a
++statute and does not assert binding precedent or any other legal weight.
+diff --git a/data/case_law.json b/data/case_law.json
+new file mode 100644
+index 0000000..fe51488
+--- /dev/null
++++ b/data/case_law.json
+@@ -0,0 +1 @@
++[]
+diff --git a/data/case_law_manifest.json b/data/case_law_manifest.json
+new file mode 100644
+index 0000000..0e43ced
+--- /dev/null
++++ b/data/case_law_manifest.json
+@@ -0,0 +1,17 @@
++{
++  "version": "V11.1-case-law-corpus-1",
++  "corpus_path": "data/case_law.json",
++  "source_system": "Riigi Teataja court-decision search / court information system",
++  "record_count": 0,
++  "corpus_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
++  "record_provenance_version": "V11.0-case-law-provenance-1",
++  "allowed_hosts": [
++    "riigiteataja.ee",
++    "www.riigiteataja.ee"
++  ],
++  "import_mode": "local_curated_json_only",
++  "retrieval_enabled": false,
++  "model_context_enabled": false,
++  "live_import_enabled": false,
++  "authority_status": "not_asserted"
++}
+diff --git a/scripts/import_case_law.py b/scripts/import_case_law.py
+new file mode 100644
+index 0000000..7dee55d
+--- /dev/null
++++ b/scripts/import_case_law.py
+@@ -0,0 +1,65 @@
++#!/usr/bin/env python3
++"""Import a manually reviewed local JSON file into the V11.1 case-law corpus."""
++from __future__ import annotations
++
++import argparse
++import json
++from pathlib import Path
++import sys
++
++PROJECT_ROOT = Path(__file__).resolve().parent.parent
++if str(PROJECT_ROOT) not in sys.path:
++    sys.path.insert(0, str(PROJECT_ROOT))
++
++from services.case_law_corpus import (
++    CASE_LAW_CORPUS_PATH,
++    CASE_LAW_MANIFEST_PATH,
++    CaseLawCorpusError,
++    canonicalize_import_rows,
++    write_corpus_and_manifest,
++)
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser(
++        description="Import locally reviewed court decisions; no network access is performed."
++    )
++    parser.add_argument("--input", required=True, help="Local JSON array of reviewed case-law records.")
++    parser.add_argument("--corpus-output", default=CASE_LAW_CORPUS_PATH)
++    parser.add_argument("--manifest-output", default=CASE_LAW_MANIFEST_PATH)
++    args = parser.parse_args()
++
++    source = Path(args.input)
++    if not source.is_absolute():
++        source = (PROJECT_ROOT / source).resolve()
++    try:
++        rows = json.loads(source.read_text(encoding="utf-8"))
++        if not isinstance(rows, list):
++            raise CaseLawCorpusError("Import input must be a JSON array.")
++        records = canonicalize_import_rows(rows)
++        corpus_output = Path(args.corpus_output)
++        manifest_output = Path(args.manifest_output)
++        if not corpus_output.is_absolute():
++            corpus_output = PROJECT_ROOT / corpus_output
++        if not manifest_output.is_absolute():
++            manifest_output = PROJECT_ROOT / manifest_output
++        manifest = write_corpus_and_manifest(
++            records,
++            corpus_path=corpus_output,
++            manifest_path=manifest_output,
++        )
++    except (OSError, json.JSONDecodeError, CaseLawCorpusError) as exc:
++        print(f"CASE-LAW IMPORT FAILED: {exc}", file=sys.stderr)
++        return 2
++
++    print("ÕigusAI V11.1 local curated case-law import")
++    print(f"records: {manifest['record_count']}")
++    print(f"corpus_sha256: {manifest['corpus_sha256']}")
++    print("retrieval_enabled: false")
++    print("model_context_enabled: false")
++    print("live_import_enabled: false")
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/verify_case_law_corpus.py b/scripts/verify_case_law_corpus.py
+new file mode 100644
+index 0000000..47be702
+--- /dev/null
++++ b/scripts/verify_case_law_corpus.py
+@@ -0,0 +1,40 @@
++#!/usr/bin/env python3
++"""Fail-closed verification for the committed V11.1 case-law corpus."""
++from __future__ import annotations
++
++from pathlib import Path
++import sys
++
++PROJECT_ROOT = Path(__file__).resolve().parent.parent
++if str(PROJECT_ROOT) not in sys.path:
++    sys.path.insert(0, str(PROJECT_ROOT))
++
++from services.case_law_corpus import (
++    CASE_LAW_CORPUS_PATH,
++    CASE_LAW_MANIFEST_PATH,
++    CaseLawCorpusError,
++    verify_case_law_corpus,
++)
++
++
++def main() -> int:
++    try:
++        report = verify_case_law_corpus(
++            corpus_path=PROJECT_ROOT / CASE_LAW_CORPUS_PATH,
++            manifest_path=PROJECT_ROOT / CASE_LAW_MANIFEST_PATH,
++        )
++    except CaseLawCorpusError as exc:
++        print(f"CASE-LAW CORPUS FAILED: {exc}", file=sys.stderr)
++        return 2
++
++    print("ÕigusAI V11.1 case-law corpus")
++    for key, value in report.items():
++        if isinstance(value, bool):
++            value = str(value).lower()
++        print(f"{key}: {value}")
++    print("CASE-LAW CORPUS: PASS")
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/services/case_law_corpus.py b/services/case_law_corpus.py
+new file mode 100644
+index 0000000..2390783
+--- /dev/null
++++ b/services/case_law_corpus.py
+@@ -0,0 +1,273 @@
++"""V11.1 curated court-practice corpus utilities.
++
++The V11.1 layer is deliberately offline. It turns manually reviewed local JSON
++records into the canonical V11.0 provenance shape and verifies the committed
++corpus manifest. It does not fetch a court decision from the network and it does
++not enable retrieval or model context.
++"""
++from __future__ import annotations
++
++from datetime import date
++import hashlib
++import json
++from pathlib import Path
++import re
++import tempfile
++from typing import Any, Dict, Iterable, List, Tuple
++from urllib.parse import urlsplit
++
++from services.case_law_provenance import (
++    CASE_LAW_PROVENANCE_VERSION,
++    CaseLawProvenanceVerifier,
++    compute_case_law_record_sha256,
++)
++
++
++CASE_LAW_CORPUS_VERSION = "V11.1-case-law-corpus-1"
++CASE_LAW_CORPUS_PATH = "data/case_law.json"
++CASE_LAW_MANIFEST_PATH = "data/case_law_manifest.json"
++ALLOWED_CASE_LAW_HOSTS = frozenset({"riigiteataja.ee", "www.riigiteataja.ee"})
++ALLOWED_COURT_LEVELS = frozenset({"first_instance", "appeal", "supreme"})
++_ID_COMPONENT = re.compile(r"[^A-Z0-9]+")
++
++
++class CaseLawCorpusError(RuntimeError):
++    pass
++
++
++def sha256_bytes(value: bytes) -> str:
++    return hashlib.sha256(value).hexdigest()
++
++
++def sha256_file(path: Path) -> str:
++    digest = hashlib.sha256()
++    with path.open("rb") as handle:
++        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
++            digest.update(chunk)
++    return digest.hexdigest()
++
++
++def _official_rt_url(value: str) -> bool:
++    try:
++        parsed = urlsplit(str(value or "").strip())
++    except ValueError:
++        return False
++    return bool(
++        parsed.scheme == "https"
++        and parsed.hostname in ALLOWED_CASE_LAW_HOSTS
++        and parsed.username is None
++        and parsed.password is None
++    )
++
++
++def _clean_text(value: Any, field: str) -> str:
++    text = str(value or "").strip()
++    if not text:
++        raise CaseLawCorpusError(f"Case-law field is missing: {field}")
++    if any(ord(ch) < 32 and ch not in "\n\r\t" for ch in text):
++        raise CaseLawCorpusError(f"Case-law field contains control characters: {field}")
++    return text
++
++
++def _record_id(case_number: str, decision_date: str, decision_type: str) -> str:
++    base = "_".join((case_number, decision_date, decision_type)).upper()
++    slug = _ID_COMPONENT.sub("_", base).strip("_")
++    if not slug:
++        raise CaseLawCorpusError("Cannot derive case-law record ID.")
++    # V11.0 IDs are capped at 125 characters including CASE_. Preserve a stable
++    # human-readable prefix and add a deterministic suffix when truncation is needed.
++    candidate = f"CASE_{slug}"
++    if len(candidate) <= 125:
++        return candidate
++    suffix = hashlib.sha256(base.encode("utf-8")).hexdigest()[:12].upper()
++    return f"CASE_{slug[:107].rstrip('_')}_{suffix}"
++
++
++def canonicalize_import_record(raw: Dict[str, Any], *, today: date | None = None) -> Dict[str, str]:
++    """Convert one locally reviewed raw row into the V11.0 canonical record."""
++    if not isinstance(raw, dict):
++        raise CaseLawCorpusError("Every case-law import row must be a JSON object.")
++
++    court_name = _clean_text(raw.get("court_name"), "court_name")
++    case_number = _clean_text(raw.get("case_number"), "case_number")
++    decision_date = _clean_text(raw.get("decision_date"), "decision_date")
++    decision_type = _clean_text(raw.get("decision_type"), "decision_type")
++    court_level = _clean_text(raw.get("court_level"), "court_level").casefold()
++    canonical_url = _clean_text(raw.get("canonical_url"), "canonical_url")
++    text = _clean_text(raw.get("text"), "text")
++
++    try:
++        parsed_date = date.fromisoformat(decision_date)
++    except ValueError as exc:
++        raise CaseLawCorpusError(f"Invalid ISO decision_date: {decision_date}") from exc
++    if parsed_date.isoformat() != decision_date:
++        raise CaseLawCorpusError(f"Invalid canonical decision_date: {decision_date}")
++    if parsed_date > (today or date.today()):
++        raise CaseLawCorpusError(f"Future case-law decision_date is not allowed: {decision_date}")
++    if court_level not in ALLOWED_COURT_LEVELS:
++        raise CaseLawCorpusError(
++            "court_level must be one of: " + ", ".join(sorted(ALLOWED_COURT_LEVELS))
++        )
++    if not _official_rt_url(canonical_url):
++        raise CaseLawCorpusError("canonical_url must use the official Riigi Teataja HTTPS host.")
++    if len(text) < 100:
++        raise CaseLawCorpusError("Case-law source text is too short for the curated corpus.")
++
++    supplied_id = str(raw.get("id") or "").strip().upper()
++    generated_id = _record_id(case_number, decision_date, decision_type)
++    if supplied_id and supplied_id != generated_id:
++        raise CaseLawCorpusError(
++            f"Supplied case-law id does not match deterministic id: {generated_id}"
++        )
++
++    canonical: Dict[str, str] = {
++        "source_kind": "case_law",
++        "id": generated_id,
++        "court_name": court_name,
++        "case_number": case_number,
++        "decision_date": decision_date,
++        "decision_type": decision_type,
++        "court_level": court_level,
++        "canonical_url": canonical_url,
++        "text": text,
++    }
++    canonical["record_sha256"] = compute_case_law_record_sha256(canonical)
++    valid, verified = CaseLawProvenanceVerifier().verify_record(canonical)
++    if not valid:
++        raise CaseLawCorpusError("Canonical case-law record failed the V11.0 provenance verifier.")
++
++    # Persist only source identity fields. authority_status/provenance_version are
++    # verifier outputs so committed source data cannot self-assert legal weight.
++    return {
++        key: str(verified[key])
++        for key in (
++            "source_kind",
++            "id",
++            "court_name",
++            "case_number",
++            "decision_date",
++            "decision_type",
++            "court_level",
++            "canonical_url",
++            "text",
++            "record_sha256",
++        )
++    }
++
++
++def canonicalize_import_rows(rows: Iterable[Dict[str, Any]], *, today: date | None = None) -> List[Dict[str, str]]:
++    records = [canonicalize_import_record(row, today=today) for row in rows]
++    ids = [record["id"] for record in records]
++    if len(ids) != len(set(ids)):
++        raise CaseLawCorpusError("Duplicate deterministic case-law record IDs are not allowed.")
++    return sorted(records, key=lambda record: record["id"])
++
++
++def serialize_corpus(records: Iterable[Dict[str, str]]) -> bytes:
++    return (json.dumps(list(records), ensure_ascii=False, indent=2) + "\n").encode("utf-8")
++
++
++def build_manifest(corpus_bytes: bytes, records: List[Dict[str, str]]) -> Dict[str, Any]:
++    return {
++        "version": CASE_LAW_CORPUS_VERSION,
++        "corpus_path": CASE_LAW_CORPUS_PATH,
++        "source_system": "Riigi Teataja court-decision search / court information system",
++        "record_count": len(records),
++        "corpus_sha256": sha256_bytes(corpus_bytes),
++        "record_provenance_version": CASE_LAW_PROVENANCE_VERSION,
++        "allowed_hosts": sorted(ALLOWED_CASE_LAW_HOSTS),
++        "import_mode": "local_curated_json_only",
++        "retrieval_enabled": False,
++        "model_context_enabled": False,
++        "live_import_enabled": False,
++        "authority_status": "not_asserted",
++    }
++
++
++def _atomic_write(path: Path, data: bytes) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with tempfile.NamedTemporaryFile(
++        mode="wb",
++        dir=str(path.parent),
++        prefix=f".{path.name}.",
++        suffix=".tmp",
++        delete=False,
++    ) as handle:
++        handle.write(data)
++        temp = Path(handle.name)
++    try:
++        temp.replace(path)
++    finally:
++        if temp.exists():
++            temp.unlink()
++
++
++def write_corpus_and_manifest(
++    records: List[Dict[str, str]],
++    *,
++    corpus_path: Path,
++    manifest_path: Path,
++) -> Dict[str, Any]:
++    corpus_bytes = serialize_corpus(records)
++    manifest = build_manifest(corpus_bytes, records)
++    manifest_bytes = (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
++    _atomic_write(corpus_path, corpus_bytes)
++    _atomic_write(manifest_path, manifest_bytes)
++    return manifest
++
++
++def verify_case_law_corpus(
++    *,
++    corpus_path: Path,
++    manifest_path: Path,
++) -> Dict[str, Any]:
++    try:
++        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
++        records = json.loads(corpus_path.read_text(encoding="utf-8"))
++    except FileNotFoundError as exc:
++        raise CaseLawCorpusError(f"Required case-law corpus file is missing: {exc.filename}") from exc
++    except (OSError, json.JSONDecodeError) as exc:
++        raise CaseLawCorpusError(f"Invalid case-law corpus JSON: {exc}") from exc
++
++    if not isinstance(manifest, dict) or not isinstance(records, list):
++        raise CaseLawCorpusError("Case-law corpus manifest/object shape is invalid.")
++    if manifest.get("version") != CASE_LAW_CORPUS_VERSION:
++        raise CaseLawCorpusError("Unknown case-law corpus manifest version.")
++    if manifest.get("corpus_path") != CASE_LAW_CORPUS_PATH:
++        raise CaseLawCorpusError("Case-law corpus manifest path is not canonical.")
++    if manifest.get("record_provenance_version") != CASE_LAW_PROVENANCE_VERSION:
++        raise CaseLawCorpusError("Case-law provenance version mismatch.")
++    if manifest.get("allowed_hosts") != sorted(ALLOWED_CASE_LAW_HOSTS):
++        raise CaseLawCorpusError("Case-law allowed-host policy changed without a manifest version bump.")
++    if manifest.get("import_mode") != "local_curated_json_only":
++        raise CaseLawCorpusError("Case-law import mode is not the audited offline mode.")
++    for flag in ("retrieval_enabled", "model_context_enabled", "live_import_enabled"):
++        if manifest.get(flag) is not False:
++            raise CaseLawCorpusError(f"V11.1 requires {flag}=false.")
++    if manifest.get("authority_status") != "not_asserted":
++        raise CaseLawCorpusError("Case-law corpus may not self-assert authority status.")
++    if manifest.get("record_count") != len(records):
++        raise CaseLawCorpusError("Case-law corpus record count does not match its manifest.")
++    if manifest.get("corpus_sha256") != sha256_file(corpus_path):
++        raise CaseLawCorpusError("Case-law corpus SHA-256 does not match its manifest.")
++
++    verifier = CaseLawProvenanceVerifier()
++    valid, verified = verifier.build_map(records)
++    if not valid or len(verified) != len(records):
++        raise CaseLawCorpusError("Case-law corpus contains an invalid or duplicate provenance record.")
++    ids = [str(record.get("id") or "") for record in records]
++    if ids != sorted(ids):
++        raise CaseLawCorpusError("Case-law corpus records must be sorted by deterministic id.")
++    for record in records:
++        if not _official_rt_url(str(record.get("canonical_url") or "")):
++            raise CaseLawCorpusError("Case-law corpus contains a non-official canonical URL.")
++
++    return {
++        "version": manifest["version"],
++        "record_count": len(records),
++        "corpus_sha256": manifest["corpus_sha256"],
++        "retrieval_enabled": False,
++        "model_context_enabled": False,
++        "live_import_enabled": False,
++        "authority_status": "not_asserted",
++    }
+diff --git a/tests/test_case_law_corpus.py b/tests/test_case_law_corpus.py
+new file mode 100644
+index 0000000..de58445
+--- /dev/null
++++ b/tests/test_case_law_corpus.py
+@@ -0,0 +1,105 @@
++import copy
++from datetime import date
++import json
++from pathlib import Path
++import tempfile
++import unittest
++
++from services.case_law_corpus import (
++    CaseLawCorpusError,
++    build_manifest,
++    canonicalize_import_rows,
++    serialize_corpus,
++    verify_case_law_corpus,
++    write_corpus_and_manifest,
++)
++
++
++class CaseLawCorpusTests(unittest.TestCase):
++    def _row(self):
++        return {
++            "court_name": "Riigikohtu halduskolleegium",
++            "case_number": "3-22-348/41",
++            "decision_date": "2026-05-05",
++            "decision_type": "otsus",
++            "court_level": "supreme",
++            "canonical_url": "https://www.riigiteataja.ee/kohtulahendid/fiktiivne-test-url",
++            "text": (
++                "See on testis kasutatav piisavalt pikk kohtulahendi alliktekst. "
++                "Seda ei esitata päris kohtulahendina ning selle ainus eesmärk on "
++                "kontrollida V11.1 korpuse deterministlikku provenance-piiri."
++            ),
++        }
++
++    def test_empty_committed_shape_passes(self):
++        records = []
++        corpus_bytes = serialize_corpus(records)
++        manifest = build_manifest(corpus_bytes, records)
++        with tempfile.TemporaryDirectory() as temp_dir:
++            root = Path(temp_dir)
++            corpus = root / "case_law.json"
++            manifest_path = root / "case_law_manifest.json"
++            corpus.write_bytes(corpus_bytes)
++            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
++            report = verify_case_law_corpus(corpus_path=corpus, manifest_path=manifest_path)
++        self.assertEqual(report["record_count"], 0)
++        self.assertFalse(report["retrieval_enabled"])
++
++    def test_import_canonicalizes_hashes_and_sorts(self):
++        first = self._row()
++        second = copy.deepcopy(first)
++        second["case_number"] = "3-22-1043/67"
++        second["decision_date"] = "2026-02-12"
++        records = canonicalize_import_rows([first, second], today=date(2026, 8, 21))
++        self.assertEqual([r["id"] for r in records], sorted(r["id"] for r in records))
++        self.assertTrue(all(len(r["record_sha256"]) == 64 for r in records))
++        self.assertNotIn("authority_status", records[0])
++
++        with tempfile.TemporaryDirectory() as temp_dir:
++            root = Path(temp_dir)
++            corpus = root / "case_law.json"
++            manifest_path = root / "case_law_manifest.json"
++            write_corpus_and_manifest(records, corpus_path=corpus, manifest_path=manifest_path)
++            report = verify_case_law_corpus(corpus_path=corpus, manifest_path=manifest_path)
++        self.assertEqual(report["record_count"], 2)
++
++    def test_import_rejects_non_official_url(self):
++        row = self._row()
++        row["canonical_url"] = "https://example.com/judgment"
++        with self.assertRaises(CaseLawCorpusError):
++            canonicalize_import_rows([row], today=date(2026, 8, 21))
++
++    def test_import_rejects_future_decision(self):
++        row = self._row()
++        row["decision_date"] = "2026-08-22"
++        with self.assertRaises(CaseLawCorpusError):
++            canonicalize_import_rows([row], today=date(2026, 8, 21))
++
++    def test_corpus_byte_tamper_fails_closed(self):
++        records = canonicalize_import_rows([self._row()], today=date(2026, 8, 21))
++        with tempfile.TemporaryDirectory() as temp_dir:
++            root = Path(temp_dir)
++            corpus = root / "case_law.json"
++            manifest_path = root / "case_law_manifest.json"
++            write_corpus_and_manifest(records, corpus_path=corpus, manifest_path=manifest_path)
++            corpus.write_text(corpus.read_text(encoding="utf-8") + " ", encoding="utf-8")
++            with self.assertRaises(CaseLawCorpusError):
++                verify_case_law_corpus(corpus_path=corpus, manifest_path=manifest_path)
++
++    def test_manifest_cannot_enable_retrieval_or_model_context(self):
++        records = []
++        corpus_bytes = serialize_corpus(records)
++        manifest = build_manifest(corpus_bytes, records)
++        manifest["retrieval_enabled"] = True
++        with tempfile.TemporaryDirectory() as temp_dir:
++            root = Path(temp_dir)
++            corpus = root / "case_law.json"
++            manifest_path = root / "case_law_manifest.json"
++            corpus.write_bytes(corpus_bytes)
++            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
++            with self.assertRaises(CaseLawCorpusError):
++                verify_case_law_corpus(corpus_path=corpus, manifest_path=manifest_path)
++
++
++if __name__ == "__main__":
++    unittest.main()

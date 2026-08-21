@@ -1,0 +1,17 @@
+{
+  "version": "V11.1-case-law-corpus-1",
+  "corpus_path": "data/case_law.json",
+  "source_system": "Riigi Teataja court-decision search / court information system",
+  "record_count": 0,
+  "corpus_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "record_provenance_version": "V11.0-case-law-provenance-1",
+  "allowed_hosts": [
+    "riigiteataja.ee",
+    "www.riigiteataja.ee"
+  ],
+  "import_mode": "local_curated_json_only",
+  "retrieval_enabled": false,
+  "model_context_enabled": false,
+  "live_import_enabled": false,
+  "authority_status": "not_asserted"
+}

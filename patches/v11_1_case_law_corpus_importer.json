@@ -1,0 +1,57 @@
+{
+  "name": "V11.1 — curated case-law corpus and offline importer",
+  "base_commit": "3c5ca0cc50f48847c4070f8be3f7088639622986",
+  "base_files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "git_blob_sha": "d608c0f4b6b54d9ce0d5ed6897bdead2c2e8edc8"
+    },
+    {
+      "path": "services/case_law_provenance.py",
+      "git_blob_sha": "a958e55fbed253f601aea42606cb88fc32302219"
+    }
+  ],
+  "new_files": [
+    {
+      "path": "V11_CASE_LAW_CORPUS.md",
+      "sha256": "0d9a09d25378b36254a629772fdd5a66ef78481fd2910420cc5d5c55607c61de"
+    },
+    {
+      "path": "data/case_law.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "data/case_law_manifest.json",
+      "sha256": "f01e4042d83da173c6d038582738589217375eff878824a8a608ed9f5b06f4e9"
+    },
+    {
+      "path": "services/case_law_corpus.py",
+      "sha256": "665661a0e00e3fb92ea1482309b54c34f4992dc0f751c3c82d2a357381d02516"
+    },
+    {
+      "path": "scripts/import_case_law.py",
+      "sha256": "06194558488425bf304cf37ad3644741065d0e87f45e44886c0adeec95d530d6"
+    },
+    {
+      "path": "scripts/verify_case_law_corpus.py",
+      "sha256": "62baeb5cc2eb625c15ac996ce888a14be2e36a52b2535c4f57d7ef59fe415420"
+    },
+    {
+      "path": "tests/test_case_law_corpus.py",
+      "sha256": "96320b8dfd25c8fd9a644d8a44b0cd37c09d76df8ffb51f40bb5073a5cdea688"
+    }
+  ],
+  "tests": [
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "tests.test_case_law_corpus",
+      "-v"
+    ],
+    [
+      "{python}",
+      "scripts/verify_case_law_corpus.py"
+    ]
+  ]
+}

@@ -1,0 +1,56 @@
+diff --git a/services/case_law_corpus.py b/services/case_law_corpus.py
+index 2390783..ca911a4 100644
+--- a/services/case_law_corpus.py
++++ b/services/case_law_corpus.py
+@@ -40,10 +40,26 @@ def sha256_bytes(value: bytes) -> str:
+ 
+ 
+ def sha256_file(path: Path) -> str:
++    """Hash corpus bytes with Git worktree CRLF normalized to canonical LF.
++
++    Git may materialize text files with CRLF on Windows even when the importer
++    serializes canonical UTF-8/LF bytes. Normalize only CRLF pairs so platform
++    line endings do not create a false corpus-drift failure; every other byte
++    difference remains hash-significant.
++    """
+     digest = hashlib.sha256()
++    pending_cr = False
+     with path.open("rb") as handle:
+         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+-            digest.update(chunk)
++            if pending_cr:
++                chunk = b"\r" + chunk
++                pending_cr = False
++            if chunk.endswith(b"\r"):
++                chunk = chunk[:-1]
++                pending_cr = True
++            digest.update(chunk.replace(b"\r\n", b"\n"))
++    if pending_cr:
++        digest.update(b"\r")
+     return digest.hexdigest()
+ 
+ 
+diff --git a/tests/test_case_law_corpus.py b/tests/test_case_law_corpus.py
+index de58445..b0f78df 100644
+--- a/tests/test_case_law_corpus.py
++++ b/tests/test_case_law_corpus.py
+@@ -75,6 +75,19 @@ class CaseLawCorpusTests(unittest.TestCase):
+         with self.assertRaises(CaseLawCorpusError):
+             canonicalize_import_rows([row], today=date(2026, 8, 21))
+ 
++    def test_crlf_worktree_line_endings_match_canonical_manifest_hash(self):
++        records = canonicalize_import_rows([self._row()], today=date(2026, 8, 21))
++        corpus_bytes = serialize_corpus(records)
++        manifest = build_manifest(corpus_bytes, records)
++        with tempfile.TemporaryDirectory() as temp_dir:
++            root = Path(temp_dir)
++            corpus = root / "case_law.json"
++            manifest_path = root / "case_law_manifest.json"
++            corpus.write_bytes(corpus_bytes.replace(b"\n", b"\r\n"))
++            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
++            report = verify_case_law_corpus(corpus_path=corpus, manifest_path=manifest_path)
++        self.assertEqual(report["corpus_sha256"], manifest["corpus_sha256"])
++
+     def test_corpus_byte_tamper_fails_closed(self):
+         records = canonicalize_import_rows([self._row()], today=date(2026, 8, 21))
+         with tempfile.TemporaryDirectory() as temp_dir:

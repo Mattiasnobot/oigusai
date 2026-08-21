@@ -3,8 +3,11 @@
   "depends_on_current_retrieval_version": "V11.4-rt-current-retrieval-1",
   "verified_live_model_context_enabled": true,
   "explicit_model_context_adapter_enabled": true,
+  "application_runtime_wiring_enabled": true,
   "runtime_default_enabled": false,
-  "analysis_orchestrator_integration_enabled": false,
+  "runtime_env": "RT_VERIFIED_LIVE_MODEL_CONTEXT_ENABLED",
+  "analysis_orchestrator_code_modified": false,
+  "same_analysis_laws_object_reused_downstream": true,
   "required_live_verification_status": "BINDING_SECTION_VERIFIED",
   "required_live_evidence_source": "rt_live_verified",
   "allowed_live_source_ids": [

@@ -1,0 +1,26 @@
+{
+  "version": "V11.5-verified-live-model-context-1",
+  "depends_on_current_retrieval_version": "V11.4-rt-current-retrieval-1",
+  "verified_live_model_context_enabled": true,
+  "explicit_model_context_adapter_enabled": true,
+  "runtime_default_enabled": false,
+  "analysis_orchestrator_integration_enabled": false,
+  "required_live_verification_status": "BINDING_SECTION_VERIFIED",
+  "required_live_evidence_source": "rt_live_verified",
+  "allowed_live_source_ids": [
+    "RT_NATIONAL_LAW",
+    "RT_LOCAL_LAW"
+  ],
+  "live_content_hash_verified": true,
+  "live_section_provenance_chain_verified": true,
+  "live_exact_rt_urls_verified": true,
+  "live_authority_currentness_required": true,
+  "local_fallback_model_context_enabled": true,
+  "local_fallback_requires_original_audited_candidate": true,
+  "unverified_live_model_context_enabled": false,
+  "existing_model_output_source_verifier_reused": true,
+  "existing_model_output_evidence_gate_reused": true,
+  "network_on_demand_only": true,
+  "writes_legal_corpus": false,
+  "persistent_live_cache_enabled": false
+}

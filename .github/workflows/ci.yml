@@ -19,6 +19,7 @@ env:
   HYBRID_RETRIEVAL_ENABLED: "false"
   RERANKER_ENABLED: "false"
   ALLOW_LIVE_RT_FALLBACK: "false"
+  RT_VERIFIED_LIVE_MODEL_CONTEXT_ENABLED: "false"
   ALLOW_MOCK_ANALYSIS: "false"
   APP_RELOAD: "false"
   OLLAMA_PRELOAD_ENABLED: "false"
@@ -72,6 +73,8 @@ jobs:
         run: python scripts/verify_rt_current_retrieval.py
       - name: Verify V11.5 verified-live model-context contract
         run: python scripts/verify_rt_model_context.py
+      - name: Verify V11.5.1 verified-live runtime wiring contract
+        run: python scripts/verify_rt_model_runtime.py
       - name: Verify audited V6.1 184/200 retrieval baseline
         run: python scripts/verify_retrieval_baseline.py
       - name: Run deterministic 200-case lexical workflow evaluation

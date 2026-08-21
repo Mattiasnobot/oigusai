@@ -1,13 +1,14 @@
 """V11.5 verified Riigi Teataja live evidence -> model-context admission.
 
 Only exact V11.4 ``BINDING_SECTION_VERIFIED`` records may be promoted as live
-model context.  Any malformed/tampered live record fails closed to the original
-audited local corpus candidate.  The service mutates the caller-provided laws
+model context. Any malformed/tampered live record fails closed to the original
+audited local corpus candidate. The service mutates the caller-provided laws
 list in place so Ollama and every downstream citation/evidence verifier inspect
 the exact same source records.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 from datetime import date
@@ -16,7 +17,11 @@ from urllib.parse import urlparse
 
 from config import Settings, load_settings
 from services.offline_ai import OfflineAIService
-from services.rt_current_retrieval import VerifiedRTLiveRetrievalService
+from services.rt_current_retrieval import (
+    RT_CURRENT_RETRIEVAL_VERSION,
+    VerifiedRTLiveRetrievalService,
+)
+from services.rt_section_evidence import compute_section_provenance_sha256
 
 V11_5_MODEL_CONTEXT_VERSION = "V11.5-verified-live-model-context-1"
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -88,6 +93,21 @@ class VerifiedLiveModelContextGate:
         ):
             if not _valid_sha(record.get(field)):
                 raise LiveModelContextAdmissionError(f"Live evidence has invalid {field}.")
+
+        text = str(record.get("text") or "")
+        content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        if content_hash != _clean(record.get("content_hash")).casefold():
+            raise LiveModelContextAdmissionError("Live evidence content_hash does not match the exact section text.")
+        expected_section_provenance = compute_section_provenance_sha256({
+            "version": RT_CURRENT_RETRIEVAL_VERSION,
+            "act_id": _clean(record.get("act_id")),
+            "revision_provenance_sha256": _clean(record.get("revision_provenance_sha256")).casefold(),
+            "section": _clean(record.get("section")),
+            "content_hash": content_hash,
+        })
+        if expected_section_provenance != _clean(record.get("section_provenance_sha256")).casefold():
+            raise LiveModelContextAdmissionError("Live evidence section provenance does not match the V11.4 chain.")
+
         if not _official_rt_url(record.get("canonical_url")):
             raise LiveModelContextAdmissionError("Live evidence canonical URL is not an exact RT act URL.")
         if not _official_rt_url(record.get("xml_url"), xml=True):

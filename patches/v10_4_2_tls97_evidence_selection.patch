@@ -1,0 +1,76 @@
+--- a/services/offline_ai.py
++++ b/services/offline_ai.py
+@@ -37,9 +37,15 @@
+             ratio = overlap / max(1, len(query_tokens))
+             return overlap, ratio, -len(candidate)
+ 
+-        best = max(candidates, key=score)
+-        overlap, _ratio, _length = score(best)
++        ranked = sorted(candidates, key=score, reverse=True)
+         required_overlap = 1 if len(query_tokens) < 3 else 2
+-        if overlap < required_overlap:
+-            return ""
+-        return best
++        for candidate in ranked:
++            overlap, _ratio, _length = score(candidate)
++            if overlap < required_overlap:
++                continue
++            # Recovery may repair only an inexact quotation. It must not
++            # bypass the same support gate that validates the final claim.
++            if not self._claim_is_supported_by_evidence(claim_text, candidate):
++                continue
++            return candidate
++        return ""
+--- a/tests/test_repair_evidence_recovery.py
++++ b/tests/test_repair_evidence_recovery.py
+@@ -71,6 +71,50 @@
+         for claim in claims:
+             self.assertEqual(claim["verification_status"], "EVIDENCE_VERIFIED")
+ 
++
++    def test_recovery_skips_closer_sentence_that_cannot_support_claim(self):
++        service = OfflineAIService(allow_mock=False)
++        laws = [{
++            "id": "TLS_97",
++            "title": "Töölepingu seadus § 97",
++            "text": (
++                "Tööandja võib töölepingu erakorraliselt üles öelda käesoleva "
++                "paragrahvi lõikes 2 sätestatud etteteatamistähtaegu järgides. "
++                "Erakorralisest ülesütlemisest peab tööandja töötajale ette "
++                "teatama, kui töösuhe on kestnud alla ühe tööaasta – vähemalt "
++                "15 kalendripäeva."
++            ),
++            "source": "Riigi Teataja",
++        }]
++        raw = json.dumps({
++            "claims": [{
++                "text": (
++                    "Alla ühe tööaasta kestnud töösuhte korral peab tööandja "
++                    "ette teatama vähemalt 15 kalendripäeva."
++                ),
++                "source_id": "TLS_97",
++                # This paraphrase is lexically closer to the first source sentence,
++                # but that sentence cannot support the claim's 15-day quantity.
++                "evidence": (
++                    "Tööandja võib töölepingu erakorraliselt üles öelda "
++                    "paragrahvis sätestatud etteteatamistähtaegu järgides."
++                ),
++            }]
++        }, ensure_ascii=False)
++
++        analysis, claims, diagnostics = service.prepare_structured_repair_response(
++            raw, laws, "Mind koondatakse. Kui pikk etteteatamine on?"
++        )
++        valid, sources = SourceVerifier().verify_sources(analysis, laws)
++
++        self.assertTrue(valid)
++        self.assertEqual(sources, ["TLS_97"])
++        self.assertEqual(len(claims), 1)
++        self.assertEqual(diagnostics["evidence_recovered_count"], 1)
++        self.assertEqual(diagnostics["accepted_source_ids"], ["TLS_97"])
++        self.assertEqual(diagnostics["dropped_claims"], [])
++        self.assertIn("15 kalendripäeva", claims[0]["sources"][0]["evidence"])
++
+     def test_focused_repair_does_not_recover_unknown_or_unsupported_claims(self):
+         service = OfflineAIService(allow_mock=False)
+         laws = [{

@@ -775,12 +775,18 @@ class OfflineAIService:
             ratio = overlap / max(1, len(query_tokens))
             return overlap, ratio, -len(candidate)
 
-        best = max(candidates, key=score)
-        overlap, _ratio, _length = score(best)
+        ranked = sorted(candidates, key=score, reverse=True)
         required_overlap = 1 if len(query_tokens) < 3 else 2
-        if overlap < required_overlap:
-            return ""
-        return best
+        for candidate in ranked:
+            overlap, _ratio, _length = score(candidate)
+            if overlap < required_overlap:
+                continue
+            # Recovery may repair only an inexact quotation. It must not
+            # bypass the same support gate that validates the final claim.
+            if not self._claim_is_supported_by_evidence(claim_text, candidate):
+                continue
+            return candidate
+        return ""
 
     def _call_ollama(self, prompt: str, response_schema: Dict = None) -> str:
         options = {

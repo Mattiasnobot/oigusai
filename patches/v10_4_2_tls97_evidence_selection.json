@@ -1,0 +1,21 @@
+{
+  "name": "V10.4.2 — support-aware focused-repair evidence selection",
+  "base_commit": "f0b27a069b225a3d2524d6f50cc84733f29a10e8",
+  "base_files": [
+    {
+      "path": "services/offline_ai.py",
+      "git_blob_sha": "13f428422c1af0e42deeb60e0b94e2d284be06c9"
+    },
+    {
+      "path": "tests/test_repair_evidence_recovery.py",
+      "git_blob_sha": "28188de562d19438a6f0f913e046d83831cf68d5"
+    }
+  ],
+  "new_files": [],
+  "tests": [
+    ["{python}", "-m", "unittest", "tests.test_repair_evidence_recovery"],
+    ["{python}", "-m", "unittest", "tests.test_offline_ai"],
+    ["{python}", "-m", "unittest", "tests.test_coverage_verifier"],
+    ["{python}", "-m", "unittest", "tests.test_model_eval_determinism"]
+  ]
+}

@@ -71,6 +71,47 @@ class RepairEvidenceRecoveryTests(unittest.TestCase):
         for claim in claims:
             self.assertEqual(claim["verification_status"], "EVIDENCE_VERIFIED")
 
+    def test_recovery_skips_closer_sentence_that_cannot_support_claim(self):
+        service = OfflineAIService(allow_mock=False)
+        laws = [{
+            "id": "TLS_97",
+            "title": "Töölepingu seadus § 97",
+            "text": (
+                "Tööandja võib töölepingu erakorraliselt üles öelda käesoleva "
+                "paragrahvi lõikes 2 sätestatud etteteatamistähtaegu järgides. "
+                "Erakorralisest ülesütlemisest peab tööandja töötajale ette "
+                "teatama, kui töösuhe on kestnud alla ühe tööaasta – vähemalt "
+                "15 kalendripäeva."
+            ),
+            "source": "Riigi Teataja",
+        }]
+        raw = json.dumps({
+            "claims": [{
+                "text": (
+                    "Alla ühe tööaasta kestnud töösuhte korral peab tööandja "
+                    "ette teatama vähemalt 15 kalendripäeva."
+                ),
+                "source_id": "TLS_97",
+                "evidence": (
+                    "Tööandja võib töölepingu erakorraliselt üles öelda "
+                    "paragrahvis sätestatud etteteatamistähtaegu järgides."
+                ),
+            }]
+        }, ensure_ascii=False)
+
+        analysis, claims, diagnostics = service.prepare_structured_repair_response(
+            raw, laws, "Mind koondatakse. Kui pikk etteteatamine on?"
+        )
+        valid, sources = SourceVerifier().verify_sources(analysis, laws)
+
+        self.assertTrue(valid)
+        self.assertEqual(sources, ["TLS_97"])
+        self.assertEqual(len(claims), 1)
+        self.assertEqual(diagnostics["evidence_recovered_count"], 1)
+        self.assertEqual(diagnostics["accepted_source_ids"], ["TLS_97"])
+        self.assertEqual(diagnostics["dropped_claims"], [])
+        self.assertIn("15 kalendripäeva", claims[0]["sources"][0]["evidence"])
+
     def test_focused_repair_does_not_recover_unknown_or_unsupported_claims(self):
         service = OfflineAIService(allow_mock=False)
         laws = [{

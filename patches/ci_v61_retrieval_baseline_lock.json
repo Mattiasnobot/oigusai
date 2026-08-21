@@ -1,0 +1,41 @@
+{
+  "name": "CI-184 — audited V6.1 retrieval baseline lock",
+  "base_commit": "bcccf36d66b48b8370ca69bb970575655aacedff",
+  "base_files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "git_blob_sha": "884e375230c2771062c14d894f9b6d8c37be02c4"
+    }
+  ],
+  "new_files": [
+    {
+      "path": "eval/V61_CI_BASELINE.json",
+      "sha256": "cb9b9928ace7a96f26be6994f21643acf89a59ecb7b7e236e7710dea44cb8bf2"
+    },
+    {
+      "path": "scripts/verify_retrieval_baseline.py",
+      "sha256": "7eb8080deacefc3489164f072bb40030c587fb1526e131e132f15c579e8e4238"
+    },
+    {
+      "path": "tests/test_retrieval_baseline_gate.py",
+      "sha256": "483ac812fab08b4b8d5a3b78688771af6d8a919a0ec5a07271b31d67079893e8"
+    }
+  ],
+  "tests": [
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-p",
+      "test_retrieval_baseline_gate.py",
+      "-v"
+    ],
+    [
+      "{python}",
+      "scripts/verify_retrieval_baseline.py"
+    ]
+  ]
+}

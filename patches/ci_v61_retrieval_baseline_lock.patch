@@ -1,0 +1,328 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 884e375..bfc976e 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -58,11 +58,14 @@ jobs:
+         run: python -m pip install --upgrade pip && python -m pip install -r requirements-ci.txt
+       - name: Validate config, corpus and evaluation assets
+         run: python scripts/ci_quality_gate.py
+-      - name: Run deterministic 200-case workflow evaluation
++      - name: Verify audited V6.1 184/200 retrieval baseline
++        run: python scripts/verify_retrieval_baseline.py
++      - name: Run deterministic 200-case lexical workflow evaluation
+         run: |
+           mkdir -p artifacts
+-          # V5 lexical-only frozen baseline is 174/200. This CI job deliberately
+-          # disables hybrid retrieval and the reranker, so the V6.1 184 floor is not comparable.
++          # GitHub-hosted CI deliberately keeps the optional local ML/vector stack disabled.
++          # The audited V6.1 184/200 baseline is provenance-locked by the step above;
++          # this executable CPU-only smoke gate retains the frozen V5 lexical 174/200 floor.
+           python scripts/evaluate_workflow.py --retrieval-floor 174 --json-output artifacts/workflow-report.json
+       - name: Upload workflow report
+         if: always()
+diff --git a/eval/V61_CI_BASELINE.json b/eval/V61_CI_BASELINE.json
+new file mode 100644
+index 0000000..afa44f5
+--- /dev/null
++++ b/eval/V61_CI_BASELINE.json
+@@ -0,0 +1,49 @@
++{
++  "version": "V6.1-ci-baseline-1",
++  "audited_on": "2026-08-21",
++  "source_baseline": "eval/V61_RERANKER_BASELINE_2026-08-11.md",
++  "audited_result": {
++    "cases": 200,
++    "retrieval_passed": 184,
++    "retrieval_floor": 184,
++    "failure_ids": [
++      "AVTS-CORE-06",
++      "CROSS-01B",
++      "CROSS-03B",
++      "CROSS-04B",
++      "CROSS-05B",
++      "CROSS-07B",
++      "CROSS-08B",
++      "CROSS-10B",
++      "CROSS-11B",
++      "CROSS-12B",
++      "CROSS-13B",
++      "CROSS-14B",
++      "CROSS-15B",
++      "LANG-16",
++      "LANG-17",
++      "LANG-18"
++    ]
++  },
++  "runtime": {
++    "hybrid_retrieval_enabled": true,
++    "embedding_model": "bge-m3",
++    "reranker_enabled": true,
++    "reranker_model": "BAAI/bge-reranker-v2-m3",
++    "vector_rows": 22287
++  },
++  "provenance": [
++    {"path": "data/laws.json", "git_blob_sha": "f845b8cd176c504adcb5f3ab8fb57fd4aac9e7fb"},
++    {"path": "data/query_lexicon.json", "git_blob_sha": "91832cf5582315b95a46e1d0c83b4597bc7a2203"},
++    {"path": "eval/query_cases.json", "git_blob_sha": "4ebae687805415bb3070936aa171022445ff58ff"},
++    {"path": "eval/V61_RERANKER_BASELINE_2026-08-11.md", "git_blob_sha": "160155b8745a3a2746947e0b32b82225be7664eb"},
++    {"path": "config.py", "git_blob_sha": "d9caf58e777f1c681f002810e7c04c5ef1895bb7"},
++    {"path": "services/legal_search.py", "git_blob_sha": "e4873d782f0c0ccf227e58d1009635dbb5e4725d"},
++    {"path": "services/query_understanding.py", "git_blob_sha": "7d441f80b3e848bb9a9723d37f79d78a342442f4"},
++    {"path": "services/embedding_service.py", "git_blob_sha": "d59da6ef05aa8b88ca5f94f7a3cb27f85abb742b"},
++    {"path": "services/vector_search.py", "git_blob_sha": "cb6d23ece11c32284b57ecc756d843f30d353c7b"},
++    {"path": "services/reranker.py", "git_blob_sha": "5081e9001d3b74a40bbc85d1b788005029dd27d1"},
++    {"path": "scripts/evaluate_queries.py", "git_blob_sha": "1d93728d738b84982accb092223ee8ebfb46f83e"},
++    {"path": "scripts/evaluate_workflow.py", "git_blob_sha": "7c39d49b1cf2cfcbfa00908ecbff21216224a8ed"}
++  ]
++}
+diff --git a/scripts/verify_retrieval_baseline.py b/scripts/verify_retrieval_baseline.py
+new file mode 100644
+index 0000000..8d2750d
+--- /dev/null
++++ b/scripts/verify_retrieval_baseline.py
+@@ -0,0 +1,169 @@
++#!/usr/bin/env python3
++"""Fail closed when the audited V6.1 184/200 retrieval baseline becomes stale.
++
++GitHub-hosted CI intentionally omits the local Ollama/LanceDB/reranker stack, so
++it cannot honestly reproduce the GPU-backed V6.1 score.  Instead this gate pins
++the audited score to the exact corpus, evaluation set and retrieval code blobs.
++Any drift in those inputs requires a fresh local V6.1 audit and manifest update.
++"""
++
++from __future__ import annotations
++
++import argparse
++import json
++import subprocess
++import sys
++from pathlib import Path
++from typing import Any
++
++PROJECT_ROOT = Path(__file__).resolve().parent.parent
++DEFAULT_BASELINE = PROJECT_ROOT / "eval" / "V61_CI_BASELINE.json"
++EXPECTED_VERSION = "V6.1-ci-baseline-1"
++EXPECTED_CASES = 200
++EXPECTED_FLOOR = 184
++
++
++class BaselineError(RuntimeError):
++    pass
++
++
++def _load_json(path: Path) -> Any:
++    try:
++        return json.loads(path.read_text(encoding="utf-8"))
++    except FileNotFoundError as exc:
++        raise BaselineError(f"Baseline file is missing: {path}") from exc
++    except json.JSONDecodeError as exc:
++        raise BaselineError(f"Invalid JSON in {path}: {exc}") from exc
++
++
++def _git_blob_sha(root: Path, relative_path: str) -> str:
++    target = root / relative_path
++    if not target.is_file():
++        raise BaselineError(f"Provenance file is missing: {relative_path}")
++    result = subprocess.run(
++        ["git", "hash-object", f"--path={relative_path}", "--", relative_path],
++        cwd=str(root),
++        text=True,
++        capture_output=True,
++    )
++    if result.returncode != 0:
++        detail = (result.stderr or result.stdout or "git hash-object failed").strip()
++        raise BaselineError(f"Cannot hash {relative_path}: {detail}")
++    value = result.stdout.strip().lower()
++    if len(value) != 40:
++        raise BaselineError(f"Unexpected git blob SHA for {relative_path}: {value}")
++    return value
++
++
++def verify_provenance(root: Path, rows: list[dict[str, Any]]) -> int:
++    if not rows:
++        raise BaselineError("Baseline provenance list is empty.")
++    seen: set[str] = set()
++    checked = 0
++    for row in rows:
++        if not isinstance(row, dict):
++            raise BaselineError("Each provenance entry must be an object.")
++        relative_path = str(row.get("path") or "").strip().replace("\\", "/")
++        expected = str(row.get("git_blob_sha") or "").strip().lower()
++        if not relative_path or len(expected) != 40:
++            raise BaselineError("Provenance entry is missing path or git_blob_sha.")
++        if relative_path in seen:
++            raise BaselineError(f"Duplicate provenance path: {relative_path}")
++        seen.add(relative_path)
++        actual = _git_blob_sha(root, relative_path)
++        if actual != expected:
++            raise BaselineError(
++                f"Audited V6.1 baseline is stale: {relative_path}\n"
++                f"  expected blob: {expected}\n"
++                f"  current blob:  {actual}\n"
++                "Run the full local V6.1 retrieval evaluation, review the result, "
++                "then update the baseline manifest deliberately."
++            )
++        checked += 1
++    return checked
++
++
++def validate_baseline(root: Path, manifest: dict[str, Any]) -> dict[str, Any]:
++    if not isinstance(manifest, dict):
++        raise BaselineError("Baseline manifest must be a JSON object.")
++    if str(manifest.get("version") or "") != EXPECTED_VERSION:
++        raise BaselineError(f"Unsupported baseline version: {manifest.get('version')!r}")
++
++    result = manifest.get("audited_result")
++    if not isinstance(result, dict):
++        raise BaselineError("audited_result must be an object.")
++    cases = int(result.get("cases") or 0)
++    passed = int(result.get("retrieval_passed") or 0)
++    floor = int(result.get("retrieval_floor") or 0)
++    failures = [str(value) for value in (result.get("failure_ids") or [])]
++    if cases != EXPECTED_CASES:
++        raise BaselineError(f"Audited case count must remain {EXPECTED_CASES}, got {cases}.")
++    if floor != EXPECTED_FLOOR:
++        raise BaselineError(f"Audited retrieval floor must remain {EXPECTED_FLOOR}, got {floor}.")
++    if passed < floor:
++        raise BaselineError(f"Audited result {passed}/{cases} is below the {floor} floor.")
++    if len(set(failures)) != len(failures):
++        raise BaselineError("failure_ids contains duplicates.")
++    if passed + len(failures) != cases:
++        raise BaselineError(
++            "retrieval_passed + failure_ids must equal the audited case count."
++        )
++
++    query_cases = _load_json(root / "eval" / "query_cases.json")
++    if not isinstance(query_cases, list) or len(query_cases) != cases:
++        raise BaselineError(
++            f"eval/query_cases.json must contain exactly {cases} cases for this baseline."
++        )
++
++    runtime = manifest.get("runtime")
++    if not isinstance(runtime, dict):
++        raise BaselineError("runtime must be an object.")
++    required_runtime = {
++        "hybrid_retrieval_enabled": True,
++        "embedding_model": "bge-m3",
++        "reranker_enabled": True,
++        "reranker_model": "BAAI/bge-reranker-v2-m3",
++        "vector_rows": 22287,
++    }
++    for key, expected in required_runtime.items():
++        if runtime.get(key) != expected:
++            raise BaselineError(
++                f"Audited runtime field {key} must be {expected!r}, got {runtime.get(key)!r}."
++            )
++
++    checked = verify_provenance(root, list(manifest.get("provenance") or []))
++    return {
++        "cases": cases,
++        "retrieval_passed": passed,
++        "retrieval_floor": floor,
++        "failure_count": len(failures),
++        "provenance_checked": checked,
++    }
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser(
++        description="Verify the audited ÕigusAI V6.1 184/200 retrieval baseline provenance."
++    )
++    parser.add_argument("--baseline", default=str(DEFAULT_BASELINE))
++    args = parser.parse_args()
++    path = Path(args.baseline)
++    if not path.is_absolute():
++        path = PROJECT_ROOT / path
++    try:
++        summary = validate_baseline(PROJECT_ROOT, _load_json(path))
++    except BaselineError as exc:
++        print(f"Retrieval baseline gate: FAIL\n{exc}", file=sys.stderr)
++        return 2
++
++    print("ÕigusAI audited V6.1 retrieval baseline")
++    print(f"Score: {summary['retrieval_passed']}/{summary['cases']}")
++    print(f"Required floor: {summary['retrieval_floor']}")
++    print(f"Known failures: {summary['failure_count']}")
++    print(f"Provenance files verified: {summary['provenance_checked']}")
++    print("Baseline provenance: PASS")
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/tests/test_retrieval_baseline_gate.py b/tests/test_retrieval_baseline_gate.py
+new file mode 100644
+index 0000000..cd496c3
+--- /dev/null
++++ b/tests/test_retrieval_baseline_gate.py
+@@ -0,0 +1,70 @@
++import json
++import subprocess
++import tempfile
++import unittest
++from pathlib import Path
++
++from scripts.verify_retrieval_baseline import BaselineError, verify_provenance
++
++
++class RetrievalBaselineGateTests(unittest.TestCase):
++    def _repo(self):
++        temp = tempfile.TemporaryDirectory()
++        root = Path(temp.name)
++        subprocess.run(["git", "init", "-q"], cwd=root, check=True)
++        return temp, root
++
++    @staticmethod
++    def _blob(root: Path, path: str) -> str:
++        result = subprocess.run(
++            ["git", "hash-object", f"--path={path}", "--", path],
++            cwd=root,
++            text=True,
++            capture_output=True,
++            check=True,
++        )
++        return result.stdout.strip()
++
++    def test_provenance_accepts_exact_worktree_content(self):
++        temp, root = self._repo()
++        self.addCleanup(temp.cleanup)
++        target = root / "services" / "legal_search.py"
++        target.parent.mkdir(parents=True)
++        target.write_text("print('stable')\n", encoding="utf-8")
++        rows = [{"path": "services/legal_search.py", "git_blob_sha": self._blob(root, "services/legal_search.py")}]
++        self.assertEqual(verify_provenance(root, rows), 1)
++
++    def test_provenance_rejects_retrieval_code_drift(self):
++        temp, root = self._repo()
++        self.addCleanup(temp.cleanup)
++        target = root / "services" / "legal_search.py"
++        target.parent.mkdir(parents=True)
++        target.write_text("print('baseline')\n", encoding="utf-8")
++        expected = self._blob(root, "services/legal_search.py")
++        target.write_text("print('changed')\n", encoding="utf-8")
++        with self.assertRaises(BaselineError) as ctx:
++            verify_provenance(
++                root,
++                [{"path": "services/legal_search.py", "git_blob_sha": expected}],
++            )
++        self.assertIn("baseline is stale", str(ctx.exception))
++
++    def test_provenance_rejects_duplicate_paths(self):
++        temp, root = self._repo()
++        self.addCleanup(temp.cleanup)
++        target = root / "eval" / "query_cases.json"
++        target.parent.mkdir(parents=True)
++        target.write_text(json.dumps([]), encoding="utf-8")
++        sha = self._blob(root, "eval/query_cases.json")
++        with self.assertRaises(BaselineError):
++            verify_provenance(
++                root,
++                [
++                    {"path": "eval/query_cases.json", "git_blob_sha": sha},
++                    {"path": "eval/query_cases.json", "git_blob_sha": sha},
++                ],
++            )
++
++
++if __name__ == "__main__":
++    unittest.main()

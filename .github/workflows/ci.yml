@@ -58,11 +58,14 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install -r requirements-ci.txt
       - name: Validate config, corpus and evaluation assets
         run: python scripts/ci_quality_gate.py
-      - name: Run deterministic 200-case workflow evaluation
+      - name: Verify audited V6.1 184/200 retrieval baseline
+        run: python scripts/verify_retrieval_baseline.py
+      - name: Run deterministic 200-case lexical workflow evaluation
         run: |
           mkdir -p artifacts
-          # V5 lexical-only frozen baseline is 174/200. This CI job deliberately
-          # disables hybrid retrieval and the reranker, so the V6.1 184 floor is not comparable.
+          # GitHub-hosted CI deliberately keeps the optional local ML/vector stack disabled.
+          # The audited V6.1 184/200 baseline is provenance-locked by the step above;
+          # this executable CPU-only smoke gate retains the frozen V5 lexical 174/200 floor.
           python scripts/evaluate_workflow.py --retrieval-floor 174 --json-output artifacts/workflow-report.json
       - name: Upload workflow report
         if: always()

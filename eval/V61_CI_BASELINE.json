@@ -1,0 +1,49 @@
+{
+  "version": "V6.1-ci-baseline-1",
+  "audited_on": "2026-08-21",
+  "source_baseline": "eval/V61_RERANKER_BASELINE_2026-08-11.md",
+  "audited_result": {
+    "cases": 200,
+    "retrieval_passed": 184,
+    "retrieval_floor": 184,
+    "failure_ids": [
+      "AVTS-CORE-06",
+      "CROSS-01B",
+      "CROSS-03B",
+      "CROSS-04B",
+      "CROSS-05B",
+      "CROSS-07B",
+      "CROSS-08B",
+      "CROSS-10B",
+      "CROSS-11B",
+      "CROSS-12B",
+      "CROSS-13B",
+      "CROSS-14B",
+      "CROSS-15B",
+      "LANG-16",
+      "LANG-17",
+      "LANG-18"
+    ]
+  },
+  "runtime": {
+    "hybrid_retrieval_enabled": true,
+    "embedding_model": "bge-m3",
+    "reranker_enabled": true,
+    "reranker_model": "BAAI/bge-reranker-v2-m3",
+    "vector_rows": 22287
+  },
+  "provenance": [
+    {"path": "data/laws.json", "git_blob_sha": "f845b8cd176c504adcb5f3ab8fb57fd4aac9e7fb"},
+    {"path": "data/query_lexicon.json", "git_blob_sha": "91832cf5582315b95a46e1d0c83b4597bc7a2203"},
+    {"path": "eval/query_cases.json", "git_blob_sha": "4ebae687805415bb3070936aa171022445ff58ff"},
+    {"path": "eval/V61_RERANKER_BASELINE_2026-08-11.md", "git_blob_sha": "160155b8745a3a2746947e0b32b82225be7664eb"},
+    {"path": "config.py", "git_blob_sha": "d9caf58e777f1c681f002810e7c04c5ef1895bb7"},
+    {"path": "services/legal_search.py", "git_blob_sha": "e4873d782f0c0ccf227e58d1009635dbb5e4725d"},
+    {"path": "services/query_understanding.py", "git_blob_sha": "7d441f80b3e848bb9a9723d37f79d78a342442f4"},
+    {"path": "services/embedding_service.py", "git_blob_sha": "d59da6ef05aa8b88ca5f94f7a3cb27f85abb742b"},
+    {"path": "services/vector_search.py", "git_blob_sha": "cb6d23ece11c32284b57ecc756d843f30d353c7b"},
+    {"path": "services/reranker.py", "git_blob_sha": "5081e9001d3b74a40bbc85d1b788005029dd27d1"},
+    {"path": "scripts/evaluate_queries.py", "git_blob_sha": "1d93728d738b84982accb092223ee8ebfb46f83e"},
+    {"path": "scripts/evaluate_workflow.py", "git_blob_sha": "7c39d49b1cf2cfcbfa00908ecbff21216224a8ed"}
+  ]
+}

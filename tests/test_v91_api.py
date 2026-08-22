@@ -93,6 +93,7 @@ class V91ApiTests(unittest.TestCase):
         self.assertEqual(metrics.status_code, 200)
         self.assertEqual(metrics.json()["version"], "0.9.1")
         self.assertFalse(metrics.json()["retains_user_text"])
+        self.assertIn("verified_live_context", metrics.json())
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ class QualityMetricsStore:
         self._routes = Counter()
         self._statuses = Counter()
         self._verification = Counter()
+        self._legal_context = Counter()
         self._analysis_latencies: Deque[float] = deque(maxlen=self.max_latency_samples)
         self._fallbacks = 0
         self._analyses = 0
@@ -40,6 +41,7 @@ class QualityMetricsStore:
         fallback: bool,
         claim_count: int,
         source_count: int,
+        legal_context_mode: str = "LOCAL_CORPUS",
     ) -> None:
         with self._lock:
             self._analyses += 1
@@ -47,6 +49,7 @@ class QualityMetricsStore:
             self._claims += max(0, int(claim_count))
             self._sources += max(0, int(source_count))
             self._verification[str(verification_status or "UNKNOWN")[:48]] += 1
+            self._legal_context[str(legal_context_mode or "LOCAL_CORPUS")[:48]] += 1
             self._analysis_latencies.append(max(0.0, float(duration_ms)))
 
     def snapshot(self) -> dict:
@@ -63,6 +66,7 @@ class QualityMetricsStore:
                 "average_claims": round(self._claims / analyses, 2) if analyses else 0.0,
                 "average_sources": round(self._sources / analyses, 2) if analyses else 0.0,
                 "verification_statuses": dict(self._verification),
+                "legal_context_modes": dict(self._legal_context),
                 "latency_ms": {
                     "samples": len(latencies),
                     "p50": self._percentile(latencies, 0.50),

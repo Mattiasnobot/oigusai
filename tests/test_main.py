@@ -137,6 +137,7 @@ class MainTests(unittest.TestCase):
         self.assertTrue(response.layered_answer["short_answer"])
         self.assertEqual(response.pipeline["status"], "completed")
         self.assertEqual(len(response.pipeline["stages"]), 7)
+        self.assertEqual(response.legal_context["mode"], "LOCAL_CORPUS")
     def test_root_serves_cache_free_conversational_ui(self):
         with TestClient(main.app) as client:
             response = client.get("/")
@@ -628,6 +629,11 @@ class MainTests(unittest.TestCase):
         self.assertEqual(data["document_privacy"], "memory_only")
         self.assertIn("access_protected", data)
         self.assertIn("work_queue", data)
+        self.assertIn("verified_live_context", data)
+        self.assertIn("configured", data["verified_live_context"])
+        self.assertTrue(
+            data["capabilities"]["v11_6_verified_live_pilot_observability"]
+        )
         self.assertEqual(data["matter_ttl_minutes"], main.settings.matter_ttl_minutes)
 
     def test_access_check_rejects_wrong_code_and_accepts_right_code(self):

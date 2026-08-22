@@ -373,6 +373,7 @@ class CaseAnalysisResponse(BaseModel):
     claims: List[EvidenceClaimResponse] = Field(default_factory=list)
     layered_answer: Dict[str, Any] = Field(default_factory=dict)
     pipeline: Dict[str, Any] = Field(default_factory=dict)
+    legal_context: Dict[str, Any] = Field(default_factory=dict)
 
 
 class MatterCreateRequest(BaseModel):
@@ -545,12 +546,18 @@ async def admin_metrics(
     feedback = getattr(request.app.state, "feedback_store", None)
     guard = getattr(request.app.state, "runtime_guard", None)
     matters = getattr(request.app.state, "matter_store", None)
+    ai_service = getattr(request.app.state, "ai_service", None)
     return {
         "version": APP_VERSION,
         "metrics": metrics.snapshot() if metrics is not None else {},
         "feedback": feedback.snapshot() if feedback is not None else {},
         "work_queue": guard.snapshot() if guard is not None else {},
         "active_matters": matters.count() if matters is not None else 0,
+        "verified_live_context": (
+            ai_service.live_model_context_stats()
+            if ai_service is not None and hasattr(ai_service, "live_model_context_stats")
+            else {}
+        ),
         "retains_user_text": False,
     }
 
@@ -618,6 +625,12 @@ async def health(request: Request):
     matter_store = getattr(request.app.state, "matter_store", None)
     feedback_store = getattr(request.app.state, "feedback_store", None)
     metrics_store = getattr(request.app.state, "metrics_store", None)
+    ai_service = getattr(request.app.state, "ai_service", None)
+    verified_live_context = (
+        ai_service.live_model_context_stats()
+        if ai_service is not None and hasattr(ai_service, "live_model_context_stats")
+        else {}
+    )
     ready_for_demo = bool(
         legal_service is not None and model_status["analysis_model_ready"]
     )
@@ -646,6 +659,10 @@ async def health(request: Request):
             feedback_store.snapshot()["total"] if feedback_store is not None else 0
         ),
         "quality_metrics": metrics_store.snapshot() if metrics_store is not None else {},
+        "verified_live_context": {
+            "configured": settings.rt_verified_live_model_context_enabled,
+            **verified_live_context,
+        },
         "capabilities": {
             "v8_2_case_card": True,
             "v8_2_layered_answer": True,
@@ -654,6 +671,7 @@ async def health(request: Request):
             "v8_3_safe_drafts": True,
             "v9_0_verified_pipeline": True,
             "v9_1_quality_dashboard": True,
+            "v11_6_verified_live_pilot_observability": True,
         },
         "access_protected": bool(settings.app_access_code),
         "transport_security": "https_required_for_public_use",
@@ -882,6 +900,7 @@ async def analyze_case(
         ],
         layered_answer=finalized["layered_answer"],
         pipeline=finalized["pipeline"],
+        legal_context=finalized["legal_context"],
     )
 
 

@@ -69,11 +69,13 @@ def verify_contract() -> dict:
         settings=load_settings({}),
         live_model_context_enabled=False,
     )
-    if service.live_model_context_stats() != {
-        "admitted": 0,
-        "local_fallback": 0,
-        "unexpected_error": 0,
-    }:
+    stats = service.live_model_context_stats()
+    required_zero_counters = {
+        "attempts", "admitted", "live_verified", "mixed_verified_and_local",
+        "local_fallback", "unexpected_error", "total_context_ms",
+        "average_context_ms", "max_context_ms",
+    }
+    if any(stats.get(key) != 0 for key in required_zero_counters):
         raise RuntimeError("V11.5.1 runtime outcome counters are not initialized safely.")
 
     main_text = (PROJECT_ROOT / "main.py").read_text(encoding="utf-8")

@@ -92,7 +92,8 @@
         document.getElementById('feedback').textContent=feedback.total||0;
         document.getElementById('fallback').textContent=`${Math.round((metrics.fallback_rate||0)*100)}%`;
         document.getElementById('p95').textContent=`${Math.round(metrics.latency_ms?.p95||0)} ms`;
-        fillTable('health-table', [['Versioon',data.version],['Valmis esitluseks',health.ready_for_demo?'Jah':'Ei'],['Aktiivsed tööd',data.work_queue?.active||0],['Järjekorras',data.work_queue?.waiting||0],['Ajutised juhtumid',data.active_matters||0],['Õiguskorpus',`${health.legal_sections||0} sätet`]]);
+        const live=data.verified_live_context||{};
+        fillTable('health-table', [['Versioon',data.version],['Valmis esitluseks',health.ready_for_demo?'Jah':'Ei'],['Aktiivsed tööd',data.work_queue?.active||0],['Järjekorras',data.work_queue?.waiting||0],['Ajutised juhtumid',data.active_matters||0],['Õiguskorpus',`${health.legal_sections||0} sätet`],['Live-konteksti katseid',live.attempts||0],['Live kontrollitud',live.live_verified||0],['Segakontekst',live.mixed_verified_and_local||0],['Lokaalne fallback',live.local_fallback||0],['Live keskmine latentsus',`${Math.round(live.average_context_ms||0)} ms`],['Ootamatud live-vead',live.unexpected_error||0]]);
         fillTable('feedback-table', [['Abiks',feedback.helpful||0],['Mitte päris',feedback.not_helpful||0],['Kokku',feedback.total||0]]);
         fillTable('verification-table',Object.entries(metrics.verification_statuses||{}));
         document.getElementById('service-status').textContent=health.status||'teadmata';

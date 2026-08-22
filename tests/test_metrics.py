@@ -13,11 +13,13 @@ class QualityMetricsTests(unittest.TestCase):
             fallback=False,
             claim_count=3,
             source_count=2,
+            legal_context_mode="LIVE_VERIFIED",
         )
         data = store.snapshot()
         self.assertEqual(data["analyses"], 1)
         self.assertEqual(data["latency_ms"]["p95"], 1250)
         self.assertEqual(data["privacy"], "aggregate_only_no_user_text")
+        self.assertEqual(data["legal_context_modes"], {"LIVE_VERIFIED": 1})
         self.assertNotIn("query", data)
 
 

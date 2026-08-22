@@ -36,7 +36,7 @@ from services.legal_search import (
     LegalSearchService,
     QueryUnderstandingUnavailableError,
 )
-from services.offline_ai import OfflineAIService
+from services.verified_live_ai import VerifiedLiveOfflineAIService as OfflineAIService
 from services.ollama_runtime import OllamaRuntimeManager
 from services.matters import MatterNotFoundError, MatterStore
 from services.metrics import QualityMetricsStore

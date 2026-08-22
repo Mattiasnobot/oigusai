@@ -1,0 +1,20 @@
+{
+  "version": "V11.5.1-verified-live-runtime-1",
+  "depends_on_model_context_version": "V11.5-verified-live-model-context-1",
+  "application_runtime_wiring_enabled": true,
+  "runtime_default_enabled": false,
+  "runtime_env": "RT_VERIFIED_LIVE_MODEL_CONTEXT_ENABLED",
+  "main_uses_verified_live_offline_ai": true,
+  "wrapper_subclasses_offline_ai": true,
+  "same_analysis_laws_object_reused_downstream": true,
+  "fail_closed_to_audited_local_context": true,
+  "expected_failures_only_use_local_fallback": true,
+  "unexpected_runtime_errors_propagate": true,
+  "request_diagnostics_isolated": true,
+  "runtime_outcome_counters_enabled": true,
+  "unadmitted_live_model_context_enabled": false,
+  "analysis_orchestrator_code_modified": false,
+  "network_on_demand_only": true,
+  "writes_legal_corpus": false,
+  "persistent_live_cache_enabled": false
+}

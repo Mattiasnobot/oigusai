@@ -13,7 +13,7 @@ from typing import Mapping, Optional
 
 from dotenv import load_dotenv
 
-CONFIG_SCHEMA_VERSION = 11
+CONFIG_SCHEMA_VERSION = 12
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 ENV_FILE = PROJECT_ROOT / ".env"
@@ -183,6 +183,7 @@ class Settings:
     rt_request_delay: float
     rt_cache_ttl_days: int
     rt_user_agent: str
+    rt_verified_live_model_context_enabled: bool
 
 
 def load_settings(environ: Optional[Mapping[str, str]] = None) -> Settings:
@@ -342,5 +343,8 @@ def load_settings(environ: Optional[Mapping[str, str]] = None) -> Settings:
             env,
             "RT_USER_AGENT",
             "OigusAI/0.9.1 (local legal analysis prototype)",
+        ),
+        rt_verified_live_model_context_enabled=_bool(
+            env, "RT_VERIFIED_LIVE_MODEL_CONTEXT_ENABLED", False
         ),
     )

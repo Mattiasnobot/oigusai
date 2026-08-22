@@ -1,6 +1,8 @@
 {
   "version": "V6.1-ci-baseline-1",
   "audited_on": "2026-08-21",
+  "provenance_reviewed_on": "2026-08-22",
+  "provenance_review_note": "config.py changed only to add the default-off RT_VERIFIED_LIVE_MODEL_CONTEXT_ENABLED runtime setting; V6.1 retrieval inputs and defaults are unchanged.",
   "source_baseline": "eval/V61_RERANKER_BASELINE_2026-08-11.md",
   "audited_result": {
     "cases": 200,
@@ -37,7 +39,7 @@
     {"path": "data/query_lexicon.json", "git_blob_sha": "91832cf5582315b95a46e1d0c83b4597bc7a2203"},
     {"path": "eval/query_cases.json", "git_blob_sha": "4ebae687805415bb3070936aa171022445ff58ff"},
     {"path": "eval/V61_RERANKER_BASELINE_2026-08-11.md", "git_blob_sha": "160155b8745a3a2746947e0b32b82225be7664eb"},
-    {"path": "config.py", "git_blob_sha": "d9caf58e777f1c681f002810e7c04c5ef1895bb7"},
+    {"path": "config.py", "git_blob_sha": "0892ce04acff854051df9525ff2ea9306114016c"},
     {"path": "services/legal_search.py", "git_blob_sha": "e4873d782f0c0ccf227e58d1009635dbb5e4725d"},
     {"path": "services/query_understanding.py", "git_blob_sha": "7d441f80b3e848bb9a9723d37f79d78a342442f4"},
     {"path": "services/embedding_service.py", "git_blob_sha": "d59da6ef05aa8b88ca5f94f7a3cb27f85abb742b"},

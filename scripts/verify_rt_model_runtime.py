@@ -38,6 +38,10 @@ def verify_contract() -> dict:
         "wrapper_subclasses_offline_ai": True,
         "same_analysis_laws_object_reused_downstream": True,
         "fail_closed_to_audited_local_context": True,
+        "expected_failures_only_use_local_fallback": True,
+        "unexpected_runtime_errors_propagate": True,
+        "request_diagnostics_isolated": True,
+        "runtime_outcome_counters_enabled": True,
         "unadmitted_live_model_context_enabled": False,
         "analysis_orchestrator_code_modified": False,
         "network_on_demand_only": True,
@@ -61,6 +65,17 @@ def verify_contract() -> dict:
     if not issubclass(VerifiedLiveOfflineAIService, OfflineAIService):
         raise RuntimeError("V11.5.1 runtime wrapper must remain an OfflineAIService subclass.")
 
+    service = VerifiedLiveOfflineAIService(
+        settings=load_settings({}),
+        live_model_context_enabled=False,
+    )
+    if service.live_model_context_stats() != {
+        "admitted": 0,
+        "local_fallback": 0,
+        "unexpected_error": 0,
+    }:
+        raise RuntimeError("V11.5.1 runtime outcome counters are not initialized safely.")
+
     main_text = (PROJECT_ROOT / "main.py").read_text(encoding="utf-8")
     expected_import = (
         "from services.verified_live_ai import "
@@ -72,6 +87,8 @@ def verify_contract() -> dict:
     wrapper_source = inspect.getsource(VerifiedLiveOfflineAIService.analyze_case_structured)
     if 'laws[:] = admitted' not in wrapper_source:
         raise RuntimeError("V11.5.1 same-analysis_laws-object invariant drifted.")
+    if "except (RTModelContextError, ValueError)" not in wrapper_source:
+        raise RuntimeError("V11.5.1 expected-failure fallback boundary drifted.")
     return payload
 
 

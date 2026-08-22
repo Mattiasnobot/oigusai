@@ -1,12 +1,25 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from types import SimpleNamespace
+from unittest.mock import Mock
 from unittest.mock import patch
 
 from config import load_settings
 from services.offline_ai import OfflineAIService
+from services.analysis_orchestrator import AnalysisOrchestrator
+from services.analysis_pipeline import AnalysisPipelineRun
+from services.rt_model_context import RTModelContextError
 from services.verified_live_ai import VerifiedLiveOfflineAIService
 from tests.test_rt_model_context import live_record, local_candidate
+from verifiers.source_verifier import SourceVerifier
+
+
+async def immediate_work(_label, func, *args):
+    return func(*args)
 
 
 class FakeContextAdapter:
@@ -97,7 +110,7 @@ class VerifiedLiveRuntimeWiringTests(unittest.TestCase):
         )
 
     def test_admission_failure_keeps_original_audited_local_laws(self):
-        adapter = FakeContextAdapter(error=RuntimeError("forged live record"))
+        adapter = FakeContextAdapter(error=RTModelContextError("forged live record"))
         service = VerifiedLiveOfflineAIService(
             settings=load_settings({}),
             live_model_context_enabled=True,
@@ -117,6 +130,20 @@ class VerifiedLiveRuntimeWiringTests(unittest.TestCase):
             service.last_live_model_context["status"], "LOCAL_MODEL_CONTEXT"
         )
         self.assertFalse(service.last_live_model_context["model_context_enabled"])
+        self.assertEqual(service.live_model_context_stats()["local_fallback"], 1)
+
+    def test_unexpected_adapter_defect_is_not_silently_downgraded(self):
+        adapter = FakeContextAdapter(error=TypeError("adapter contract defect"))
+        service = VerifiedLiveOfflineAIService(
+            settings=load_settings({}),
+            live_model_context_enabled=True,
+            live_context_adapter=adapter,
+        )
+        with self.assertRaisesRegex(TypeError, "adapter contract defect"):
+            service.analyze_case_structured(
+                "case", [local_candidate()], "2026-08-21", []
+            )
+        self.assertEqual(service.live_model_context_stats()["unexpected_error"], 1)
 
     def test_empty_admission_keeps_original_local_laws(self):
         adapter = FakeContextAdapter(laws=[])
@@ -136,6 +163,136 @@ class VerifiedLiveRuntimeWiringTests(unittest.TestCase):
         self.assertNotIn("model_context_admission", laws[0])
         self.assertEqual(
             service.last_live_model_context["reason"], "no_admitted_live_context"
+        )
+
+    def test_multiple_and_mixed_admitted_records_preserve_order(self):
+        live = live_record()
+        live["model_context_admission"] = "VERIFIED_LIVE_BINDING_SECTION"
+        local = local_candidate()
+        local["model_context_admission"] = "AUDITED_LOCAL_CORPUS_FALLBACK"
+        adapter = FakeContextAdapter(laws=[live, local])
+        service = VerifiedLiveOfflineAIService(
+            settings=load_settings({}),
+            live_model_context_enabled=True,
+            live_context_adapter=adapter,
+        )
+        laws = [local_candidate(), {**local_candidate(), "id": "TLS_96"}]
+        with patch.object(
+            OfflineAIService,
+            "analyze_case_structured",
+            return_value=("ok", False, []),
+        ):
+            service.analyze_case_structured("case", laws, "2026-08-21", [])
+        self.assertEqual(
+            [law["model_context_admission"] for law in laws],
+            ["VERIFIED_LIVE_BINDING_SECTION", "AUDITED_LOCAL_CORPUS_FALLBACK"],
+        )
+
+    def test_invalid_and_future_dates_keep_local_context(self):
+        for event_date in ("not-a-date", "2999-01-01"):
+            with self.subTest(event_date=event_date):
+                service = VerifiedLiveOfflineAIService(
+                    settings=load_settings({}),
+                    live_model_context_enabled=True,
+                )
+                laws = [local_candidate()]
+                with patch.object(
+                    OfflineAIService,
+                    "analyze_case_structured",
+                    return_value=("ok", False, []),
+                ):
+                    service.analyze_case_structured("case", laws, event_date, [])
+                self.assertNotIn("model_context_admission", laws[0])
+                self.assertEqual(
+                    service.last_live_model_context["status"], "LOCAL_MODEL_CONTEXT"
+                )
+
+    def test_diagnostics_are_isolated_between_request_threads(self):
+        admitted = live_record()
+        admitted["model_context_admission"] = "VERIFIED_LIVE_BINDING_SECTION"
+        service = VerifiedLiveOfflineAIService(
+            settings=load_settings({}),
+            live_model_context_enabled=True,
+            live_context_adapter=FakeContextAdapter(laws=[admitted]),
+        )
+
+        def run_one():
+            laws = [local_candidate()]
+            with patch.object(
+                OfflineAIService,
+                "analyze_case_structured",
+                return_value=("ok", False, []),
+            ):
+                service.analyze_case_structured("case", laws, "2026-08-21", [])
+            return service.last_live_model_context["status"]
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            statuses = list(pool.map(lambda _value: run_one(), range(2)))
+        self.assertEqual(statuses, ["MODEL_CONTEXT_READY", "MODEL_CONTEXT_READY"])
+        self.assertEqual(service.last_live_model_context["status"], "DISABLED")
+        self.assertEqual(service.live_model_context_stats()["admitted"], 2)
+
+    def test_normal_orchestrator_uses_admitted_records_for_model_and_verifier(self):
+        admitted = live_record()
+        admitted["text"] = "LIVE VERIFIED SECTION TEXT"
+        admitted["model_context_admission"] = "VERIFIED_LIVE_BINDING_SECTION"
+        adapter = FakeContextAdapter(laws=[admitted])
+        service = VerifiedLiveOfflineAIService(
+            settings=load_settings({}),
+            live_model_context_enabled=True,
+            live_context_adapter=adapter,
+            allow_mock=False,
+        )
+        raw = json.dumps({
+            "claims": [{
+                "text": "LIVE VERIFIED SECTION TEXT",
+                "source_id": "TLS_95",
+                "evidence": "LIVE VERIFIED SECTION TEXT",
+            }],
+        })
+        relevance = Mock()
+        relevance.verify_answer.return_value = SimpleNamespace(
+            relevant=True, missing_concepts=[], clarification=""
+        )
+        orchestrator = AnalysisOrchestrator(
+            legal_service=Mock(),
+            matter_store=None,
+            relevance_verifier=relevance,
+            run_guarded_work=immediate_work,
+        )
+        pipeline = AnalysisPipelineRun()
+        for stage in ("case_understanding", "document_evidence", "legal_retrieval"):
+            pipeline.complete(stage)
+        prepared = SimpleNamespace(
+            pipeline=pipeline,
+            current_turn="",
+            answer_requirements=[],
+            obligation_plan=None,
+            document_spans=[],
+            relevance_text="live verified section",
+            route_plan=SimpleNamespace(employment_form_question=False),
+            analysis_laws=[local_candidate()],
+        )
+        request = SimpleNamespace(
+            case_description="case", case_context=None, event_date="2026-08-21"
+        )
+        verifier = Mock(wraps=SourceVerifier())
+        with patch.object(service, "_call_ollama", return_value=raw) as model_call:
+            executed = asyncio.run(orchestrator.execute(
+                request,
+                prepared,
+                ai_service=service,
+                source_verifier=verifier,
+            ))
+
+        prompt = model_call.call_args.args[0]
+        self.assertIn("LIVE VERIFIED SECTION TEXT", prompt)
+        self.assertNotIn(local_candidate()["text"], prompt)
+        verifier_laws = verifier.verify_sources.call_args_list[0].args[1]
+        self.assertIs(verifier_laws, executed.analysis_laws)
+        self.assertEqual(
+            executed.analysis_laws[0]["model_context_admission"],
+            "VERIFIED_LIVE_BINDING_SECTION",
         )
 
     def test_main_runtime_import_points_to_verified_wrapper(self):

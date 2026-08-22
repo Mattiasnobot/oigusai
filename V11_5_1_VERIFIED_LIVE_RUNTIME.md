@@ -24,9 +24,11 @@ built. Admitted records replace the contents of the existing `analysis_laws`
 list **in place**. The model and every downstream verifier therefore see the
 same legal source objects.
 
-If live retrieval or admission raises, the list is not changed and the original
-audited local corpus records remain the model context. No failed or unadmitted
-live record is copied into the list.
+If expected date validation or model-context admission fails, the list is not
+changed and the original audited local corpus records remain the model context.
+No failed or unadmitted live record is copied into the list. Unexpected adapter
+or implementation errors propagate to the existing orchestrator error boundary
+instead of being silently presented as a healthy local fallback.
 
 ## Runtime switch
 
@@ -54,6 +56,10 @@ deterministic tests keep the existing local-corpus runtime path.
 - No live text is written to `laws.json`.
 - No persistent live cache is introduced.
 - Existing model-output source and evidence verification remains unchanged.
+- Per-request diagnostics are thread-local; concurrent requests cannot overwrite
+  one another's latest admission status.
+- Process-local admitted, local-fallback and unexpected-error counters are
+  available through `live_model_context_stats()` for health/metrics integration.
 
 ## Verification
 

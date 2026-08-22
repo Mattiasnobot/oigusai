@@ -8,10 +8,12 @@ source list in place before prompt construction.
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any, Dict
 
 from config import Settings, load_settings
 from services.offline_ai import OfflineAIService
+from services.rt_model_context import RTModelContextError
 from services.verified_live_analysis import VerifiedLiveModelAnalysisService
 
 V11_5_MODEL_CONTEXT_VERSION = "V11.5-verified-live-model-context-1"
@@ -39,12 +41,41 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
         self.live_context_adapter = live_context_adapter or VerifiedLiveModelAnalysisService(
             ai_service=self
         )
-        self.last_live_model_context: Dict[str, Any] = {
+        self._live_context_state = threading.local()
+        self._live_context_stats_lock = threading.Lock()
+        self._live_context_stats = {
+            "admitted": 0,
+            "local_fallback": 0,
+            "unexpected_error": 0,
+        }
+        self.last_live_model_context = {
             "version": V11_5_MODEL_CONTEXT_VERSION,
             "status": "DISABLED",
             "model_context_enabled": False,
         }
         self._live_context_logger = logging.getLogger(__name__)
+
+    @property
+    def last_live_model_context(self) -> Dict[str, Any]:
+        """Return request-thread-local diagnostics for the most recent analysis."""
+        return dict(getattr(self._live_context_state, "last", {
+            "version": V11_5_MODEL_CONTEXT_VERSION,
+            "status": "DISABLED",
+            "model_context_enabled": False,
+        }))
+
+    @last_live_model_context.setter
+    def last_live_model_context(self, value: Dict[str, Any]) -> None:
+        self._live_context_state.last = dict(value)
+
+    def live_model_context_stats(self) -> Dict[str, int]:
+        """Return process-local counters suitable for health/metrics reporting."""
+        with self._live_context_stats_lock:
+            return dict(self._live_context_stats)
+
+    def _record_live_context_outcome(self, outcome: str) -> None:
+        with self._live_context_stats_lock:
+            self._live_context_stats[outcome] += 1
 
     def analyze_case_structured(
         self,
@@ -68,6 +99,7 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
                         "admission": context.get("admission", {}),
                         "model_context_enabled": True,
                     }
+                    self._record_live_context_outcome("admitted")
                 else:
                     self.last_live_model_context = {
                         "version": V11_5_MODEL_CONTEXT_VERSION,
@@ -75,7 +107,8 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
                         "model_context_enabled": False,
                         "reason": "no_admitted_live_context",
                     }
-            except Exception as exc:
+                    self._record_live_context_outcome("local_fallback")
+            except (RTModelContextError, ValueError) as exc:
                 # Fail closed to the pre-existing audited local law list. No
                 # unadmitted live record is copied into ``laws`` on this path.
                 self._live_context_logger.warning(
@@ -88,6 +121,16 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
                     "model_context_enabled": False,
                     "error": f"{type(exc).__name__}: {exc}"[:300],
                 }
+                self._record_live_context_outcome("local_fallback")
+            except Exception:
+                # Unexpected implementation defects must not look like a healthy
+                # local fallback. Let the existing orchestrator error boundary
+                # handle them and make the defect observable.
+                self._record_live_context_outcome("unexpected_error")
+                self._live_context_logger.exception(
+                    "Unexpected V11.5 live model-context runtime failure"
+                )
+                raise
         return super().analyze_case_structured(
             case_desc,
             laws,

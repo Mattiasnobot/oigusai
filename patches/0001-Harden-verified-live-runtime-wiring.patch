@@ -1,0 +1,418 @@
+From 081eba087ceb1bfad8b1b14ed83bbaf578b627f9 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 22 Aug 2026 09:50:46 +0200
+Subject: [PATCH] Harden verified live runtime wiring
+
+---
+ V11_5_1_VERIFIED_LIVE_RUNTIME.md          |  12 +-
+ data/rt_model_runtime_manifest.json       |   4 +
+ eval/V61_CI_BASELINE.json                 |   4 +-
+ scripts/verify_rt_model_runtime.py        |  17 +++
+ services/verified_live_ai.py              |  47 ++++++-
+ tests/test_verified_live_model_context.py | 159 +++++++++++++++++++++-
+ 6 files changed, 236 insertions(+), 7 deletions(-)
+
+diff --git a/V11_5_1_VERIFIED_LIVE_RUNTIME.md b/V11_5_1_VERIFIED_LIVE_RUNTIME.md
+index 7746eec..41160f9 100644
+--- a/V11_5_1_VERIFIED_LIVE_RUNTIME.md
++++ b/V11_5_1_VERIFIED_LIVE_RUNTIME.md
+@@ -24,9 +24,11 @@ built. Admitted records replace the contents of the existing `analysis_laws`
+ list **in place**. The model and every downstream verifier therefore see the
+ same legal source objects.
+ 
+-If live retrieval or admission raises, the list is not changed and the original
+-audited local corpus records remain the model context. No failed or unadmitted
+-live record is copied into the list.
++If expected date validation or model-context admission fails, the list is not
++changed and the original audited local corpus records remain the model context.
++No failed or unadmitted live record is copied into the list. Unexpected adapter
++or implementation errors propagate to the existing orchestrator error boundary
++instead of being silently presented as a healthy local fallback.
+ 
+ ## Runtime switch
+ 
+@@ -54,6 +56,10 @@ deterministic tests keep the existing local-corpus runtime path.
+ - No live text is written to `laws.json`.
+ - No persistent live cache is introduced.
+ - Existing model-output source and evidence verification remains unchanged.
++- Per-request diagnostics are thread-local; concurrent requests cannot overwrite
++  one another's latest admission status.
++- Process-local admitted, local-fallback and unexpected-error counters are
++  available through `live_model_context_stats()` for health/metrics integration.
+ 
+ ## Verification
+ 
+diff --git a/data/rt_model_runtime_manifest.json b/data/rt_model_runtime_manifest.json
+index 8cffd58..ddc9d09 100644
+--- a/data/rt_model_runtime_manifest.json
++++ b/data/rt_model_runtime_manifest.json
+@@ -8,6 +8,10 @@
+   "wrapper_subclasses_offline_ai": true,
+   "same_analysis_laws_object_reused_downstream": true,
+   "fail_closed_to_audited_local_context": true,
++  "expected_failures_only_use_local_fallback": true,
++  "unexpected_runtime_errors_propagate": true,
++  "request_diagnostics_isolated": true,
++  "runtime_outcome_counters_enabled": true,
+   "unadmitted_live_model_context_enabled": false,
+   "analysis_orchestrator_code_modified": false,
+   "network_on_demand_only": true,
+diff --git a/eval/V61_CI_BASELINE.json b/eval/V61_CI_BASELINE.json
+index afa44f5..a065bf6 100644
+--- a/eval/V61_CI_BASELINE.json
++++ b/eval/V61_CI_BASELINE.json
+@@ -1,6 +1,8 @@
+ {
+   "version": "V6.1-ci-baseline-1",
+   "audited_on": "2026-08-21",
++  "provenance_reviewed_on": "2026-08-22",
++  "provenance_review_note": "config.py changed only to add the default-off RT_VERIFIED_LIVE_MODEL_CONTEXT_ENABLED runtime setting; V6.1 retrieval inputs and defaults are unchanged.",
+   "source_baseline": "eval/V61_RERANKER_BASELINE_2026-08-11.md",
+   "audited_result": {
+     "cases": 200,
+@@ -37,7 +39,7 @@
+     {"path": "data/query_lexicon.json", "git_blob_sha": "91832cf5582315b95a46e1d0c83b4597bc7a2203"},
+     {"path": "eval/query_cases.json", "git_blob_sha": "4ebae687805415bb3070936aa171022445ff58ff"},
+     {"path": "eval/V61_RERANKER_BASELINE_2026-08-11.md", "git_blob_sha": "160155b8745a3a2746947e0b32b82225be7664eb"},
+-    {"path": "config.py", "git_blob_sha": "d9caf58e777f1c681f002810e7c04c5ef1895bb7"},
++    {"path": "config.py", "git_blob_sha": "0892ce04acff854051df9525ff2ea9306114016c"},
+     {"path": "services/legal_search.py", "git_blob_sha": "e4873d782f0c0ccf227e58d1009635dbb5e4725d"},
+     {"path": "services/query_understanding.py", "git_blob_sha": "7d441f80b3e848bb9a9723d37f79d78a342442f4"},
+     {"path": "services/embedding_service.py", "git_blob_sha": "d59da6ef05aa8b88ca5f94f7a3cb27f85abb742b"},
+diff --git a/scripts/verify_rt_model_runtime.py b/scripts/verify_rt_model_runtime.py
+index 5cb1e87..ddfed0d 100755
+--- a/scripts/verify_rt_model_runtime.py
++++ b/scripts/verify_rt_model_runtime.py
+@@ -38,6 +38,10 @@ def verify_contract() -> dict:
+         "wrapper_subclasses_offline_ai": True,
+         "same_analysis_laws_object_reused_downstream": True,
+         "fail_closed_to_audited_local_context": True,
++        "expected_failures_only_use_local_fallback": True,
++        "unexpected_runtime_errors_propagate": True,
++        "request_diagnostics_isolated": True,
++        "runtime_outcome_counters_enabled": True,
+         "unadmitted_live_model_context_enabled": False,
+         "analysis_orchestrator_code_modified": False,
+         "network_on_demand_only": True,
+@@ -61,6 +65,17 @@ def verify_contract() -> dict:
+     if not issubclass(VerifiedLiveOfflineAIService, OfflineAIService):
+         raise RuntimeError("V11.5.1 runtime wrapper must remain an OfflineAIService subclass.")
+ 
++    service = VerifiedLiveOfflineAIService(
++        settings=load_settings({}),
++        live_model_context_enabled=False,
++    )
++    if service.live_model_context_stats() != {
++        "admitted": 0,
++        "local_fallback": 0,
++        "unexpected_error": 0,
++    }:
++        raise RuntimeError("V11.5.1 runtime outcome counters are not initialized safely.")
++
+     main_text = (PROJECT_ROOT / "main.py").read_text(encoding="utf-8")
+     expected_import = (
+         "from services.verified_live_ai import "
+@@ -72,6 +87,8 @@ def verify_contract() -> dict:
+     wrapper_source = inspect.getsource(VerifiedLiveOfflineAIService.analyze_case_structured)
+     if 'laws[:] = admitted' not in wrapper_source:
+         raise RuntimeError("V11.5.1 same-analysis_laws-object invariant drifted.")
++    if "except (RTModelContextError, ValueError)" not in wrapper_source:
++        raise RuntimeError("V11.5.1 expected-failure fallback boundary drifted.")
+     return payload
+ 
+ 
+diff --git a/services/verified_live_ai.py b/services/verified_live_ai.py
+index 2ef113d..be6d0e5 100644
+--- a/services/verified_live_ai.py
++++ b/services/verified_live_ai.py
+@@ -8,10 +8,12 @@ source list in place before prompt construction.
+ from __future__ import annotations
+ 
+ import logging
++import threading
+ from typing import Any, Dict
+ 
+ from config import Settings, load_settings
+ from services.offline_ai import OfflineAIService
++from services.rt_model_context import RTModelContextError
+ from services.verified_live_analysis import VerifiedLiveModelAnalysisService
+ 
+ V11_5_MODEL_CONTEXT_VERSION = "V11.5-verified-live-model-context-1"
+@@ -39,13 +41,42 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
+         self.live_context_adapter = live_context_adapter or VerifiedLiveModelAnalysisService(
+             ai_service=self
+         )
+-        self.last_live_model_context: Dict[str, Any] = {
++        self._live_context_state = threading.local()
++        self._live_context_stats_lock = threading.Lock()
++        self._live_context_stats = {
++            "admitted": 0,
++            "local_fallback": 0,
++            "unexpected_error": 0,
++        }
++        self.last_live_model_context = {
+             "version": V11_5_MODEL_CONTEXT_VERSION,
+             "status": "DISABLED",
+             "model_context_enabled": False,
+         }
+         self._live_context_logger = logging.getLogger(__name__)
+ 
++    @property
++    def last_live_model_context(self) -> Dict[str, Any]:
++        """Return request-thread-local diagnostics for the most recent analysis."""
++        return dict(getattr(self._live_context_state, "last", {
++            "version": V11_5_MODEL_CONTEXT_VERSION,
++            "status": "DISABLED",
++            "model_context_enabled": False,
++        }))
++
++    @last_live_model_context.setter
++    def last_live_model_context(self, value: Dict[str, Any]) -> None:
++        self._live_context_state.last = dict(value)
++
++    def live_model_context_stats(self) -> Dict[str, int]:
++        """Return process-local counters suitable for health/metrics reporting."""
++        with self._live_context_stats_lock:
++            return dict(self._live_context_stats)
++
++    def _record_live_context_outcome(self, outcome: str) -> None:
++        with self._live_context_stats_lock:
++            self._live_context_stats[outcome] += 1
++
+     def analyze_case_structured(
+         self,
+         case_desc: str,
+@@ -68,6 +99,7 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
+                         "admission": context.get("admission", {}),
+                         "model_context_enabled": True,
+                     }
++                    self._record_live_context_outcome("admitted")
+                 else:
+                     self.last_live_model_context = {
+                         "version": V11_5_MODEL_CONTEXT_VERSION,
+@@ -75,7 +107,8 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
+                         "model_context_enabled": False,
+                         "reason": "no_admitted_live_context",
+                     }
+-            except Exception as exc:
++                    self._record_live_context_outcome("local_fallback")
++            except (RTModelContextError, ValueError) as exc:
+                 # Fail closed to the pre-existing audited local law list. No
+                 # unadmitted live record is copied into ``laws`` on this path.
+                 self._live_context_logger.warning(
+@@ -88,6 +121,16 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
+                     "model_context_enabled": False,
+                     "error": f"{type(exc).__name__}: {exc}"[:300],
+                 }
++                self._record_live_context_outcome("local_fallback")
++            except Exception:
++                # Unexpected implementation defects must not look like a healthy
++                # local fallback. Let the existing orchestrator error boundary
++                # handle them and make the defect observable.
++                self._record_live_context_outcome("unexpected_error")
++                self._live_context_logger.exception(
++                    "Unexpected V11.5 live model-context runtime failure"
++                )
++                raise
+         return super().analyze_case_structured(
+             case_desc,
+             laws,
+diff --git a/tests/test_verified_live_model_context.py b/tests/test_verified_live_model_context.py
+index efeb923..02e65ec 100644
+--- a/tests/test_verified_live_model_context.py
++++ b/tests/test_verified_live_model_context.py
+@@ -1,12 +1,25 @@
+ from __future__ import annotations
+ 
++import asyncio
++import json
+ import unittest
++from concurrent.futures import ThreadPoolExecutor
++from types import SimpleNamespace
++from unittest.mock import Mock
+ from unittest.mock import patch
+ 
+ from config import load_settings
+ from services.offline_ai import OfflineAIService
++from services.analysis_orchestrator import AnalysisOrchestrator
++from services.analysis_pipeline import AnalysisPipelineRun
++from services.rt_model_context import RTModelContextError
+ from services.verified_live_ai import VerifiedLiveOfflineAIService
+ from tests.test_rt_model_context import live_record, local_candidate
++from verifiers.source_verifier import SourceVerifier
++
++
++async def immediate_work(_label, func, *args):
++    return func(*args)
+ 
+ 
+ class FakeContextAdapter:
+@@ -97,7 +110,7 @@ class VerifiedLiveRuntimeWiringTests(unittest.TestCase):
+         )
+ 
+     def test_admission_failure_keeps_original_audited_local_laws(self):
+-        adapter = FakeContextAdapter(error=RuntimeError("forged live record"))
++        adapter = FakeContextAdapter(error=RTModelContextError("forged live record"))
+         service = VerifiedLiveOfflineAIService(
+             settings=load_settings({}),
+             live_model_context_enabled=True,
+@@ -117,6 +130,20 @@ class VerifiedLiveRuntimeWiringTests(unittest.TestCase):
+             service.last_live_model_context["status"], "LOCAL_MODEL_CONTEXT"
+         )
+         self.assertFalse(service.last_live_model_context["model_context_enabled"])
++        self.assertEqual(service.live_model_context_stats()["local_fallback"], 1)
++
++    def test_unexpected_adapter_defect_is_not_silently_downgraded(self):
++        adapter = FakeContextAdapter(error=TypeError("adapter contract defect"))
++        service = VerifiedLiveOfflineAIService(
++            settings=load_settings({}),
++            live_model_context_enabled=True,
++            live_context_adapter=adapter,
++        )
++        with self.assertRaisesRegex(TypeError, "adapter contract defect"):
++            service.analyze_case_structured(
++                "case", [local_candidate()], "2026-08-21", []
++            )
++        self.assertEqual(service.live_model_context_stats()["unexpected_error"], 1)
+ 
+     def test_empty_admission_keeps_original_local_laws(self):
+         adapter = FakeContextAdapter(laws=[])
+@@ -138,6 +165,136 @@ class VerifiedLiveRuntimeWiringTests(unittest.TestCase):
+             service.last_live_model_context["reason"], "no_admitted_live_context"
+         )
+ 
++    def test_multiple_and_mixed_admitted_records_preserve_order(self):
++        live = live_record()
++        live["model_context_admission"] = "VERIFIED_LIVE_BINDING_SECTION"
++        local = local_candidate()
++        local["model_context_admission"] = "AUDITED_LOCAL_CORPUS_FALLBACK"
++        adapter = FakeContextAdapter(laws=[live, local])
++        service = VerifiedLiveOfflineAIService(
++            settings=load_settings({}),
++            live_model_context_enabled=True,
++            live_context_adapter=adapter,
++        )
++        laws = [local_candidate(), {**local_candidate(), "id": "TLS_96"}]
++        with patch.object(
++            OfflineAIService,
++            "analyze_case_structured",
++            return_value=("ok", False, []),
++        ):
++            service.analyze_case_structured("case", laws, "2026-08-21", [])
++        self.assertEqual(
++            [law["model_context_admission"] for law in laws],
++            ["VERIFIED_LIVE_BINDING_SECTION", "AUDITED_LOCAL_CORPUS_FALLBACK"],
++        )
++
++    def test_invalid_and_future_dates_keep_local_context(self):
++        for event_date in ("not-a-date", "2999-01-01"):
++            with self.subTest(event_date=event_date):
++                service = VerifiedLiveOfflineAIService(
++                    settings=load_settings({}),
++                    live_model_context_enabled=True,
++                )
++                laws = [local_candidate()]
++                with patch.object(
++                    OfflineAIService,
++                    "analyze_case_structured",
++                    return_value=("ok", False, []),
++                ):
++                    service.analyze_case_structured("case", laws, event_date, [])
++                self.assertNotIn("model_context_admission", laws[0])
++                self.assertEqual(
++                    service.last_live_model_context["status"], "LOCAL_MODEL_CONTEXT"
++                )
++
++    def test_diagnostics_are_isolated_between_request_threads(self):
++        admitted = live_record()
++        admitted["model_context_admission"] = "VERIFIED_LIVE_BINDING_SECTION"
++        service = VerifiedLiveOfflineAIService(
++            settings=load_settings({}),
++            live_model_context_enabled=True,
++            live_context_adapter=FakeContextAdapter(laws=[admitted]),
++        )
++
++        def run_one():
++            laws = [local_candidate()]
++            with patch.object(
++                OfflineAIService,
++                "analyze_case_structured",
++                return_value=("ok", False, []),
++            ):
++                service.analyze_case_structured("case", laws, "2026-08-21", [])
++            return service.last_live_model_context["status"]
++
++        with ThreadPoolExecutor(max_workers=2) as pool:
++            statuses = list(pool.map(lambda _value: run_one(), range(2)))
++        self.assertEqual(statuses, ["MODEL_CONTEXT_READY", "MODEL_CONTEXT_READY"])
++        self.assertEqual(service.last_live_model_context["status"], "DISABLED")
++        self.assertEqual(service.live_model_context_stats()["admitted"], 2)
++
++    def test_normal_orchestrator_uses_admitted_records_for_model_and_verifier(self):
++        admitted = live_record()
++        admitted["text"] = "LIVE VERIFIED SECTION TEXT"
++        admitted["model_context_admission"] = "VERIFIED_LIVE_BINDING_SECTION"
++        adapter = FakeContextAdapter(laws=[admitted])
++        service = VerifiedLiveOfflineAIService(
++            settings=load_settings({}),
++            live_model_context_enabled=True,
++            live_context_adapter=adapter,
++            allow_mock=False,
++        )
++        raw = json.dumps({
++            "claims": [{
++                "text": "LIVE VERIFIED SECTION TEXT",
++                "source_id": "TLS_95",
++                "evidence": "LIVE VERIFIED SECTION TEXT",
++            }],
++        })
++        relevance = Mock()
++        relevance.verify_answer.return_value = SimpleNamespace(
++            relevant=True, missing_concepts=[], clarification=""
++        )
++        orchestrator = AnalysisOrchestrator(
++            legal_service=Mock(),
++            matter_store=None,
++            relevance_verifier=relevance,
++            run_guarded_work=immediate_work,
++        )
++        pipeline = AnalysisPipelineRun()
++        for stage in ("case_understanding", "document_evidence", "legal_retrieval"):
++            pipeline.complete(stage)
++        prepared = SimpleNamespace(
++            pipeline=pipeline,
++            current_turn="",
++            answer_requirements=[],
++            obligation_plan=None,
++            document_spans=[],
++            relevance_text="live verified section",
++            route_plan=SimpleNamespace(employment_form_question=False),
++            analysis_laws=[local_candidate()],
++        )
++        request = SimpleNamespace(
++            case_description="case", case_context=None, event_date="2026-08-21"
++        )
++        verifier = Mock(wraps=SourceVerifier())
++        with patch.object(service, "_call_ollama", return_value=raw) as model_call:
++            executed = asyncio.run(orchestrator.execute(
++                request,
++                prepared,
++                ai_service=service,
++                source_verifier=verifier,
++            ))
++
++        prompt = model_call.call_args.args[0]
++        self.assertIn("LIVE VERIFIED SECTION TEXT", prompt)
++        self.assertNotIn(local_candidate()["text"], prompt)
++        verifier_laws = verifier.verify_sources.call_args_list[0].args[1]
++        self.assertIs(verifier_laws, executed.analysis_laws)
++        self.assertEqual(
++            executed.analysis_laws[0]["model_context_admission"],
++            "VERIFIED_LIVE_BINDING_SECTION",
++        )
++
+     def test_main_runtime_import_points_to_verified_wrapper(self):
+         import main
+ 
+-- 
+2.51.1

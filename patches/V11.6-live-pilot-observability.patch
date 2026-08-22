@@ -1,0 +1,948 @@
+From e9ad32d5f5df03746cbf8aa5e145447c45b59dc2 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 22 Aug 2026 10:13:59 +0200
+Subject: [PATCH] Add V11.6 verified live pilot observability
+
+---
+ .env.example                              |   2 +
+ .github/workflows/ci.yml                  |   2 +
+ V11_6_VERIFIED_LIVE_PILOT.md              |  35 ++++++
+ data/rt_live_pilot_manifest.json          |  15 +++
+ main.py                                   |  21 +++-
+ scripts/evaluate_rt_live_pilot.py         | 135 ++++++++++++++++++++++
+ scripts/verify_rt_live_pilot.py           |  52 +++++++++
+ scripts/verify_rt_model_runtime.py        |  12 +-
+ services/analysis_orchestrator.py         |  35 ++++++
+ services/metrics.py                       |   4 +
+ services/verified_live_ai.py              |  57 ++++++++-
+ templates/admin.html                      |   3 +-
+ templates/chat.html                       |  13 +++
+ tests/test_main.py                        |   6 +
+ tests/test_metrics.py                     |   2 +
+ tests/test_rt_live_pilot.py               | 100 ++++++++++++++++
+ tests/test_v91_api.py                     |   1 +
+ tests/test_verified_live_model_context.py |  28 ++++-
+ 18 files changed, 509 insertions(+), 14 deletions(-)
+ create mode 100644 V11_6_VERIFIED_LIVE_PILOT.md
+ create mode 100644 data/rt_live_pilot_manifest.json
+ create mode 100644 scripts/evaluate_rt_live_pilot.py
+ create mode 100644 scripts/verify_rt_live_pilot.py
+ create mode 100644 tests/test_rt_live_pilot.py
+
+diff --git a/.env.example b/.env.example
+index d311d4e..dd1db98 100644
+--- a/.env.example
++++ b/.env.example
+@@ -115,3 +115,5 @@ RT_RETRIES=3
+ RT_REQUEST_DELAY=0.5
+ RT_CACHE_TTL_DAYS=7
+ RT_USER_AGENT=OigusAI/0.9.1 (local legal analysis prototype)
++# V11.6 piloot: luba ainult teadlikuks kohalikuks live-hindamiseks.
++RT_VERIFIED_LIVE_MODEL_CONTEXT_ENABLED=false
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 287390d..bc50613 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -75,6 +75,8 @@ jobs:
+         run: python scripts/verify_rt_model_context.py
+       - name: Verify V11.5.1 verified-live runtime wiring contract
+         run: python scripts/verify_rt_model_runtime.py
++      - name: Verify V11.6 verified-live pilot observability contract
++        run: python scripts/verify_rt_live_pilot.py
+       - name: Verify audited V6.1 184/200 retrieval baseline
+         run: python scripts/verify_retrieval_baseline.py
+       - name: Run deterministic 200-case lexical workflow evaluation
+diff --git a/V11_6_VERIFIED_LIVE_PILOT.md b/V11_6_VERIFIED_LIVE_PILOT.md
+new file mode 100644
+index 0000000..2baa10f
+--- /dev/null
++++ b/V11_6_VERIFIED_LIVE_PILOT.md
+@@ -0,0 +1,35 @@
++# V11.6 — Verified-live pilot and observability
++
++V11.6 keeps verified-live model context disabled by default while making an
++explicit 20–50 case local pilot measurable and user-visible.
++
++## Runtime signals
++
++- API responses expose `legal_context.mode` as `LIVE_VERIFIED`,
++  `MIXED_VERIFIED_AND_LOCAL`, `LOCAL_FALLBACK`, or `DISABLED`.
++- The `model_analysis` pipeline stage exposes the same mode without retaining
++  user text.
++- `/health` and `/admin/metrics` expose aggregate attempt, outcome, error and
++  context-latency counters.
++- The chat UI states whether the answer used current verified RT evidence,
++  mixed evidence, or the audited local fallback.
++
++## Controlled pilot
++
++Start ÕigusAI with the explicit opt-in:
++
++```env
++RT_VERIFIED_LIVE_MODEL_CONTEXT_ENABLED=true
++```
++
++Then run 20 cases through the normal `/analyze` API:
++
++```powershell
++python scripts/evaluate_rt_live_pilot.py --limit 20 --as-of 2026-08-22
++```
++
++The JSON report contains only case IDs, response status, legal-context mode,
++latency and source count. It does not retain questions, answers or legal text.
++The default acceptance gate requires all requests to succeed, every response to
++declare a known context mode, at least one verified-live result, and no more
++than 25% local fallback. V11.6 does not change the runtime default.
+diff --git a/data/rt_live_pilot_manifest.json b/data/rt_live_pilot_manifest.json
+new file mode 100644
+index 0000000..890334b
+--- /dev/null
++++ b/data/rt_live_pilot_manifest.json
+@@ -0,0 +1,15 @@
++{
++  "version": "V11.6-live-pilot-observability-1",
++  "depends_on_runtime_version": "V11.5.1-verified-live-runtime-1",
++  "runtime_default_enabled": false,
++  "minimum_pilot_cases": 20,
++  "maximum_pilot_cases": 50,
++  "api_exposes_legal_context": true,
++  "pipeline_exposes_legal_context_mode": true,
++  "health_exposes_aggregate_live_metrics": true,
++  "admin_exposes_aggregate_live_metrics": true,
++  "ui_exposes_source_freshness": true,
++  "retains_user_text": false,
++  "pilot_report_retains_user_text": false,
++  "unexpected_errors_must_be_zero": true
++}
+diff --git a/main.py b/main.py
+index 9c3ee40..bc967fc 100644
+--- a/main.py
++++ b/main.py
+@@ -373,6 +373,7 @@ class CaseAnalysisResponse(BaseModel):
+     claims: List[EvidenceClaimResponse] = Field(default_factory=list)
+     layered_answer: Dict[str, Any] = Field(default_factory=dict)
+     pipeline: Dict[str, Any] = Field(default_factory=dict)
++    legal_context: Dict[str, Any] = Field(default_factory=dict)
+ 
+ 
+ class MatterCreateRequest(BaseModel):
+@@ -545,12 +546,18 @@ async def admin_metrics(
+     feedback = getattr(request.app.state, "feedback_store", None)
+     guard = getattr(request.app.state, "runtime_guard", None)
+     matters = getattr(request.app.state, "matter_store", None)
++    ai_service = getattr(request.app.state, "ai_service", None)
+     return {
+         "version": APP_VERSION,
+         "metrics": metrics.snapshot() if metrics is not None else {},
+         "feedback": feedback.snapshot() if feedback is not None else {},
+         "work_queue": guard.snapshot() if guard is not None else {},
+         "active_matters": matters.count() if matters is not None else 0,
++        "verified_live_context": (
++            ai_service.live_model_context_stats()
++            if ai_service is not None and hasattr(ai_service, "live_model_context_stats")
++            else {}
++        ),
+         "retains_user_text": False,
+     }
+ 
+@@ -618,6 +625,12 @@ async def health(request: Request):
+     matter_store = getattr(request.app.state, "matter_store", None)
+     feedback_store = getattr(request.app.state, "feedback_store", None)
+     metrics_store = getattr(request.app.state, "metrics_store", None)
++    ai_service = getattr(request.app.state, "ai_service", None)
++    verified_live_context = (
++        ai_service.live_model_context_stats()
++        if ai_service is not None and hasattr(ai_service, "live_model_context_stats")
++        else {}
++    )
+     ready_for_demo = bool(
+         legal_service is not None and model_status["analysis_model_ready"]
+     )
+@@ -646,6 +659,10 @@ async def health(request: Request):
+             feedback_store.snapshot()["total"] if feedback_store is not None else 0
+         ),
+         "quality_metrics": metrics_store.snapshot() if metrics_store is not None else {},
++        "verified_live_context": {
++            "configured": settings.rt_verified_live_model_context_enabled,
++            **verified_live_context,
++        },
+         "capabilities": {
+             "v8_2_case_card": True,
+             "v8_2_layered_answer": True,
+@@ -654,6 +671,7 @@ async def health(request: Request):
+             "v8_3_safe_drafts": True,
+             "v9_0_verified_pipeline": True,
+             "v9_1_quality_dashboard": True,
++            "v11_6_verified_live_pilot_observability": True,
+         },
+         "access_protected": bool(settings.app_access_code),
+         "transport_security": "https_required_for_public_use",
+@@ -882,6 +900,7 @@ async def analyze_case(
+         ],
+         layered_answer=finalized["layered_answer"],
+         pipeline=finalized["pipeline"],
++        legal_context=finalized["legal_context"],
+     )
+ 
+ 
+@@ -892,4 +911,4 @@ if __name__ == "__main__":
+         port=settings.app_port,
+         reload=settings.app_reload,
+         log_level=settings.log_level.lower(),
+-    )
+\ No newline at end of file
++    )
+diff --git a/scripts/evaluate_rt_live_pilot.py b/scripts/evaluate_rt_live_pilot.py
+new file mode 100644
+index 0000000..37b8a1f
+--- /dev/null
++++ b/scripts/evaluate_rt_live_pilot.py
+@@ -0,0 +1,135 @@
++#!/usr/bin/env python3
++"""Run a privacy-preserving 20–50 case verified-live pilot through the normal API."""
++from __future__ import annotations
++
++import argparse
++import json
++import os
++import time
++from collections import Counter
++from datetime import date
++from pathlib import Path
++
++import requests
++
++PROJECT_ROOT = Path(__file__).resolve().parent.parent
++DEFAULT_CASES = PROJECT_ROOT / "eval" / "query_cases.json"
++DEFAULT_OUTPUT = PROJECT_ROOT / "artifacts" / "rt-live-pilot-report.json"
++ALLOWED_MODES = {
++    "LIVE_VERIFIED",
++    "MIXED_VERIFIED_AND_LOCAL",
++    "LOCAL_FALLBACK",
++}
++
++
++def load_cases(path: Path, limit: int) -> list[dict]:
++    payload = json.loads(path.read_text(encoding="utf-8"))
++    rows = [row for row in payload if str(row.get("query") or "").strip()]
++    if len(rows) < limit:
++        raise RuntimeError(f"Pilot requested {limit} cases but only {len(rows)} are available.")
++    return rows[:limit]
++
++
++def run_pilot(args: argparse.Namespace) -> dict:
++    session = requests.Session()
++    access_code = os.environ.get("APP_ACCESS_CODE", "").strip()
++    headers = {"X-OigusAI-Access-Code": access_code} if access_code else {}
++    results = []
++    modes = Counter()
++    before_health = session.get(
++        f"{args.base_url.rstrip('/')}/health", timeout=min(args.timeout, 30)
++    )
++    before_health.raise_for_status()
++    before_live = before_health.json().get("verified_live_context") or {}
++    started = time.perf_counter()
++    for case in load_cases(Path(args.cases), args.limit):
++        case_started = time.perf_counter()
++        response = session.post(
++            f"{args.base_url.rstrip('/')}/analyze",
++            headers=headers,
++            json={
++                "case_description": case["query"],
++                "current_message": case["query"],
++                "event_date": args.as_of,
++            },
++            timeout=args.timeout,
++        )
++        elapsed_ms = round((time.perf_counter() - case_started) * 1000, 1)
++        mode = "HTTP_ERROR"
++        source_count = 0
++        if response.ok:
++            payload = response.json()
++            mode = str((payload.get("legal_context") or {}).get("mode") or "MISSING")
++            source_count = len(payload.get("sources_used") or [])
++        modes[mode] += 1
++        results.append({
++            "id": str(case.get("id") or ""),
++            "http_status": response.status_code,
++            "legal_context_mode": mode,
++            "latency_ms": elapsed_ms,
++            "source_count": source_count,
++        })
++
++    total = len(results)
++    after_health = session.get(
++        f"{args.base_url.rstrip('/')}/health", timeout=min(args.timeout, 30)
++    )
++    after_health.raise_for_status()
++    after_live = after_health.json().get("verified_live_context") or {}
++    unexpected_errors = max(
++        0,
++        int(after_live.get("unexpected_error") or 0)
++        - int(before_live.get("unexpected_error") or 0),
++    )
++    fallback_rate = modes["LOCAL_FALLBACK"] / total if total else 1.0
++    http_ok = sum(row["http_status"] == 200 for row in results)
++    valid_modes = sum(row["legal_context_mode"] in ALLOWED_MODES for row in results)
++    acceptance = bool(
++        total >= 20
++        and http_ok == total
++        and valid_modes == total
++        and modes["LIVE_VERIFIED"] + modes["MIXED_VERIFIED_AND_LOCAL"] > 0
++        and fallback_rate <= args.max_local_fallback_rate
++        and unexpected_errors == 0
++    )
++    return {
++        "version": "V11.6-live-pilot-report-1",
++        "as_of": args.as_of,
++        "cases": total,
++        "duration_seconds": round(time.perf_counter() - started, 2),
++        "mode_counts": dict(modes),
++        "local_fallback_rate": round(fallback_rate, 4),
++        "max_local_fallback_rate": args.max_local_fallback_rate,
++        "http_successes": http_ok,
++        "valid_context_modes": valid_modes,
++        "unexpected_live_errors": unexpected_errors,
++        "acceptance_passed": acceptance,
++        "retains_user_text": False,
++        "results": results,
++    }
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--base-url", default="http://127.0.0.1:8000")
++    parser.add_argument("--cases", default=str(DEFAULT_CASES))
++    parser.add_argument("--limit", type=int, default=20, choices=range(20, 51))
++    parser.add_argument("--as-of", default=date.today().isoformat())
++    parser.add_argument("--timeout", type=int, default=420)
++    parser.add_argument("--max-local-fallback-rate", type=float, default=0.25)
++    parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
++    args = parser.parse_args()
++    if not 0.0 <= args.max_local_fallback_rate <= 1.0:
++        parser.error("--max-local-fallback-rate must be between 0 and 1")
++    date.fromisoformat(args.as_of)
++    report = run_pilot(args)
++    output = Path(args.output)
++    output.parent.mkdir(parents=True, exist_ok=True)
++    output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
++    print(json.dumps({key: value for key, value in report.items() if key != "results"}, indent=2))
++    print(f"Report: {output}")
++    return 0 if report["acceptance_passed"] else 2
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/verify_rt_live_pilot.py b/scripts/verify_rt_live_pilot.py
+new file mode 100644
+index 0000000..d405350
+--- /dev/null
++++ b/scripts/verify_rt_live_pilot.py
+@@ -0,0 +1,52 @@
++#!/usr/bin/env python3
++"""Deterministic CI contract for V11.6 live-pilot observability."""
++from __future__ import annotations
++
++import json
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parent.parent
++MANIFEST = ROOT / "data" / "rt_live_pilot_manifest.json"
++VERSION = "V11.6-live-pilot-observability-1"
++
++
++def main() -> int:
++    payload = json.loads(MANIFEST.read_text(encoding="utf-8"))
++    expected = {
++        "version": VERSION,
++        "depends_on_runtime_version": "V11.5.1-verified-live-runtime-1",
++        "runtime_default_enabled": False,
++        "minimum_pilot_cases": 20,
++        "maximum_pilot_cases": 50,
++        "api_exposes_legal_context": True,
++        "pipeline_exposes_legal_context_mode": True,
++        "health_exposes_aggregate_live_metrics": True,
++        "admin_exposes_aggregate_live_metrics": True,
++        "ui_exposes_source_freshness": True,
++        "retains_user_text": False,
++        "pilot_report_retains_user_text": False,
++        "unexpected_errors_must_be_zero": True,
++    }
++    for key, value in expected.items():
++        if payload.get(key) != value:
++            raise RuntimeError(f"V11.6 manifest drift: {key}")
++    main_text = (ROOT / "main.py").read_text(encoding="utf-8")
++    orchestrator = (ROOT / "services" / "analysis_orchestrator.py").read_text(encoding="utf-8")
++    chat = (ROOT / "templates" / "chat.html").read_text(encoding="utf-8")
++    evaluator = (ROOT / "scripts" / "evaluate_rt_live_pilot.py").read_text(encoding="utf-8")
++    required_markers = (
++        (main_text, '"verified_live_context"'),
++        (main_text, 'legal_context=finalized["legal_context"]'),
++        (orchestrator, "legal_context_mode="),
++        (orchestrator, '"MIXED_VERIFIED_AND_LOCAL"'),
++        (chat, "Riigi Teatajast reaalajas kontrollitud"),
++        (evaluator, '"retains_user_text": False'),
++    )
++    if any(marker not in text for text, marker in required_markers):
++        raise RuntimeError("V11.6 runtime/UI/pilot contract marker is missing.")
++    print("ÕigusAI V11.6 live-pilot observability contract: PASS")
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/verify_rt_model_runtime.py b/scripts/verify_rt_model_runtime.py
+index ddfed0d..a7b6c4b 100755
+--- a/scripts/verify_rt_model_runtime.py
++++ b/scripts/verify_rt_model_runtime.py
+@@ -69,11 +69,13 @@ def verify_contract() -> dict:
+         settings=load_settings({}),
+         live_model_context_enabled=False,
+     )
+-    if service.live_model_context_stats() != {
+-        "admitted": 0,
+-        "local_fallback": 0,
+-        "unexpected_error": 0,
+-    }:
++    stats = service.live_model_context_stats()
++    required_zero_counters = {
++        "attempts", "admitted", "live_verified", "mixed_verified_and_local",
++        "local_fallback", "unexpected_error", "total_context_ms",
++        "average_context_ms", "max_context_ms",
++    }
++    if any(stats.get(key) != 0 for key in required_zero_counters):
+         raise RuntimeError("V11.5.1 runtime outcome counters are not initialized safely.")
+ 
+     main_text = (PROJECT_ROOT / "main.py").read_text(encoding="utf-8")
+diff --git a/services/analysis_orchestrator.py b/services/analysis_orchestrator.py
+index fc82b94..0bcf5f1 100644
+--- a/services/analysis_orchestrator.py
++++ b/services/analysis_orchestrator.py
+@@ -71,6 +71,7 @@ class ExecutedAnalysis:
+     coverage_report: Dict[str, Any]
+     coverage_repair_diagnostics: Dict[str, Any]
+     verified_sources: List[str]
++    legal_context: Dict[str, Any]
+ 
+ 
+ class AnalysisOrchestrator:
+@@ -574,6 +575,10 @@ class AnalysisOrchestrator:
+             })
+ 
+         structured_claims: List[Dict[str, Any]] = []
++        legal_context: Dict[str, Any] = {
++            "mode": "LOCAL_CORPUS",
++            "model_context_enabled": False,
++        }
+         try:
+             if isinstance(ai_service, OfflineAIService):
+                 analysis_text, is_mock, structured_claims = await self.run_guarded_work(
+@@ -592,6 +597,28 @@ class AnalysisOrchestrator:
+                     analysis_laws,
+                     str(getattr(request, "event_date", "") or ""),
+                 )
++            if isinstance(ai_service, OfflineAIService):
++                admissions = [
++                    str(law.get("model_context_admission") or "")
++                    for law in analysis_laws
++                ]
++                live_count = admissions.count("VERIFIED_LIVE_BINDING_SECTION")
++                local_count = admissions.count("AUDITED_LOCAL_CORPUS_FALLBACK")
++                enabled = bool(getattr(ai_service, "live_model_context_enabled", False))
++                mode = (
++                    "DISABLED" if not enabled
++                    else "MIXED_VERIFIED_AND_LOCAL" if live_count and local_count
++                    else "LIVE_VERIFIED" if live_count
++                    else "LOCAL_FALLBACK"
++                )
++                legal_context = {
++                    "version": "V11.6-live-pilot-observability-1",
++                    "mode": mode,
++                    "model_context_enabled": bool(live_count or local_count),
++                    "live_count": live_count,
++                    "local_count": local_count,
++                    "source_count": len(analysis_laws),
++                }
+         except Exception as exc:
+             self.logger.error(
+                 "AI analysis unavailable; returning verified source digest: %s",
+@@ -917,6 +944,8 @@ class AnalysisOrchestrator:
+             fallback=fallback_used,
+             mock=is_mock,
+             structured_claim_count=len(structured_claims),
++            legal_context_mode=str(legal_context.get("mode") or "LOCAL_CORPUS"),
++            live_context_enabled=bool(legal_context.get("model_context_enabled")),
+         )
+         pipeline.complete(
+             "source_verification",
+@@ -944,6 +973,7 @@ class AnalysisOrchestrator:
+             coverage_report=dict(coverage_report),
+             coverage_repair_diagnostics=dict(coverage_repair_diagnostics),
+             verified_sources=list(verified_sources),
++            legal_context=legal_context,
+         )
+ 
+ 
+@@ -1077,6 +1107,10 @@ class AnalysisOrchestrator:
+                 fallback=fallback_used,
+                 claim_count=len(combined_claims),
+                 source_count=len(verified_sources),
++                legal_context_mode=str(
++                    getattr(executed, "legal_context", {}).get("mode")
++                    or "LOCAL_CORPUS"
++                ),
+             )
+ 
+         return {
+@@ -1090,6 +1124,7 @@ class AnalysisOrchestrator:
+             "verification_status": verification_status,
+             "layered_answer": layered_answer,
+             "pipeline": pipeline_result,
++            "legal_context": dict(getattr(executed, "legal_context", {}) or {}),
+             "coverage": dict(getattr(executed, "coverage_report", {}) or {}),
+             "coverage_repair": dict(
+                 getattr(executed, "coverage_repair_diagnostics", {}) or {}
+diff --git a/services/metrics.py b/services/metrics.py
+index eccf017..c7c83ae 100644
+--- a/services/metrics.py
++++ b/services/metrics.py
+@@ -18,6 +18,7 @@ class QualityMetricsStore:
+         self._routes = Counter()
+         self._statuses = Counter()
+         self._verification = Counter()
++        self._legal_context = Counter()
+         self._analysis_latencies: Deque[float] = deque(maxlen=self.max_latency_samples)
+         self._fallbacks = 0
+         self._analyses = 0
+@@ -40,6 +41,7 @@ class QualityMetricsStore:
+         fallback: bool,
+         claim_count: int,
+         source_count: int,
++        legal_context_mode: str = "LOCAL_CORPUS",
+     ) -> None:
+         with self._lock:
+             self._analyses += 1
+@@ -47,6 +49,7 @@ class QualityMetricsStore:
+             self._claims += max(0, int(claim_count))
+             self._sources += max(0, int(source_count))
+             self._verification[str(verification_status or "UNKNOWN")[:48]] += 1
++            self._legal_context[str(legal_context_mode or "LOCAL_CORPUS")[:48]] += 1
+             self._analysis_latencies.append(max(0.0, float(duration_ms)))
+ 
+     def snapshot(self) -> dict:
+@@ -63,6 +66,7 @@ class QualityMetricsStore:
+                 "average_claims": round(self._claims / analyses, 2) if analyses else 0.0,
+                 "average_sources": round(self._sources / analyses, 2) if analyses else 0.0,
+                 "verification_statuses": dict(self._verification),
++                "legal_context_modes": dict(self._legal_context),
+                 "latency_ms": {
+                     "samples": len(latencies),
+                     "p50": self._percentile(latencies, 0.50),
+diff --git a/services/verified_live_ai.py b/services/verified_live_ai.py
+index be6d0e5..efb4594 100644
+--- a/services/verified_live_ai.py
++++ b/services/verified_live_ai.py
+@@ -9,6 +9,7 @@ from __future__ import annotations
+ 
+ import logging
+ import threading
++import time
+ from typing import Any, Dict
+ 
+ from config import Settings, load_settings
+@@ -44,14 +45,20 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
+         self._live_context_state = threading.local()
+         self._live_context_stats_lock = threading.Lock()
+         self._live_context_stats = {
++            "attempts": 0,
+             "admitted": 0,
++            "live_verified": 0,
++            "mixed_verified_and_local": 0,
+             "local_fallback": 0,
+             "unexpected_error": 0,
++            "total_context_ms": 0.0,
++            "max_context_ms": 0.0,
+         }
+         self.last_live_model_context = {
+             "version": V11_5_MODEL_CONTEXT_VERSION,
+             "status": "DISABLED",
+             "model_context_enabled": False,
++            "mode": "DISABLED",
+         }
+         self._live_context_logger = logging.getLogger(__name__)
+ 
+@@ -62,21 +69,39 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
+             "version": V11_5_MODEL_CONTEXT_VERSION,
+             "status": "DISABLED",
+             "model_context_enabled": False,
++            "mode": "DISABLED",
+         }))
+ 
+     @last_live_model_context.setter
+     def last_live_model_context(self, value: Dict[str, Any]) -> None:
+         self._live_context_state.last = dict(value)
+ 
+-    def live_model_context_stats(self) -> Dict[str, int]:
++    def live_model_context_stats(self) -> Dict[str, Any]:
+         """Return process-local counters suitable for health/metrics reporting."""
+         with self._live_context_stats_lock:
+-            return dict(self._live_context_stats)
++            result = dict(self._live_context_stats)
++        attempts = int(result.get("attempts") or 0)
++        result["average_context_ms"] = round(
++            float(result.get("total_context_ms") or 0.0) / attempts, 1
++        ) if attempts else 0.0
++        result["max_context_ms"] = round(float(result.get("max_context_ms") or 0.0), 1)
++        result["total_context_ms"] = round(float(result.get("total_context_ms") or 0.0), 1)
++        return result
+ 
+     def _record_live_context_outcome(self, outcome: str) -> None:
+         with self._live_context_stats_lock:
+             self._live_context_stats[outcome] += 1
+ 
++    def _record_live_context_attempt(self, outcome: str, started: float) -> None:
++        duration_ms = max(0.0, (time.perf_counter() - started) * 1000)
++        with self._live_context_stats_lock:
++            self._live_context_stats["attempts"] += 1
++            self._live_context_stats[outcome] += 1
++            self._live_context_stats["total_context_ms"] += duration_ms
++            self._live_context_stats["max_context_ms"] = max(
++                self._live_context_stats["max_context_ms"], duration_ms
++            )
++
+     def analyze_case_structured(
+         self,
+         case_desc: str,
+@@ -85,10 +110,21 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
+         document_spans: list[Dict] | None = None,
+     ):
+         if self.live_model_context_enabled and laws:
++            context_started = time.perf_counter()
+             try:
+                 context = self.live_context_adapter.prepare_context(laws, event_date)
+                 admitted = list(context.get("laws") or [])
+                 if admitted:
++                    admission = context.get("admission", {})
++                    live_count = int(admission.get("live_count") or 0)
++                    local_count = int(admission.get("local_count") or 0)
++                    mode = (
++                        "MIXED_VERIFIED_AND_LOCAL"
++                        if live_count and local_count
++                        else "LIVE_VERIFIED"
++                        if live_count
++                        else "LOCAL_FALLBACK"
++                    )
+                     # Critical invariant: this is the exact list object later used
+                     # by SourceVerifier, CoverageVerifier and EvidenceVerifier.
+                     laws[:] = admitted
+@@ -98,7 +134,16 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
+                         "live": context.get("live", {}),
+                         "admission": context.get("admission", {}),
+                         "model_context_enabled": True,
++                        "mode": mode,
+                     }
++                    self._record_live_context_attempt(
++                        "mixed_verified_and_local"
++                        if mode == "MIXED_VERIFIED_AND_LOCAL"
++                        else "live_verified"
++                        if mode == "LIVE_VERIFIED"
++                        else "local_fallback",
++                        context_started,
++                    )
+                     self._record_live_context_outcome("admitted")
+                 else:
+                     self.last_live_model_context = {
+@@ -106,8 +151,9 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
+                         "status": "LOCAL_MODEL_CONTEXT",
+                         "model_context_enabled": False,
+                         "reason": "no_admitted_live_context",
++                        "mode": "LOCAL_FALLBACK",
+                     }
+-                    self._record_live_context_outcome("local_fallback")
++                    self._record_live_context_attempt("local_fallback", context_started)
+             except (RTModelContextError, ValueError) as exc:
+                 # Fail closed to the pre-existing audited local law list. No
+                 # unadmitted live record is copied into ``laws`` on this path.
+@@ -120,13 +166,14 @@ class VerifiedLiveOfflineAIService(OfflineAIService):
+                     "status": "LOCAL_MODEL_CONTEXT",
+                     "model_context_enabled": False,
+                     "error": f"{type(exc).__name__}: {exc}"[:300],
++                    "mode": "LOCAL_FALLBACK",
+                 }
+-                self._record_live_context_outcome("local_fallback")
++                self._record_live_context_attempt("local_fallback", context_started)
+             except Exception:
+                 # Unexpected implementation defects must not look like a healthy
+                 # local fallback. Let the existing orchestrator error boundary
+                 # handle them and make the defect observable.
+-                self._record_live_context_outcome("unexpected_error")
++                self._record_live_context_attempt("unexpected_error", context_started)
+                 self._live_context_logger.exception(
+                     "Unexpected V11.5 live model-context runtime failure"
+                 )
+diff --git a/templates/admin.html b/templates/admin.html
+index 1701847..ea80689 100644
+--- a/templates/admin.html
++++ b/templates/admin.html
+@@ -92,7 +92,8 @@
+         document.getElementById('feedback').textContent=feedback.total||0;
+         document.getElementById('fallback').textContent=`${Math.round((metrics.fallback_rate||0)*100)}%`;
+         document.getElementById('p95').textContent=`${Math.round(metrics.latency_ms?.p95||0)} ms`;
+-        fillTable('health-table', [['Versioon',data.version],['Valmis esitluseks',health.ready_for_demo?'Jah':'Ei'],['Aktiivsed tööd',data.work_queue?.active||0],['Järjekorras',data.work_queue?.waiting||0],['Ajutised juhtumid',data.active_matters||0],['Õiguskorpus',`${health.legal_sections||0} sätet`]]);
++        const live=data.verified_live_context||{};
++        fillTable('health-table', [['Versioon',data.version],['Valmis esitluseks',health.ready_for_demo?'Jah':'Ei'],['Aktiivsed tööd',data.work_queue?.active||0],['Järjekorras',data.work_queue?.waiting||0],['Ajutised juhtumid',data.active_matters||0],['Õiguskorpus',`${health.legal_sections||0} sätet`],['Live-konteksti katseid',live.attempts||0],['Live kontrollitud',live.live_verified||0],['Segakontekst',live.mixed_verified_and_local||0],['Lokaalne fallback',live.local_fallback||0],['Live keskmine latentsus',`${Math.round(live.average_context_ms||0)} ms`],['Ootamatud live-vead',live.unexpected_error||0]]);
+         fillTable('feedback-table', [['Abiks',feedback.helpful||0],['Mitte päris',feedback.not_helpful||0],['Kokku',feedback.total||0]]);
+         fillTable('verification-table',Object.entries(metrics.verification_statuses||{}));
+         document.getElementById('service-status').textContent=health.status||'teadmata';
+diff --git a/templates/chat.html b/templates/chat.html
+index b629cd9..b2bb709 100644
+--- a/templates/chat.html
++++ b/templates/chat.html
+@@ -1972,6 +1972,19 @@
+                 sourceDetails.content.appendChild(list);
+                 detailsStack.appendChild(sourceDetails.details);
+             }
++            if (data.legal_context?.mode) {
++                const contextLabels = {
++                    LIVE_VERIFIED: 'Riigi Teatajast reaalajas kontrollitud',
++                    MIXED_VERIFIED_AND_LOCAL: 'Osaliselt reaalajas kontrollitud; kasutati ka auditeeritud kohalikku korpust',
++                    LOCAL_FALLBACK: 'Reaalajakontroll polnud saadaval; kasutati auditeeritud kohalikku korpust',
++                    DISABLED: 'Reaalajakontroll on selles käivituses välja lülitatud',
++                    LOCAL_CORPUS: 'Kasutati auditeeritud kohalikku korpust'
++                };
++                const contextNotice = document.createElement('p');
++                contextNotice.className = 'notice';
++                contextNotice.textContent = contextLabels[data.legal_context.mode] || data.legal_context.mode;
++                detailsStack.appendChild(contextNotice);
++            }
+             if (data.pipeline?.stages?.length) {
+                 const labels = {
+                     case_understanding: 'Juhtumi mõistmine',
+diff --git a/tests/test_main.py b/tests/test_main.py
+index 88029a5..36ae0d7 100644
+--- a/tests/test_main.py
++++ b/tests/test_main.py
+@@ -137,6 +137,7 @@ class MainTests(unittest.TestCase):
+         self.assertTrue(response.layered_answer["short_answer"])
+         self.assertEqual(response.pipeline["status"], "completed")
+         self.assertEqual(len(response.pipeline["stages"]), 7)
++        self.assertEqual(response.legal_context["mode"], "LOCAL_CORPUS")
+     def test_root_serves_cache_free_conversational_ui(self):
+         with TestClient(main.app) as client:
+             response = client.get("/")
+@@ -628,6 +629,11 @@ class MainTests(unittest.TestCase):
+         self.assertEqual(data["document_privacy"], "memory_only")
+         self.assertIn("access_protected", data)
+         self.assertIn("work_queue", data)
++        self.assertIn("verified_live_context", data)
++        self.assertIn("configured", data["verified_live_context"])
++        self.assertTrue(
++            data["capabilities"]["v11_6_verified_live_pilot_observability"]
++        )
+         self.assertEqual(data["matter_ttl_minutes"], main.settings.matter_ttl_minutes)
+ 
+     def test_access_check_rejects_wrong_code_and_accepts_right_code(self):
+diff --git a/tests/test_metrics.py b/tests/test_metrics.py
+index 4e5e1f1..05a5f9c 100644
+--- a/tests/test_metrics.py
++++ b/tests/test_metrics.py
+@@ -13,11 +13,13 @@ class QualityMetricsTests(unittest.TestCase):
+             fallback=False,
+             claim_count=3,
+             source_count=2,
++            legal_context_mode="LIVE_VERIFIED",
+         )
+         data = store.snapshot()
+         self.assertEqual(data["analyses"], 1)
+         self.assertEqual(data["latency_ms"]["p95"], 1250)
+         self.assertEqual(data["privacy"], "aggregate_only_no_user_text")
++        self.assertEqual(data["legal_context_modes"], {"LIVE_VERIFIED": 1})
+         self.assertNotIn("query", data)
+ 
+ 
+diff --git a/tests/test_rt_live_pilot.py b/tests/test_rt_live_pilot.py
+new file mode 100644
+index 0000000..aee4f69
+--- /dev/null
++++ b/tests/test_rt_live_pilot.py
+@@ -0,0 +1,100 @@
++from __future__ import annotations
++
++import json
++import unittest
++from argparse import Namespace
++from pathlib import Path
++from tempfile import TemporaryDirectory
++from unittest.mock import patch
++
++from scripts.evaluate_rt_live_pilot import run_pilot
++
++
++class FakeResponse:
++    def __init__(self, payload, status_code=200):
++        self._payload = payload
++        self.status_code = status_code
++        self.ok = 200 <= status_code < 300
++
++    def json(self):
++        return self._payload
++
++    def raise_for_status(self):
++        if not self.ok:
++            raise RuntimeError(f"HTTP {self.status_code}")
++
++
++class FakeSession:
++    def __init__(self, *, unexpected_after=0):
++        self.unexpected_after = unexpected_after
++
++    def get(self, *_args, **_kwargs):
++        value = getattr(self, "health_calls", 0)
++        self.health_calls = value + 1
++        return FakeResponse({
++            "verified_live_context": {
++                "unexpected_error": 0 if value == 0 else self.unexpected_after
++            }
++        })
++
++    def post(self, *_args, **_kwargs):
++        return FakeResponse({
++            "legal_context": {"mode": "LIVE_VERIFIED"},
++            "sources_used": ["TLS_95"],
++        })
++
++
++class LivePilotEvaluationTests(unittest.TestCase):
++    def test_twenty_case_report_is_private_and_passes(self):
++        with TemporaryDirectory() as tmp:
++            cases = Path(tmp) / "cases.json"
++            cases.write_text(json.dumps([
++                {"id": f"CASE-{index}", "query": f"private question {index}"}
++                for index in range(20)
++            ]), encoding="utf-8")
++            args = Namespace(
++                base_url="http://test",
++                cases=str(cases),
++                limit=20,
++                as_of="2026-08-22",
++                timeout=30,
++                max_local_fallback_rate=0.25,
++            )
++            with patch(
++                "scripts.evaluate_rt_live_pilot.requests.Session",
++                return_value=FakeSession(),
++            ):
++                report = run_pilot(args)
++
++        self.assertTrue(report["acceptance_passed"])
++        self.assertFalse(report["retains_user_text"])
++        self.assertEqual(report["mode_counts"], {"LIVE_VERIFIED": 20})
++        self.assertNotIn("private question", json.dumps(report))
++
++    def test_unexpected_runtime_error_fails_acceptance(self):
++        with TemporaryDirectory() as tmp:
++            cases = Path(tmp) / "cases.json"
++            cases.write_text(json.dumps([
++                {"id": f"CASE-{index}", "query": f"question {index}"}
++                for index in range(20)
++            ]), encoding="utf-8")
++            args = Namespace(
++                base_url="http://test",
++                cases=str(cases),
++                limit=20,
++                as_of="2026-08-22",
++                timeout=30,
++                max_local_fallback_rate=0.25,
++            )
++            with patch(
++                "scripts.evaluate_rt_live_pilot.requests.Session",
++                return_value=FakeSession(unexpected_after=1),
++            ):
++                report = run_pilot(args)
++
++        self.assertFalse(report["acceptance_passed"])
++        self.assertEqual(report["unexpected_live_errors"], 1)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/test_v91_api.py b/tests/test_v91_api.py
+index 2026cd9..bb04d97 100644
+--- a/tests/test_v91_api.py
++++ b/tests/test_v91_api.py
+@@ -93,6 +93,7 @@ class V91ApiTests(unittest.TestCase):
+         self.assertEqual(metrics.status_code, 200)
+         self.assertEqual(metrics.json()["version"], "0.9.1")
+         self.assertFalse(metrics.json()["retains_user_text"])
++        self.assertIn("verified_live_context", metrics.json())
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/tests/test_verified_live_model_context.py b/tests/test_verified_live_model_context.py
+index 02e65ec..e522144 100644
+--- a/tests/test_verified_live_model_context.py
++++ b/tests/test_verified_live_model_context.py
+@@ -32,14 +32,22 @@ class FakeContextAdapter:
+         self.calls.append((candidates, event_date))
+         if self.error:
+             raise self.error
++        live_count = sum(
++            item.get("model_context_admission") == "VERIFIED_LIVE_BINDING_SECTION"
++            for item in self.laws
++        )
++        local_count = sum(
++            item.get("model_context_admission") == "AUDITED_LOCAL_CORPUS_FALLBACK"
++            for item in self.laws
++        )
+         return {
+             "status": "MODEL_CONTEXT_READY" if self.laws else "NO_MODEL_CONTEXT",
+             "laws": [dict(item) for item in self.laws],
+             "live": {"status": "LIVE_VERIFIED"},
+             "admission": {
+                 "status": "VERIFIED_LIVE_CONTEXT" if self.laws else "EMPTY_CONTEXT",
+-                "live_count": len(self.laws),
+-                "local_count": 0,
++                "live_count": live_count,
++                "local_count": local_count,
+                 "model_context_enabled": bool(self.laws),
+                 "unverified_live_admitted": False,
+             },
+@@ -187,6 +195,12 @@ class VerifiedLiveRuntimeWiringTests(unittest.TestCase):
+             [law["model_context_admission"] for law in laws],
+             ["VERIFIED_LIVE_BINDING_SECTION", "AUDITED_LOCAL_CORPUS_FALLBACK"],
+         )
++        self.assertEqual(
++            service.last_live_model_context["mode"], "MIXED_VERIFIED_AND_LOCAL"
++        )
++        self.assertEqual(
++            service.live_model_context_stats()["mixed_verified_and_local"], 1
++        )
+ 
+     def test_invalid_and_future_dates_keep_local_context(self):
+         for event_date in ("not-a-date", "2999-01-01"):
+@@ -231,6 +245,7 @@ class VerifiedLiveRuntimeWiringTests(unittest.TestCase):
+         self.assertEqual(statuses, ["MODEL_CONTEXT_READY", "MODEL_CONTEXT_READY"])
+         self.assertEqual(service.last_live_model_context["status"], "DISABLED")
+         self.assertEqual(service.live_model_context_stats()["admitted"], 2)
++        self.assertEqual(service.live_model_context_stats()["attempts"], 2)
+ 
+     def test_normal_orchestrator_uses_admitted_records_for_model_and_verifier(self):
+         admitted = live_record()
+@@ -294,6 +309,15 @@ class VerifiedLiveRuntimeWiringTests(unittest.TestCase):
+             executed.analysis_laws[0]["model_context_admission"],
+             "VERIFIED_LIVE_BINDING_SECTION",
+         )
++        self.assertEqual(executed.legal_context["mode"], "LIVE_VERIFIED")
++        self.assertEqual(executed.legal_context["live_count"], 1)
++        model_stage = next(
++            stage for stage in prepared.pipeline.public()["stages"]
++            if stage["name"] == "model_analysis"
++        )
++        self.assertEqual(
++            model_stage["metadata"]["legal_context_mode"], "LIVE_VERIFIED"
++        )
+ 
+     def test_main_runtime_import_points_to_verified_wrapper(self):
+         import main
+-- 
+2.51.1

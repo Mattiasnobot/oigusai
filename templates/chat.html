@@ -1972,6 +1972,19 @@
                 sourceDetails.content.appendChild(list);
                 detailsStack.appendChild(sourceDetails.details);
             }
+            if (data.legal_context?.mode) {
+                const contextLabels = {
+                    LIVE_VERIFIED: 'Riigi Teatajast reaalajas kontrollitud',
+                    MIXED_VERIFIED_AND_LOCAL: 'Osaliselt reaalajas kontrollitud; kasutati ka auditeeritud kohalikku korpust',
+                    LOCAL_FALLBACK: 'Reaalajakontroll polnud saadaval; kasutati auditeeritud kohalikku korpust',
+                    DISABLED: 'Reaalajakontroll on selles käivituses välja lülitatud',
+                    LOCAL_CORPUS: 'Kasutati auditeeritud kohalikku korpust'
+                };
+                const contextNotice = document.createElement('p');
+                contextNotice.className = 'notice';
+                contextNotice.textContent = contextLabels[data.legal_context.mode] || data.legal_context.mode;
+                detailsStack.appendChild(contextNotice);
+            }
             if (data.pipeline?.stages?.length) {
                 const labels = {
                     case_understanding: 'Juhtumi mõistmine',

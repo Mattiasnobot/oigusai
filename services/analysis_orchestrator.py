@@ -71,6 +71,7 @@ class ExecutedAnalysis:
     coverage_report: Dict[str, Any]
     coverage_repair_diagnostics: Dict[str, Any]
     verified_sources: List[str]
+    legal_context: Dict[str, Any]
 
 
 class AnalysisOrchestrator:
@@ -574,6 +575,10 @@ class AnalysisOrchestrator:
             })
 
         structured_claims: List[Dict[str, Any]] = []
+        legal_context: Dict[str, Any] = {
+            "mode": "LOCAL_CORPUS",
+            "model_context_enabled": False,
+        }
         try:
             if isinstance(ai_service, OfflineAIService):
                 analysis_text, is_mock, structured_claims = await self.run_guarded_work(
@@ -592,6 +597,28 @@ class AnalysisOrchestrator:
                     analysis_laws,
                     str(getattr(request, "event_date", "") or ""),
                 )
+            if isinstance(ai_service, OfflineAIService):
+                admissions = [
+                    str(law.get("model_context_admission") or "")
+                    for law in analysis_laws
+                ]
+                live_count = admissions.count("VERIFIED_LIVE_BINDING_SECTION")
+                local_count = admissions.count("AUDITED_LOCAL_CORPUS_FALLBACK")
+                enabled = bool(getattr(ai_service, "live_model_context_enabled", False))
+                mode = (
+                    "DISABLED" if not enabled
+                    else "MIXED_VERIFIED_AND_LOCAL" if live_count and local_count
+                    else "LIVE_VERIFIED" if live_count
+                    else "LOCAL_FALLBACK"
+                )
+                legal_context = {
+                    "version": "V11.6-live-pilot-observability-1",
+                    "mode": mode,
+                    "model_context_enabled": bool(live_count or local_count),
+                    "live_count": live_count,
+                    "local_count": local_count,
+                    "source_count": len(analysis_laws),
+                }
         except Exception as exc:
             self.logger.error(
                 "AI analysis unavailable; returning verified source digest: %s",
@@ -917,6 +944,8 @@ class AnalysisOrchestrator:
             fallback=fallback_used,
             mock=is_mock,
             structured_claim_count=len(structured_claims),
+            legal_context_mode=str(legal_context.get("mode") or "LOCAL_CORPUS"),
+            live_context_enabled=bool(legal_context.get("model_context_enabled")),
         )
         pipeline.complete(
             "source_verification",
@@ -944,6 +973,7 @@ class AnalysisOrchestrator:
             coverage_report=dict(coverage_report),
             coverage_repair_diagnostics=dict(coverage_repair_diagnostics),
             verified_sources=list(verified_sources),
+            legal_context=legal_context,
         )
 
 
@@ -1077,6 +1107,10 @@ class AnalysisOrchestrator:
                 fallback=fallback_used,
                 claim_count=len(combined_claims),
                 source_count=len(verified_sources),
+                legal_context_mode=str(
+                    getattr(executed, "legal_context", {}).get("mode")
+                    or "LOCAL_CORPUS"
+                ),
             )
 
         return {
@@ -1090,6 +1124,7 @@ class AnalysisOrchestrator:
             "verification_status": verification_status,
             "layered_answer": layered_answer,
             "pipeline": pipeline_result,
+            "legal_context": dict(getattr(executed, "legal_context", {}) or {}),
             "coverage": dict(getattr(executed, "coverage_report", {}) or {}),
             "coverage_repair": dict(
                 getattr(executed, "coverage_repair_diagnostics", {}) or {}

@@ -32,14 +32,22 @@ class FakeContextAdapter:
         self.calls.append((candidates, event_date))
         if self.error:
             raise self.error
+        live_count = sum(
+            item.get("model_context_admission") == "VERIFIED_LIVE_BINDING_SECTION"
+            for item in self.laws
+        )
+        local_count = sum(
+            item.get("model_context_admission") == "AUDITED_LOCAL_CORPUS_FALLBACK"
+            for item in self.laws
+        )
         return {
             "status": "MODEL_CONTEXT_READY" if self.laws else "NO_MODEL_CONTEXT",
             "laws": [dict(item) for item in self.laws],
             "live": {"status": "LIVE_VERIFIED"},
             "admission": {
                 "status": "VERIFIED_LIVE_CONTEXT" if self.laws else "EMPTY_CONTEXT",
-                "live_count": len(self.laws),
-                "local_count": 0,
+                "live_count": live_count,
+                "local_count": local_count,
                 "model_context_enabled": bool(self.laws),
                 "unverified_live_admitted": False,
             },
@@ -187,6 +195,12 @@ class VerifiedLiveRuntimeWiringTests(unittest.TestCase):
             [law["model_context_admission"] for law in laws],
             ["VERIFIED_LIVE_BINDING_SECTION", "AUDITED_LOCAL_CORPUS_FALLBACK"],
         )
+        self.assertEqual(
+            service.last_live_model_context["mode"], "MIXED_VERIFIED_AND_LOCAL"
+        )
+        self.assertEqual(
+            service.live_model_context_stats()["mixed_verified_and_local"], 1
+        )
 
     def test_invalid_and_future_dates_keep_local_context(self):
         for event_date in ("not-a-date", "2999-01-01"):
@@ -231,6 +245,7 @@ class VerifiedLiveRuntimeWiringTests(unittest.TestCase):
         self.assertEqual(statuses, ["MODEL_CONTEXT_READY", "MODEL_CONTEXT_READY"])
         self.assertEqual(service.last_live_model_context["status"], "DISABLED")
         self.assertEqual(service.live_model_context_stats()["admitted"], 2)
+        self.assertEqual(service.live_model_context_stats()["attempts"], 2)
 
     def test_normal_orchestrator_uses_admitted_records_for_model_and_verifier(self):
         admitted = live_record()
@@ -293,6 +308,15 @@ class VerifiedLiveRuntimeWiringTests(unittest.TestCase):
         self.assertEqual(
             executed.analysis_laws[0]["model_context_admission"],
             "VERIFIED_LIVE_BINDING_SECTION",
+        )
+        self.assertEqual(executed.legal_context["mode"], "LIVE_VERIFIED")
+        self.assertEqual(executed.legal_context["live_count"], 1)
+        model_stage = next(
+            stage for stage in prepared.pipeline.public()["stages"]
+            if stage["name"] == "model_analysis"
+        )
+        self.assertEqual(
+            model_stage["metadata"]["legal_context_mode"], "LIVE_VERIFIED"
         )
 
     def test_main_runtime_import_points_to_verified_wrapper(self):

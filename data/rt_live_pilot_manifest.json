@@ -1,0 +1,15 @@
+{
+  "version": "V11.6-live-pilot-observability-1",
+  "depends_on_runtime_version": "V11.5.1-verified-live-runtime-1",
+  "runtime_default_enabled": false,
+  "minimum_pilot_cases": 20,
+  "maximum_pilot_cases": 50,
+  "api_exposes_legal_context": true,
+  "pipeline_exposes_legal_context_mode": true,
+  "health_exposes_aggregate_live_metrics": true,
+  "admin_exposes_aggregate_live_metrics": true,
+  "ui_exposes_source_freshness": true,
+  "retains_user_text": false,
+  "pilot_report_retains_user_text": false,
+  "unexpected_errors_must_be_zero": true
+}
